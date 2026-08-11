@@ -25,8 +25,8 @@ for REQUIRED in 'autoTranslate' 'showOriginal' 'showTranslations' 'mymemory' 'ex
   }
 done
 
-rg -q 'SITE_NAME = "DETranslations"' src/translator-runtime.js
-rg -q 'SITE_URL = "https://detranslations.site"' src/translator-runtime.js
+rg -q 'SITE_NAME = "VN Revival"' src/translator-runtime.js
+rg -q 'SITE_URL = "https://vnrevival.fun/"' src/translator-runtime.js
 
 COUNT=$(wc -l < src/languages.txt | tr -d ' ')
 if [[ "$COUNT" != "249" ]]; then

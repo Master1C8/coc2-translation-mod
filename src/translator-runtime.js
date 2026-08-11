@@ -7,8 +7,8 @@
 
   const VERSION = "__VERSION__";
   const SUPPORTED_GAME_VERSION = "0.9.3";
-  const SITE_NAME = "DETranslations";
-  const SITE_URL = "https://detranslations.site";
+  const SITE_NAME = "VN Revival";
+  const SITE_URL = "https://vnrevival.fun/";
   const SETTINGS_KEY = "coc2-translator.settings.v2";
   const LEGACY_SETTINGS_KEY = "coc2-translator.settings.v1";
   const DB_NAME = "coc2-translator-cache";

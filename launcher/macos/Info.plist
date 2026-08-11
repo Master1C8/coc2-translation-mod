@@ -10,8 +10,8 @@
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleName</key><string>CoC2 Translator</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleGetInfoString</key><string>CoC2 Translator by DETranslations — https://detranslations.site</string>
-  <key>NSHumanReadableCopyright</key><string>DETranslations — https://detranslations.site</string>
+  <key>CFBundleGetInfoString</key><string>CoC2 Translator by VN Revival — https://vnrevival.fun/</string>
+  <key>NSHumanReadableCopyright</key><string>VN Revival — https://vnrevival.fun/</string>
   <key>CFBundleShortVersionString</key><string>__VERSION__</string>
   <key>CFBundleVersion</key><string>__BUILD__</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
