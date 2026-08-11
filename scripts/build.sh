@@ -39,7 +39,7 @@ chmod +x "$APP/Contents/MacOS/CoC2 Translator" "$APP/Contents/Resources/CoC2Tran
 /usr/bin/codesign --force --deep --sign - "$APP" >/dev/null
 rm -f "$READY_DIR/CoC2-Translator-macOS-$VERSION.zip" "$READY_DIR/CoC2-Translator-macOS-$VERSION.zip.sha256"
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP" "$READY_DIR/CoC2-Translator-macOS-$VERSION.zip"
-shasum -a 256 "$READY_DIR/CoC2-Translator-macOS-$VERSION.zip" > "$READY_DIR/CoC2-Translator-macOS-$VERSION.zip.sha256"
+(cd "$READY_DIR" && shasum -a 256 "CoC2-Translator-macOS-$VERSION.zip" > "CoC2-Translator-macOS-$VERSION.zip.sha256")
 
 "$ROOT/scripts/verify.sh"
 echo "Built $APP"
