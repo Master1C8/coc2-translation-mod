@@ -1,0 +1,5 @@
+.build/
+.cache/
+launcher/READY_TO_SHARE/
+*.log
+.DS_Store
