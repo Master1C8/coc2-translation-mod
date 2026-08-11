@@ -211,7 +211,7 @@
     </style>
     <div class="panel">
       <div class="bar">CoC2 Translator ${VERSION}</div>
-      <div class="row"><button class="go">Перевести</button><button class="gear" title="Настройки">⚙</button></div>
+      <div class="row"><button class="go">Перевести</button><button class="gear" title="Настройки">...</button></div>
       <div class="status">Готов</div>
       <div class="settings">
         <label>Язык</label><select class="language"></select>
