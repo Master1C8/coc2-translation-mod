@@ -207,12 +207,13 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      :host{all:initial} *{box-sizing:border-box} .panel{width:252px;color:#fff;background:rgba(32,19,28,.96);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.row{display:flex;gap:6px;padding:7px}.go,.gear,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 10px;cursor:pointer}.go{flex:1;font-weight:700}.gear{width:38px}.status{min-height:25px;padding:0 9px 7px;color:#ddd;font-size:12px}.settings{display:none;padding:0 8px 8px}.settings.open{display:block}.settings label{display:block;margin:6px 0 3px}.settings select,.settings textarea{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:5px}.settings textarea{height:92px;resize:vertical}.actions{display:flex;gap:6px;margin-top:7px}.actions button{flex:1}.hint{color:#bdaeb6;font-size:11px;margin-top:6px}
+      :host{all:initial} *{box-sizing:border-box} .panel{width:252px;color:#fff;background:rgba(32,19,28,.96);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.row{display:flex;gap:6px;padding:7px}.go,.gear,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 10px;cursor:pointer}.go{flex:1;font-weight:700}.gear{width:38px}.status{min-height:25px;padding:0 9px 4px;color:#ddd;font-size:12px}.hotkey{padding:0 9px 7px;color:#f4d18f;font-size:11px}.settings{display:none;padding:0 8px 8px}.settings.open{display:block}.settings label{display:block;margin:6px 0 3px}.settings select,.settings textarea{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:5px}.settings textarea{height:92px;resize:vertical}.actions{display:flex;gap:6px;margin-top:7px}.actions button{flex:1}.hint{color:#bdaeb6;font-size:11px;margin-top:6px}
     </style>
     <div class="panel">
       <div class="bar">CoC2 Translator ${VERSION}</div>
       <div class="row"><button class="go">Перевести</button><button class="gear" title="Настройки">...</button></div>
       <div class="status">Готов</div>
+      <div class="hotkey">Ctrl+Shift+T — перевод / отмена</div>
       <div class="settings">
         <label>Язык</label><select class="language"></select>
         <label>Словарь (English=Перевод)</label><textarea class="glossary" spellcheck="false"></textarea>
