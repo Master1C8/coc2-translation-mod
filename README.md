@@ -2,7 +2,7 @@
 
 Независимый мод-переводчик для Steam-версии **Corruption of Champions II**, запущенной на macOS через CrossOver. Игра и её ресурсы в проект не входят и не изменяются.
 
-## Возможности версии 0.2.0
+## Возможности версии 0.2.1
 
 - автоматический перевод новых экранов и динамически появляющегося текста;
 - ручной запуск и отмена через кнопку или фиксированную комбинацию `Ctrl+Shift+T`;
@@ -61,3 +61,5 @@ Google используется через публичный endpoint без AP
 Готовое приложение, ZIP и SHA-256 появляются в `launcher/READY_TO_SHARE/`.
 
 Проект не связан с OXO Industries, Fenoxo, Steam, CodeWeavers, Google или Translated/MyMemory.
+
+Сайт проекта: [DETranslations](https://detranslations.site)

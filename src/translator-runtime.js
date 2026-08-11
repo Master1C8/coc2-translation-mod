@@ -7,6 +7,8 @@
 
   const VERSION = "__VERSION__";
   const SUPPORTED_GAME_VERSION = "0.9.3";
+  const SITE_NAME = "DETranslations";
+  const SITE_URL = "https://detranslations.site";
   const SETTINGS_KEY = "coc2-translator.settings.v2";
   const LEGACY_SETTINGS_KEY = "coc2-translator.settings.v1";
   const DB_NAME = "coc2-translator-cache";
@@ -564,7 +566,7 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.gear,.danger,.small{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.gear{width:38px}.status{min-height:23px;padding:0 9px 3px;color:#ddd;font-size:12px}.hotkey{padding:0 9px 7px;color:#f4d18f;font-size:11px}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:none;padding:0 8px 9px;border-top:1px solid #6e4d56}.settings.open{display:block}.settings label.title{display:block;margin:7px 0 3px}.settings select{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px}.check{display:flex;gap:7px;align-items:center;margin:8px 0}.hint,.providerHint,.cacheStats{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.cacheBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.cacheActions,.settingsActions,.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.cacheActions button,.settingsActions button,.privacyActions button{flex:1;min-width:82px}.danger{background:#71313a}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.hidden{display:none!important}
+      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.gear,.danger,.small{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.gear{width:38px}.status{min-height:23px;padding:0 9px 3px;color:#ddd;font-size:12px}.hotkey{padding:0 9px 7px;color:#f4d18f;font-size:11px}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:none;padding:0 8px 9px;border-top:1px solid #6e4d56}.settings.open{display:block}.settings label.title{display:block;margin:7px 0 3px}.settings select{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px}.check{display:flex;gap:7px;align-items:center;margin:8px 0}.hint,.providerHint,.cacheStats{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.cacheBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.cacheActions,.settingsActions,.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.cacheActions button,.settingsActions button,.privacyActions button{flex:1;min-width:82px}.danger{background:#71313a}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover{text-decoration:underline}.hidden{display:none!important}
     </style>
     <div class="panel">
       <div class="bar">CoC2 Translator ${VERSION}</div>
@@ -590,6 +592,7 @@
         <div class="settingsActions"><button class="primary save">Сохранить</button><button class="danger reset">Удалить все данные</button></div>
         <div class="hint">Комбинация Ctrl+Shift+T фиксирована. Имена внутри цельной сюжетной строки могут попасть в запрос.</div>
       </div>
+      <div class="site">Сайт проекта: <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer">${SITE_NAME}</a></div>
     </div>`;
   document.documentElement.appendChild(host);
 
