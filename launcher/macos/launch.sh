@@ -18,6 +18,10 @@ show_error() {
     >/dev/null 2>&1 || true
 }
 
+game_main_running() {
+  ps -ax -o command= | /usr/bin/awk '/[C]oC II\.exe/ && $0 !~ /--type=/{found=1} END{exit !found}'
+}
+
 if [[ ! -x "$WINE" ]]; then
   show_error "CrossOver не найден в /Applications."
   exit 1
@@ -28,6 +32,11 @@ if [[ ! -f "$STEAM_EXE" || ! -f "$GAME_EXE" ]]; then
 fi
 if [[ ! -x "$CONTROLLER" || ! -f "$TRANSLATOR" ]]; then
   show_error "Файлы переводчика повреждены. Переустановите приложение."
+  exit 1
+fi
+
+if game_main_running; then
+  show_error "Corruption of Champions II уже запущена. Закройте игру и снова откройте CoC2 Translator — иначе Electron не сможет включить переводчик."
   exit 1
 fi
 
@@ -42,6 +51,16 @@ done
 
 "$WINE" --bottle "$BOTTLE" --no-wait "$STEAM_EXE" -applaunch 1292690 \
   "--remote-debugging-address=127.0.0.1" "--remote-debugging-port=$PORT" >/dev/null 2>&1
+
+for _ in {1..20}; do
+  game_main_running && break
+  sleep 0.5
+done
+
+if ! game_main_running; then
+  "$WINE" --bottle "$BOTTLE" --no-wait "$GAME_EXE" \
+    "--remote-debugging-address=127.0.0.1" "--remote-debugging-port=$PORT" >/dev/null 2>&1
+fi
 
 CONTROLLER_OUTPUT=$("$CONTROLLER" "$PORT" "$TRANSLATOR" 2>&1)
 CONTROLLER_STATUS=$?

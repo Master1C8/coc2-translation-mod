@@ -32,6 +32,7 @@ sed -e "s/__VERSION__/$VERSION/g" -e "s/__BUILD__/$BUILD_NUMBER/g" \
 cp "$ROOT/launcher/macos/launch.sh" "$APP/Contents/MacOS/CoC2 Translator"
 cp "$BUILD_DIR/CoC2TranslatorController" "$APP/Contents/Resources/"
 cp "$BUILD_DIR/translator.bundle.js" "$APP/Contents/Resources/"
+cp "$ROOT/assets/AppIcon.icns" "$APP/Contents/Resources/"
 cp "$ROOT/README.md" "$APP/Contents/Resources/README.md"
 cp "$ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
 chmod +x "$APP/Contents/MacOS/CoC2 Translator" "$APP/Contents/Resources/CoC2TranslatorController"

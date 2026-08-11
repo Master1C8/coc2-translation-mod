@@ -13,6 +13,18 @@ if rg -n "381780|BepInEx|StorySentenceElement|EightyDaysRussianTranslator" src l
   exit 1
 fi
 
+if rg -n -i "glossary|словар" src launcher; then
+  echo "Removed dictionary functionality is still present" >&2
+  exit 1
+fi
+
+for REQUIRED in 'autoTranslate' 'showOriginal' 'showTranslations' 'mymemory' 'exportCache' 'importCache' 'clearCacheForLanguage' 'privacyAccepted'; do
+  rg -q "$REQUIRED" src/translator-runtime.js || {
+    echo "Missing runtime feature: $REQUIRED" >&2
+    exit 1
+  }
+done
+
 COUNT=$(wc -l < src/languages.txt | tr -d ' ')
 if [[ "$COUNT" != "249" ]]; then
   echo "Language catalog is unexpectedly short: $COUNT" >&2
