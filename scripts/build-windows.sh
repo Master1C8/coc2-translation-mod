@@ -35,15 +35,20 @@ PYTHON_ZIP="$ROOT/.build/cache/python-$PYTHON_VERSION-embed-amd64.zip"
 PYTHON_URL="https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-embed-amd64.zip"
 CC="${VNREVIVAL_WINDOWS_CC:-$(command -v x86_64-w64-mingw32-gcc)}"
 WINDRES="${VNREVIVAL_WINDOWS_WINDRES:-$(command -v x86_64-w64-mingw32-windres)}"
-HOST_PYTHON="${VNREVIVAL_HOST_PYTHON:-/opt/homebrew/bin/python3}"
-ICON_PYTHON="${VNREVIVAL_ICON_PYTHON:-/usr/bin/python3}"
+PROJECT_PYTHON="$ROOT/.venv/bin/python"
+HOST_PYTHON="${VNREVIVAL_HOST_PYTHON:-$PROJECT_PYTHON}"
+ICON_PYTHON="${VNREVIVAL_ICON_PYTHON:-$HOST_PYTHON}"
 BUNDLE="${1:-$ROOT/.build/translator.bundle.js}"
 WINDOWS_SIGN_CERT="${VNREVIVAL_WINDOWS_SIGN_CERT:-}"
 WINDOWS_SIGN_PASSWORD="${VNREVIVAL_WINDOWS_SIGN_PASSWORD:-}"
 WINDOWS_SIGN_TIMESTAMP="${VNREVIVAL_WINDOWS_SIGN_TIMESTAMP:-http://timestamp.digicert.com}"
 WINDOWS_SIGN_TOOL="${VNREVIVAL_WINDOWS_SIGN_TOOL:-$(command -v osslsigncode || true)}"
 
-[[ -x "$CC" && -x "$WINDRES" && -x "$HOST_PYTHON" && -x "$ICON_PYTHON" && -s "$BUNDLE" && -s "$ROOT/$ICON_PNG" ]]
+if [[ ! -x "$HOST_PYTHON" || ! -x "$ICON_PYTHON" ]]; then
+  echo "Python build environment is missing. Run 'uv sync' in $ROOT or set VNREVIVAL_HOST_PYTHON and VNREVIVAL_ICON_PYTHON." >&2
+  exit 1
+fi
+[[ -x "$CC" && -x "$WINDRES" && -s "$BUNDLE" && -s "$ROOT/$ICON_PNG" ]]
 mkdir -p "$ROOT/.build/cache" "$ROOT/.build/checksums" "$READY_DIR"
 if [[ ! -s "$PYTHON_ZIP" ]]; then
   curl -fL --retry 3 --output "$PYTHON_ZIP" "$PYTHON_URL"

@@ -106,6 +106,19 @@ MyMemory используется через документированный 
 
 ## Сборка и проверка
 
+После первого клонирования подготовьте закреплённую среду разработки:
+
+```bash
+mise install
+uv sync
+```
+
+`mise.toml` фиксирует Node.js 22.23.2, Python 3.14.6 и полный Xcode. `uv sync`
+создаёт `.venv` с Pillow и `pip`; Windows-сборщик автоматически использует
+один и тот же `.venv/bin/python` для подготовки зависимостей и иконки. При
+необходимости нестандартный интерпретатор по-прежнему можно задать через
+`VNREVIVAL_HOST_PYTHON` и `VNREVIVAL_ICON_PYTHON`.
+
 ```bash
 ./scripts/test-coc2.sh
 ./scripts/build-coc2.sh
