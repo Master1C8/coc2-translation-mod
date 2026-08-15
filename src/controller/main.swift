@@ -16,9 +16,9 @@ enum ControllerError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .usage: return "Usage: CoC2TranslatorController <port> <translator.js>"
+        case .usage: return "Usage: VNRevivalTranslatorController <port> <translator.js> [argos-url argos-token]"
         case .scriptMissing(let path): return "Translator script not found: \(path)"
-        case .noTarget: return "CoC2 page did not expose a debugging target in time"
+        case .noTarget: return "The game did not expose a matching debugging target in time"
         case .invalidResponse: return "Invalid response from Electron debugging endpoint"
         case .protocolError(let message): return "Electron rejected the translator: \(message)"
         }
@@ -26,18 +26,24 @@ enum ControllerError: LocalizedError {
 }
 
 @main
-struct CoC2TranslatorController {
+struct VNRevivalTranslatorController {
+    static let environment = ProcessInfo.processInfo.environment
+    static let productName = environment["VNREVIVAL_PRODUCT_NAME"] ?? "VN Revival Translator"
+    static let targetTitleHint = environment["VNREVIVAL_TARGET_TITLE_HINT"] ?? ""
+    static let targetURLHint = environment["VNREVIVAL_TARGET_URL_HINT"] ?? ""
+    static let sourceLabel = environment["VNREVIVAL_SOURCE_LABEL"] ?? "vnrevival-translator.bundle.js"
+
     static func main() async {
         do {
             try await run()
         } catch {
-            FileHandle.standardError.write(Data(("CoC2 Translator: \(error.localizedDescription)\n").utf8))
+            FileHandle.standardError.write(Data(("\(productName): \(error.localizedDescription)\n").utf8))
             exit(1)
         }
     }
 
     static func run() async throws {
-        guard CommandLine.arguments.count == 3,
+        guard CommandLine.arguments.count == 3 || CommandLine.arguments.count == 5,
               let port = Int(CommandLine.arguments[1]),
               (1...65535).contains(port) else { throw ControllerError.usage }
 
@@ -45,25 +51,39 @@ struct CoC2TranslatorController {
         guard FileManager.default.fileExists(atPath: scriptPath) else {
             throw ControllerError.scriptMissing(scriptPath)
         }
-        let source = try String(contentsOfFile: scriptPath, encoding: .utf8)
-            + "\n//# sourceURL=coc2-translator.bundle.js"
+        var bootstrap = "window.__vnRevivalLocalBridge = null; window.__vnRevivalArgosBridge = null;\n"
+        if CommandLine.arguments.count == 5 {
+            let bridge: [String: String] = [
+                "baseURL": CommandLine.arguments[3],
+                "token": CommandLine.arguments[4]
+            ]
+            let data = try JSONSerialization.data(withJSONObject: bridge)
+            guard let json = String(data: data, encoding: .utf8) else {
+                throw ControllerError.invalidResponse
+            }
+            bootstrap = "window.__vnRevivalLocalBridge = \(json); window.__vnRevivalArgosBridge = window.__vnRevivalLocalBridge;\n"
+        }
+        let source = bootstrap
+            + (try String(contentsOfFile: scriptPath, encoding: .utf8))
+            + "\n//# sourceURL=\(sourceLabel)"
 
         let deadline = Date().addingTimeInterval(120)
         var lastConnectionError: Error?
         while Date() < deadline {
             if let targets = try? await fetchTargets(port: port) {
                 let selected = targets.first(where: { target in
-                    target.type == "page" && (
-                        (target.url?.contains("/resources/app/index.html") ?? false)
-                        || (target.url?.hasSuffix("/index.html") ?? false)
-                        || (target.title?.localizedCaseInsensitiveContains("CoC2") ?? false)
-                    )
+                    guard target.type == "page" else { return false }
+                    let titleMatches = !targetTitleHint.isEmpty
+                        && (target.title?.localizedCaseInsensitiveContains(targetTitleHint) ?? false)
+                    let urlMatches = !targetURLHint.isEmpty
+                        && (target.url?.localizedCaseInsensitiveContains(targetURLHint) ?? false)
+                    return titleMatches || urlMatches
                 })
                 if let socketString = selected?.webSocketDebuggerUrl,
                    let socketURL = URL(string: socketString) {
                     do {
                         try await inject(source: source, socketURL: socketURL)
-                        print("CoC2 Translator injected")
+                        print("\(productName) injected")
                         return
                     } catch {
                         lastConnectionError = error

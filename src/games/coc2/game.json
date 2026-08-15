@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "coc2",
+  "title": "Corruption of Champions II",
+  "shortTitle": "CoC2",
+  "translatorName": "CoC2 Translator",
+  "sourceLanguage": "en",
+  "supportedVersions": ["0.9.3"],
+  "launchStrategy": "electron-cdp",
+  "debugTargetTitleContains": "CoC2",
+  "debugTargetUrlContains": "resources/app/index.html",
+  "storageNamespace": "coc2-translator",
+  "cacheDatabase": "coc2-translator-cache",
+  "legacyCompatibility": {
+    "cacheFormats": ["coc2-translator-cache"],
+    "argosBridgeGlobal": "__coc2ArgosBridge",
+    "coreGlobal": "CoC2TranslationCore",
+    "languagesGlobal": "CoC2TranslatorLanguages",
+    "translatorGlobal": "__coc2Translator"
+  },
+  "steamAppId": 1292690,
+  "windowsExecutable": "CoC II.exe",
+  "crossOverBottle": "Steam",
+  "crossOverGamePath": "drive_c/Program Files (x86)/Steam/steamapps/common/Corruption of Champions II/CoC II.exe",
+  "dataDirectory": "VN Revival/CoC2 Translator/Argos",
+  "bundleIdentifier": "local.coc2.translator",
+  "iconPng": "assets/icon-1024.png",
+  "iconIcns": "assets/AppIcon.icns",
+  "archivePrefix": "CoC2-Translator",
+  "windowsDistributionName": "CoC2 Translator Windows"
+}

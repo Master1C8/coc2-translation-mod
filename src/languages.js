@@ -1,5 +1,5 @@
 (function(root){
-  root.CoC2TranslatorLanguages = [
+  const languages = [
   [
     "ab",
     "Abkhaz"
@@ -996,5 +996,6 @@
     "zu",
     "Zulu"
   ]
-];
+  ];
+  root.VNRevivalTranslatorLanguages = languages;
 })(typeof globalThis !== "undefined" ? globalThis : this);
