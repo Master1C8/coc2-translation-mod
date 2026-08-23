@@ -162,6 +162,9 @@
       const expandedStateSaved = !shadow.querySelector(".panel").classList.contains("collapsed")
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === false
         && collapseButton.textContent === "−";
+      const contactLinksPresent = shadow.querySelector('.contactIcon.discord')?.href === "https://discord.gg/QgyeWW3Jg"
+        && shadow.querySelector('.contactIcon.telegram')?.href === "https://t.me/VnRevival"
+        && shadow.querySelector('.contactIcon.email')?.getAttribute("href") === "mailto:master1c8@proton.me";
       window.__vnRevivalTranslator.showTranslations();
       const outcome = await Promise.race([
         Promise.resolve(window.__vnRevivalTranslator.translateScreen()).then(() => "completed"),
@@ -236,6 +239,7 @@
         && removedSettingsButtons
         && collapsedStateSaved
         && expandedStateSaved
+        && contactLinksPresent
         && restored.text === "You see a beautiful woman near the door."
         && restored.direction === false
         && restored.language === false
@@ -261,6 +265,7 @@
         removedSettingsButtons,
         collapsedStateSaved,
         expandedStateSaved,
+        contactLinksPresent,
         translated,
         restored
       });

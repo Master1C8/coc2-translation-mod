@@ -1212,6 +1212,7 @@
     <style>
       :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.gear,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.gear{width:38px}.status{min-height:23px;padding:0 9px 3px;color:#ddd;font-size:12px}.hotkey{padding:0 9px 7px;color:#f4d18f;font-size:11px}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:none;padding:0 8px 9px;border-top:1px solid #6e4d56}.settings.open{display:block}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input[type=password]{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px}.check{display:flex;gap:7px;align-items:center;margin:8px 0}.hint,.providerHint,.cacheStats,.argosStatus,.geminiStatus,.geminiNotice{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.argosBox,.geminiBox,.cacheBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.geminiKey{margin-top:6px}.argosActions,.geminiActions,.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.argosActions button,.geminiActions button,.privacyActions button{flex:1;min-width:82px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a,.geminiNotice a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover,.geminiNotice a:hover{text-decoration:underline}.hidden{display:none!important}
       .bar{display:flex;align-items:center;gap:8px;min-height:34px}.barTitle{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collapseToggle{width:24px;height:22px;padding:0;border:1px solid #c69b55;border-radius:5px;background:#6b344f;color:#fff;cursor:pointer;font:700 16px/18px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}.collapseToggle:hover{background:#7b405d}.panel.collapsed>:not(.bar){display:none!important}
+      .site{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}.siteLabel{white-space:nowrap}.contacts{display:inline-flex;align-items:center;gap:5px}.site .contactIcon{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;border:1px solid #6e4d56;border-radius:6px;background:#2c1b26;text-decoration:none}.site .contactIcon:hover{border-color:#c69b55;background:#412436;text-decoration:none}.contactIcon svg{display:block;width:15px;height:15px;fill:currentColor}.site .discord{color:#8c9eff}.site .telegram{color:#55bde9}.site .email{color:#9b87f5}
     </style>
     <div class="panel">
       <div class="bar"><span class="barTitle">${PRODUCT_NAME} ${VERSION}</span><button class="collapseToggle" type="button" title="Collapse translator" aria-label="Collapse translator">−</button></div>
@@ -1244,7 +1245,20 @@
         </div>
         <div class="hint">Ctrl+Shift+T is fixed. Names inside a complete story sentence may be included in a request.</div>
       </div>
-      <div class="site">Project website: <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer">${SITE_NAME}</a></div>
+      <div class="site">
+        <span class="siteLabel">Project website: <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer">${SITE_NAME}</a></span>
+        <span class="contacts" aria-label="VN Revival contacts">
+          <a class="contactIcon discord" href="https://discord.gg/QgyeWW3Jg" target="_blank" rel="noopener noreferrer" title="Discord" aria-label="VN Revival on Discord">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.1 6.2A15 15 0 0 1 10 5.3l.4.8a10 10 0 0 1 3.2 0l.4-.8a15 15 0 0 1 2.9.9c1.8 2.5 2.3 4.9 2 7.2a12 12 0 0 1-3.6 1.8l-.9-1.2c.7-.3 1.3-.6 1.8-1.1-3.4 1.6-7.2 1.6-10.5 0 .5.5 1.1.8 1.8 1.1l-.9 1.2A12 12 0 0 1 3 13.4c-.3-2.3.2-4.7 2-7.2.7-.3 1.4-.6 2.1-.8v.8Zm2.1 6.1c.8 0 1.4-.8 1.4-1.8S10 8.7 9.2 8.7s-1.4.8-1.4 1.8.6 1.8 1.4 1.8Zm5.6 0c.8 0 1.4-.8 1.4-1.8s-.6-1.8-1.4-1.8-1.4.8-1.4 1.8.6 1.8 1.4 1.8Z"/></svg>
+          </a>
+          <a class="contactIcon telegram" href="https://t.me/VnRevival" target="_blank" rel="noopener noreferrer" title="Telegram" aria-label="VN Revival on Telegram">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 3.4 18.3 19c-.2 1.1-.9 1.4-1.8.9l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5 9.1-8.2c.4-.4-.1-.6-.6-.2L5.8 12.8.9 11.3c-1.1-.3-1.1-1 .2-1.5L20 2.5c.9-.3 1.7.2 1.5.9Z"/></svg>
+          </a>
+          <a class="contactIcon email" href="mailto:master1c8@proton.me" target="_blank" rel="noopener noreferrer" title="master1c8@proton.me" aria-label="Email master1c8@proton.me">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm9 7.1L20.2 7H3.8l8.2 5.1Zm0 2.3L3 8.8V17h18V8.8l-9 5.6Z"/></svg>
+          </a>
+        </span>
+      </div>
     </div>`;
   document.documentElement.appendChild(host);
 

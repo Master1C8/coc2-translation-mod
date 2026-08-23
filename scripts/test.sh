@@ -105,6 +105,9 @@ done
 
 grep -Eq 'SITE_NAME = "VN Revival"' src/translator-runtime.js
 grep -Eq 'SITE_URL = "https://vnrevival.fun/"' src/translator-runtime.js
+grep -Fq 'https://discord.gg/QgyeWW3Jg' src/translator-runtime.js
+grep -Fq 'https://t.me/VnRevival' src/translator-runtime.js
+grep -Fq 'mailto:master1c8@proton.me' src/translator-runtime.js
 grep -Eq 'VNRevivalGameAdapter' "src/games/$GAME_ID/adapter.js"
 grep -Eq 'VNRevivalTranslationCore' src/translation-core.js
 grep -Eq 'VNRevivalTranslationProviders' src/providers.js
