@@ -247,6 +247,31 @@ class LocalServiceTests(unittest.TestCase):
             self.assertEqual(request_bodies[1]["temperature"], 0.2)
             self.assertEqual(result["ignoredModelParameters"], ["reasoning_effort"])
 
+    def test_translation_retries_when_provider_reports_a_parameter_range(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            request_bodies = []
+
+            def fake_open(request, timeout):
+                request_bodies.append(json.loads(request.data.decode("utf-8")))
+                if len(request_bodies) == 1:
+                    raise urllib.error.HTTPError(
+                        request.full_url, 400, "bad request", {},
+                        io.BytesIO(b'{"error":{"message":"temperature must be greater than 0"}}'),
+                    )
+                return FakeHTTPResponse({
+                    "choices": [{"message": {"content": '{"translation":"Привет"}'}}]
+                })
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
+                result = bridge.openai_translate(
+                    "ru", "Russian", "Hello", "model", "openrouter", "ignored", None,
+                    {"temperature": 0},
+                )
+            self.assertEqual(request_bodies[0]["temperature"], 0)
+            self.assertNotIn("temperature", request_bodies[1])
+            self.assertEqual(result["ignoredModelParameters"], ["temperature"])
+
     def test_translation_switches_to_max_completion_tokens_when_required(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")

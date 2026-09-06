@@ -79,7 +79,7 @@
     openAICompatibleModel: "",
     openAICompatibleSystemPrompt: OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT,
     openAICompatibleReasoningEffort: "",
-    openAICompatibleTemperature: 0,
+    openAICompatibleTemperature: null,
     openAICompatibleMaxTokens: null,
     openAICompatibleVerbosity: "",
     collapsed: false,

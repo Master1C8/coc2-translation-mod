@@ -317,11 +317,7 @@ class LocalServiceBridge:
     def _unsupported_model_parameter(
         status: int, detail: str, request_body: dict[str, Any]
     ) -> str | None:
-        if status != 400 or not re.search(
-            r"unsupported|not supported|does not support|unknown|unrecognized|invalid|not allowed|only.+support",
-            detail,
-            re.I,
-        ):
+        if status != 400:
             return None
         normalized = detail.lower().replace("-", "_").replace(" ", "_")
         for parameter in (
