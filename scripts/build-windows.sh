@@ -40,13 +40,18 @@ WINDOWS_SIGN_CERT="${VNREVIVAL_WINDOWS_SIGN_CERT:-}"
 WINDOWS_SIGN_PASSWORD="${VNREVIVAL_WINDOWS_SIGN_PASSWORD:-}"
 WINDOWS_SIGN_TIMESTAMP="${VNREVIVAL_WINDOWS_SIGN_TIMESTAMP:-http://timestamp.digicert.com}"
 WINDOWS_SIGN_TOOL="${VNREVIVAL_WINDOWS_SIGN_TOOL:-$(command -v osslsigncode || true)}"
+WINDOWS_UNPACKED_ONLY="${VNREVIVAL_WINDOWS_UNPACKED_ONLY:-0}"
+[[ "$WINDOWS_UNPACKED_ONLY" == "0" || "$WINDOWS_UNPACKED_ONLY" == "1" ]]
 
 if [[ ! -x "$ICON_PYTHON" ]]; then
   echo "Python image build environment is missing. Run 'uv sync' in $ROOT or set VNREVIVAL_ICON_PYTHON." >&2
   exit 1
 fi
 [[ -x "$CC" && -x "$WINDRES" && -s "$BUNDLE" && -s "$ROOT/$ICON_PNG" ]]
-mkdir -p "$ROOT/.build/cache" "$ROOT/.build/checksums" "$READY_DIR"
+mkdir -p "$ROOT/.build/cache"
+if [[ "$WINDOWS_UNPACKED_ONLY" == "0" ]]; then
+  mkdir -p "$ROOT/.build/checksums" "$READY_DIR"
+fi
 if [[ ! -s "$PYTHON_ZIP" ]]; then
   curl -fL --retry 3 --output "$PYTHON_ZIP" "$PYTHON_URL"
 fi
@@ -99,12 +104,23 @@ if [[ -n "$WINDOWS_SIGN_CERT" ]]; then
   mv "$SIGNED_EXE" "$DIST_DIR/$PRODUCT_NAME.exe"
 fi
 
+file "$DIST_DIR/$PRODUCT_NAME.exe" > "$BUILD_ROOT/executable-type.txt"
+grep -Eq 'PE32\+ executable.*x86-64' "$BUILD_ROOT/executable-type.txt"
+[[ -s "$DIST_DIR/$PRODUCT_NAME.exe" ]]
+[[ -s "$DIST_DIR/resources/python/python.exe" ]]
+[[ -s "$DIST_DIR/resources/local_service.py" ]]
+[[ -s "$DIST_DIR/resources/translator.bundle.js" ]]
+[[ -s "$DIST_DIR/resources/game.json" ]]
+
+if [[ "$WINDOWS_UNPACKED_ONLY" == "1" ]]; then
+  echo "Built unpacked Windows payload at $DIST_DIR"
+  exit 0
+fi
+
 rm -f "$ZIP_PATH" "$CHECKSUM_PATH"
 (cd "$BUILD_ROOT" && zip -qry "$ZIP_PATH" "$DIST_NAME")
 (cd "$READY_DIR" && shasum -a 256 "${ZIP_PATH:t}") > "$CHECKSUM_PATH"
 
-file "$DIST_DIR/$PRODUCT_NAME.exe" > "$BUILD_ROOT/executable-type.txt"
-grep -Eq 'PE32\+ executable.*x86-64' "$BUILD_ROOT/executable-type.txt"
 unzip -Z1 "$ZIP_PATH" > "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/$PRODUCT_NAME.exe" "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/resources/python/python.exe" "$BUILD_ROOT/archive-contents.txt"

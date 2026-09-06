@@ -30,10 +30,11 @@ src/games/example/
 | `steamAppId` | Steam AppID |
 | `windowsExecutable` | имя основного Windows-процесса и автоматического поиска; у пользователя остаётся выбор другого `.exe` |
 | `crossOverBottle`, `crossOverGamePath` | запуск macOS через CrossOver |
+| `windowsDistributionName` | имя комплектного Windows payload для Windows и Parallels |
 | `dataDirectory` | служебный каталог локального credential helper |
 | `bundleIdentifier` | идентификатор macOS-приложения |
 | `iconPng`, `iconIcns` | безопасные относительные пути к ресурсам продукта |
-| `archivePrefix`, `windowsDistributionName` | имена релизных файлов |
+| `archivePrefix` | префикс имён релизных архивов |
 
 Необязательный объект `legacyCompatibility` принадлежит только конкретной игре. Он объявляет старые форматы кэша и JavaScript-глобальные имена, которые надо сохранить для пользователей предыдущих версий. Новая игра не должна добавлять этот объект без реально существующего старого релиза.
 

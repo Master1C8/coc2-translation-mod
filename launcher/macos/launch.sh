@@ -18,6 +18,9 @@ DATA_DIRECTORY=$(plist_value VNRevivalDataDirectory)
 LAUNCH_STRATEGY=$(plist_value VNRevivalLaunchStrategy)
 DEBUG_TARGET_TITLE=$(plist_value VNRevivalDebugTargetTitle)
 DEBUG_TARGET_URL=$(plist_value VNRevivalDebugTargetURL)
+VERSION=$(plist_value CFBundleShortVersionString)
+BUILD_NUMBER=$(plist_value CFBundleVersion)
+WINDOWS_DISTRIBUTION_NAME=$(plist_value VNRevivalWindowsDistributionName)
 
 CONTROLLER="$RESOURCE_DIR/VNRevivalTranslatorController"
 TRANSLATOR="$RESOURCE_DIR/translator.bundle.js"
@@ -34,6 +37,18 @@ SERVICE_DATA_DIR="${VNREVIVAL_SERVICE_DATA_DIR:-$HOME/Library/Application Suppor
 SERVICE_LOG="$SERVICE_DATA_DIR/local-service.log"
 RESELECT_MARKER="$SERVICE_DATA_DIR/.reselect-game-executable"
 SERVICE_PID=""
+PARALLELS_CTL="${VNREVIVAL_PARALLELS_CTL:-/usr/local/bin/prlctl}"
+if [[ ! -x "$PARALLELS_CTL" ]]; then
+  PARALLELS_CTL="/Applications/Parallels Desktop.app/Contents/MacOS/prlctl"
+fi
+PARALLELS_PAYLOAD="$RESOURCE_DIR/parallels/$WINDOWS_DISTRIBUTION_NAME"
+PARALLELS_STAGE_ID="$VERSION-$BUILD_NUMBER"
+PARALLELS_STAGE_ROOT="$HOME/Documents/VN Revival/Parallels/$GAME_ID/$PARALLELS_STAGE_ID"
+PARALLELS_STAGE="$PARALLELS_STAGE_ROOT/$WINDOWS_DISTRIBUTION_NAME"
+PARALLELS_WINDOWS_SOURCE="\\\\Mac\\Home\\Documents\\VN Revival\\Parallels\\$GAME_ID\\$PARALLELS_STAGE_ID\\$WINDOWS_DISTRIBUTION_NAME"
+PARALLELS_WINDOWS_LAUNCHER="$PARALLELS_WINDOWS_SOURCE\\$PRODUCT_NAME.exe"
+PARALLELS_WINDOWS_LOCAL_DIR="%LOCALAPPDATA%\\VN Revival\\Parallels\\$GAME_ID\\$PARALLELS_STAGE_ID\\$WINDOWS_DISTRIBUTION_NAME"
+PARALLELS_WINDOWS_LOCAL_LAUNCHER="$PARALLELS_WINDOWS_LOCAL_DIR\\$PRODUCT_NAME.exe"
 
 cleanup() {
   if [[ -n "$SERVICE_PID" ]] && kill -0 "$SERVICE_PID" >/dev/null 2>&1; then
@@ -58,14 +73,136 @@ choose_game_executable() {
     2>/dev/null
 }
 
-if [[ ! -x "$WINE" ]]; then
-  show_error "CrossOver was not found in /Applications."
-  exit 1
-fi
 if [[ "$LAUNCH_STRATEGY" != "electron-cdp" ]]; then
   show_error "This build uses an unsupported game launch strategy."
   exit 1
 fi
+
+select_parallels_vm() {
+  if [[ -n "${VNREVIVAL_PARALLELS_VM:-}" ]]; then
+    print -r -- "$VNREVIVAL_PARALLELS_VM"
+    return
+  fi
+  local -a vm_names
+  vm_names=("${(@f)$("$PARALLELS_CTL" list --all --output name --no-header 2>/dev/null)}")
+  vm_names=("${(@)vm_names:#}")
+  if (( ${#vm_names} == 1 )); then
+    print -r -- "$vm_names[1]"
+    return
+  fi
+  if (( ${#vm_names} == 0 )); then
+    return 1
+  fi
+  local vm_options="${(F)vm_names}"
+  VNREVIVAL_TRANSLATOR_TITLE="$PRODUCT_NAME" VNREVIVAL_VM_OPTIONS="$vm_options" /usr/bin/osascript \
+    -e 'set vmOptions to paragraphs of (system attribute "VNREVIVAL_VM_OPTIONS")' \
+    -e 'set selectedVM to choose from list vmOptions with title (system attribute "VNREVIVAL_TRANSLATOR_TITLE") with prompt "Choose a Windows virtual machine" OK button name "Launch" cancel button name "Cancel"' \
+    -e 'if selectedVM is false then return ""' \
+    -e 'return item 1 of selectedVM' 2>/dev/null
+}
+
+launch_with_parallels() {
+  if [[ ! -x "$PARALLELS_CTL" ]]; then
+    show_error "Parallels Desktop was not found."
+    return 1
+  fi
+  if [[ ! -f "$PARALLELS_PAYLOAD/$PRODUCT_NAME.exe" || ! -f "$PARALLELS_PAYLOAD/resources/local_service.py" ]]; then
+    show_error "The Parallels launcher payload is missing. Reinstall the complete application."
+    return 1
+  fi
+  local parallels_vm
+  parallels_vm=$(select_parallels_vm || true)
+  if [[ -z "$parallels_vm" ]]; then
+    show_error "A Windows virtual machine was not selected."
+    return 1
+  fi
+  if ! "$PARALLELS_CTL" status "$parallels_vm" >/dev/null 2>&1; then
+    show_error "The selected Parallels virtual machine is unavailable."
+    return 1
+  fi
+  local parallels_status
+  parallels_status=$("$PARALLELS_CTL" list --all --output status --no-header --name "$parallels_vm" 2>/dev/null)
+  if [[ "$parallels_status" == "paused" ]]; then
+    if ! "$PARALLELS_CTL" resume "$parallels_vm" >/dev/null 2>&1; then
+      show_error "The selected Parallels virtual machine could not be resumed."
+      return 1
+    fi
+  elif [[ "$parallels_status" != "running" ]]; then
+    if ! "$PARALLELS_CTL" start "$parallels_vm" >/dev/null 2>&1; then
+      show_error "The selected Parallels virtual machine could not be started."
+      return 1
+    fi
+  fi
+
+  mkdir -p "$PARALLELS_STAGE_ROOT"
+  /usr/bin/ditto "$PARALLELS_PAYLOAD" "$PARALLELS_STAGE" || {
+    show_error "The Windows launcher could not be staged for Parallels."
+    return 1
+  }
+
+  local guest_ready=0
+  for _ in {1..60}; do
+    if "$PARALLELS_CTL" exec "$parallels_vm" --current-user cmd.exe /d /s /c ver >/dev/null 2>&1; then
+      guest_ready=1
+      break
+    fi
+    sleep 1
+  done
+  if (( ! guest_ready )); then
+    show_error "Windows is running, but Parallels Tools are not ready for the current user."
+    return 1
+  fi
+  local verify_command="if exist \"$PARALLELS_WINDOWS_LAUNCHER\" (exit /b 0) else (exit /b 1)"
+  if ! "$PARALLELS_CTL" exec "$parallels_vm" --current-user cmd.exe /d /s /c \
+      "$verify_command" >/dev/null 2>&1; then
+    show_error "Windows cannot access the shared Documents folder. Enable Parallels Shared Folders and try again."
+    return 1
+  fi
+  local copy_command="robocopy \"$PARALLELS_WINDOWS_SOURCE\" \"$PARALLELS_WINDOWS_LOCAL_DIR\" /MIR /R:2 /W:1 /NFL /NDL /NJH /NJS /NP & if errorlevel 8 (exit /b 1) else (exit /b 0)"
+  if ! "$PARALLELS_CTL" exec "$parallels_vm" --current-user cmd.exe /d /s /c \
+      "$copy_command" >/dev/null 2>&1; then
+    show_error "The Windows launcher could not be copied to the virtual machine's local app data."
+    return 1
+  fi
+  local local_verify_command="if exist \"$PARALLELS_WINDOWS_LOCAL_LAUNCHER\" (exit /b 0) else (exit /b 1)"
+  if ! "$PARALLELS_CTL" exec "$parallels_vm" --current-user cmd.exe /d /s /c \
+      "$local_verify_command" >/dev/null 2>&1; then
+    show_error "The Windows launcher is missing after the Parallels copy step."
+    return 1
+  fi
+  local launch_command="start \"\" \"$PARALLELS_WINDOWS_LOCAL_LAUNCHER\""
+  if ! "$PARALLELS_CTL" exec "$parallels_vm" --current-user cmd.exe /d /s /c \
+      "$launch_command" >/dev/null 2>&1; then
+    show_error "The Windows translator could not be started through Parallels."
+    return 1
+  fi
+}
+
+WINDOWS_RUNTIME="${VNREVIVAL_WINDOWS_RUNTIME:-auto}"
+if [[ "$WINDOWS_RUNTIME" == "auto" ]]; then
+  if [[ -x "$WINE" ]]; then
+    WINDOWS_RUNTIME="crossover"
+  elif [[ -x "$PARALLELS_CTL" ]]; then
+    WINDOWS_RUNTIME="parallels"
+  fi
+fi
+case "$WINDOWS_RUNTIME" in
+  parallels)
+    launch_with_parallels
+    exit $?
+    ;;
+  crossover)
+    if [[ ! -x "$WINE" ]]; then
+      show_error "CrossOver was not found in /Applications."
+      exit 1
+    fi
+    ;;
+  *)
+    show_error "Install CrossOver or Parallels Desktop to run the Windows version of $GAME_SHORT_TITLE."
+    exit 1
+    ;;
+esac
+
 FORCE_RESELECT=0
 if [[ -f "$RESELECT_MARKER" ]]; then
   rm -f "$RESELECT_MARKER"

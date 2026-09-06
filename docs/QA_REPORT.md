@@ -1,4 +1,4 @@
-# Отчёт проверки 0.10.0
+# Отчёт проверки 0.10.1
 
 Дата: 2026-09-06
 Область: исходники CoC2 runtime/realtime DOM-переводчика
@@ -22,6 +22,8 @@
 - DOM runtime сохраняет контекстную группировку, пофрагментный fallback, формы/слоты/имена, `Original / Translation`, `Ctrl+Shift+T`, RTL, шрифты и переносы;
 - `IntersectionObserver`, `MutationObserver` и `visibilitychange` сохраняют экономный видимый/изменённый проход;
 - macOS/Windows launchers сохраняют строгий CDP target, системный выбор EXE, сохранённый путь и lifecycle helper;
+- macOS launcher автоматически выбирает Parallels при отсутствии CrossOver, использует `prlctl exec --current-user` и не открывает гостевой CDP наружу;
+- app-only сборка включает проверенный Windows payload для Parallels и не создаёт релизные архивы;
 - Windows package больше не устанавливает переводческий engine или языковые модели и содержит только embeddable Python standard library helper;
 - shared runtime и launchers не содержат идентичность CoC2; она поступает из `game.json` и адаптера;
 - repository scan отклоняет возвращение удалённых provider, asset-workbench или словарной логики в runtime/launcher.
@@ -59,14 +61,31 @@ RTL/шрифты/переносы, восстановление оригинал
 ровно два provider и OpenAI-compatible setup с шестью preset. Внешние API в
 smoke-тесте заменены локальными ответами.
 
+App-only сборка и реальный Parallels-маршрут также проверены:
+
+```text
+VNREVIVAL_APP_ONLY=1 ./scripts/build-coc2.sh
+VNREVIVAL_WINDOWS_RUNTIME=parallels VNREVIVAL_PARALLELS_VM="Windows 11" \
+  "CoC2 Translator.app/Contents/MacOS/CoC2 Translator"
+```
+
+Результат: `PASS` на Parallels Desktop 26.4.1 / Windows 11. Комплектный payload
+скопирован через Shared Folders в guest-local `%LOCALAPPDATA%`, Windows launcher
+запустил сохранённый Steam executable, `CoC II.exe` открыл CDP на
+`127.0.0.1:9317`, helper — на `127.0.0.1:9400`, а соединение launcher → CDP
+перешло в `ESTABLISHED`. Релизные архивы при этой проверке не создавались.
+
 ## Ручные проверки
 
-В рамках изменения 0.10.0 ручной запуск CoC2, реальные внешние API-запросы, установка приложения, публикация архивов и проверка на физической Windows/Intel Mac не выполнялись. Предыдущие ручные проверки старой provider-архитектуры не выдаются за проверку этой версии.
+Реальный запуск на Windows 11 в Parallels выполнен. Реальные внешние API-запросы,
+публикация архивов и проверка на физической Windows, CrossOver или Intel Mac не
+выполнялись. Предыдущие ручные проверки старой provider-архитектуры не выдаются
+за проверку этой версии.
 
 ## Остаётся проверить вручную
 
-- реальный запуск актуальной CoC2 на macOS/CrossOver и Windows 10/11;
-- Steam discovery, системный выбор EXE, сохранение пути и повторный запуск;
+- реальный запуск актуальной CoC2 на macOS/CrossOver и физической Windows 10/11;
+- автоматический Steam discovery и системный выбор EXE при отсутствии сохранённого пути;
 - OpenCode Go, OpenCode Zen, OpenRouter и DeepSeek с пользовательскими ключами;
 - LM Studio и Custom loopback endpoint без ключа;
 - Custom HTTPS endpoint с отдельным credential scope;

@@ -21,6 +21,7 @@
   <key>VNRevivalShortTitle</key><string>__SHORT_TITLE_XML__</string>
   <key>VNRevivalSteamAppID</key><integer>__STEAM_APP_ID__</integer>
   <key>VNRevivalWindowsExecutable</key><string>__WINDOWS_EXECUTABLE_XML__</string>
+  <key>VNRevivalWindowsDistributionName</key><string>__WINDOWS_DISTRIBUTION_NAME_XML__</string>
   <key>VNRevivalCrossOverBottle</key><string>__CROSSOVER_BOTTLE_XML__</string>
   <key>VNRevivalCrossOverGamePath</key><string>__CROSSOVER_GAME_PATH_XML__</string>
   <key>VNRevivalDataDirectory</key><string>__DATA_DIRECTORY_XML__</string>

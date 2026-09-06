@@ -101,7 +101,7 @@ PROVIDER_COUNT=$(node -e 'require("./src/translation-core.js"); require("./src/p
   exit 1
 }
 
-for REQUIRED in "#define APP_ID $STEAM_APP_ID" 'WinHttpWebSocket' "$WINDOWS_EXECUTABLE" 'local_service.py' 'python.exe' '__vnRevivalLocalBridge' '--credential-id' 'GetOpenFileNameW' 'load_saved_game_path' 'consume_reselect_marker' 'debug_target_running'; do
+for REQUIRED in "#define APP_ID $STEAM_APP_ID" 'WinHttpWebSocket' "$WINDOWS_EXECUTABLE" 'local_service.py' 'python.exe' '__vnRevivalLocalBridge' '--credential-id' 'GetOpenFileNameW' 'load_saved_game_path' 'consume_reselect_marker' 'debug_target_running' 'SECURITY_ATTRIBUTES' 'bInheritHandle = TRUE' 'L"NUL"'; do
   grep -Fq -- "$REQUIRED" "$ROOT/.build/windows-launcher-smoke.c" || {
     echo "Missing Windows launcher feature: $REQUIRED" >&2
     exit 1
@@ -133,6 +133,17 @@ grep -Eq 'VNRevivalGameConfig' "$ROOT/.build/game-config.js"
 grep -Eq 'choose_game_executable' launcher/macos/launch.sh
 grep -Eq 'RESELECT_MARKER' launcher/macos/launch.sh
 grep -Fq -- '--credential-id "$GAME_ID"' launcher/macos/launch.sh
+for REQUIRED in 'VNREVIVAL_WINDOWS_RUNTIME' 'VNREVIVAL_PARALLELS_VM' 'prlctl' '--current-user' \
+    'Parallels Shared Folders' 'PARALLELS_WINDOWS_LAUNCHER' 'PARALLELS_WINDOWS_LOCAL_LAUNCHER' \
+    'robocopy' '%LOCALAPPDATA%' 'WINDOWS_DISTRIBUTION_NAME'; do
+  grep -Fq -- "$REQUIRED" launcher/macos/launch.sh || {
+    echo "Missing Parallels launcher feature: $REQUIRED" >&2
+    exit 1
+  }
+done
+grep -Fq 'VNRevivalWindowsDistributionName' launcher/macos/Info.plist
+grep -Fq 'VNREVIVAL_WINDOWS_UNPACKED_ONLY' scripts/build-windows.sh
+grep -Fq 'VNREVIVAL_APP_ONLY' scripts/build.sh
 grep -Eq 'persistControlSettings' src/translator-runtime.js
 if grep -Eq 'class="(cacheActions|launcherActions|settingsActions|clearLanguage|export|import|changeExecutable|save|reset)"' src/translator-runtime.js; then
   echo "Removed settings actions are still present in the panel" >&2

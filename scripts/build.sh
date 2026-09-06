@@ -23,6 +23,7 @@ BUNDLE_IDENTIFIER=$(manifest_value bundleIdentifier)
 ICON_PNG=$(manifest_value iconPng)
 ICON_ICNS=$(manifest_value iconIcns)
 ARCHIVE_PREFIX=$(manifest_value archivePrefix)
+WINDOWS_DISTRIBUTION_NAME=$(manifest_value windowsDistributionName)
 LAUNCH_STRATEGY=$(manifest_value launchStrategy)
 DEBUG_TARGET_TITLE=$(manifest_value debugTargetTitleContains)
 DEBUG_TARGET_URL=$(manifest_value debugTargetUrlContains)
@@ -36,6 +37,8 @@ SWIFTC="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoo
 SDK="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
 MAC_SIGN_IDENTITY="${VNREVIVAL_MAC_SIGN_IDENTITY:--}"
 MAC_NOTARY_PROFILE="${VNREVIVAL_MAC_NOTARY_PROFILE:-}"
+APP_ONLY="${VNREVIVAL_APP_ONLY:-0}"
+[[ "$APP_ONLY" == "0" || "$APP_ONLY" == "1" ]]
 [[ -s "$ROOT/$ICON_PNG" && -s "$ROOT/$ICON_ICNS" ]]
 
 VNREVIVAL_GAME="$GAME_ID" "$ROOT/scripts/test.sh"
@@ -53,6 +56,15 @@ python3 "$ROOT/scripts/generate-game-config.py" "$GAME_MANIFEST" "$BUILD_DIR/gam
   cat "$GAME_DIR/adapter.js"
   cat "$BUILD_DIR/translator-runtime.js"
 } > "$BUILD_DIR/translator.bundle.js"
+
+if [[ "$APP_ONLY" == "1" ]]; then
+  VNREVIVAL_GAME="$GAME_ID" VNREVIVAL_WINDOWS_UNPACKED_ONLY=1 \
+    "$ROOT/scripts/build-windows.sh" "$BUILD_DIR/translator.bundle.js"
+else
+  VNREVIVAL_GAME="$GAME_ID" "$ROOT/scripts/build-windows.sh" "$BUILD_DIR/translator.bundle.js"
+fi
+WINDOWS_DIST_DIR="$BUILD_DIR/windows/$WINDOWS_DISTRIBUTION_NAME"
+[[ -s "$WINDOWS_DIST_DIR/$PRODUCT_NAME.exe" ]]
 
 [[ -x "$SWIFTC" && -d "$SDK" ]]
 for ARCH in arm64 x86_64; do
@@ -72,6 +84,7 @@ python3 "$ROOT/scripts/render-template.py" "$ROOT/launcher/macos/Info.plist" "$A
   VERSION "$VERSION" BUILD "$BUILD_NUMBER" PRODUCT_NAME "$PRODUCT_NAME" \
   BUNDLE_IDENTIFIER "$BUNDLE_IDENTIFIER" GAME_ID "$GAME_ID" GAME_TITLE "$GAME_TITLE" \
   SHORT_TITLE "$SHORT_TITLE" STEAM_APP_ID "$STEAM_APP_ID" WINDOWS_EXECUTABLE "$WINDOWS_EXECUTABLE" \
+  WINDOWS_DISTRIBUTION_NAME "$WINDOWS_DISTRIBUTION_NAME" \
   CROSSOVER_BOTTLE "$CROSSOVER_BOTTLE" CROSSOVER_GAME_PATH "$CROSSOVER_GAME_PATH" DATA_DIRECTORY "$DATA_DIRECTORY" \
   LAUNCH_STRATEGY "$LAUNCH_STRATEGY" DEBUG_TARGET_TITLE "$DEBUG_TARGET_TITLE" DEBUG_TARGET_URL "$DEBUG_TARGET_URL"
 cp "$ROOT/launcher/macos/launch.sh" "$APP/Contents/MacOS/$PRODUCT_NAME"
@@ -82,6 +95,8 @@ cp "$ROOT/src/local_service.py" "$APP/Contents/Resources/"
 cp "$ROOT/$ICON_ICNS" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/README.md" "$APP/Contents/Resources/README.md"
 cp "$ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
+mkdir -p "$APP/Contents/Resources/parallels"
+/usr/bin/ditto "$WINDOWS_DIST_DIR" "$APP/Contents/Resources/parallels/$WINDOWS_DISTRIBUTION_NAME"
 chmod +x "$APP/Contents/MacOS/$PRODUCT_NAME" "$APP/Contents/Resources/VNRevivalTranslatorController" "$APP/Contents/Resources/local_service.py"
 
 if [[ "$MAC_SIGN_IDENTITY" == "-" ]]; then
@@ -97,11 +112,18 @@ if [[ -n "$MAC_NOTARY_PROFILE" ]]; then
   /usr/bin/xcrun notarytool submit "$NOTARY_ZIP" --keychain-profile "$MAC_NOTARY_PROFILE" --wait
   /usr/bin/xcrun stapler staple "$APP"
 fi
+
+if [[ "$APP_ONLY" == "1" ]]; then
+  /usr/bin/codesign --verify --deep --strict "$APP"
+  [[ -s "$APP/Contents/Resources/parallels/$WINDOWS_DISTRIBUTION_NAME/$PRODUCT_NAME.exe" ]]
+  echo "Built local app at $APP"
+  exit 0
+fi
+
 rm -f "$MAC_ZIP" "$MAC_CHECKSUM"
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP" "$MAC_ZIP"
 (cd "$READY_DIR" && shasum -a 256 "${MAC_ZIP:t}") > "$MAC_CHECKSUM"
 
-VNREVIVAL_GAME="$GAME_ID" "$ROOT/scripts/build-windows.sh" "$BUILD_DIR/translator.bundle.js"
 VNREVIVAL_GAME="$GAME_ID" "$ROOT/scripts/verify.sh"
 for ITEM in "$READY_DIR"/*(N); do
   case "${ITEM:t}" in

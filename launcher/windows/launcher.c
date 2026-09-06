@@ -369,23 +369,38 @@ static BOOL make_token(WCHAR *wide_token, size_t cap, char *utf8_token, size_t u
 
 static BOOL start_hidden_process(const WCHAR *command, const WCHAR *working_dir, HANDLE log_file, PROCESS_INFORMATION *process)
 {
+    SECURITY_ATTRIBUTES security;
     STARTUPINFOW startup;
     WCHAR *mutable_command = _wcsdup(command);
+    HANDLE input_handle = INVALID_HANDLE_VALUE;
+    BOOL inherit_handles = FALSE;
     BOOL result;
     if (!mutable_command) return FALSE;
     ZeroMemory(&startup, sizeof(startup));
     ZeroMemory(process, sizeof(*process));
     startup.cb = sizeof(startup);
     if (log_file && log_file != INVALID_HANDLE_VALUE) {
+        ZeroMemory(&security, sizeof(security));
+        security.nLength = sizeof(security);
+        security.bInheritHandle = TRUE;
+        input_handle = CreateFileW(
+            L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (input_handle == INVALID_HANDLE_VALUE) {
+            free(mutable_command);
+            return FALSE;
+        }
         startup.dwFlags = STARTF_USESTDHANDLES;
         startup.hStdOutput = log_file;
         startup.hStdError = log_file;
-        startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+        startup.hStdInput = input_handle;
+        inherit_handles = TRUE;
     }
     result = CreateProcessW(
-        NULL, mutable_command, NULL, NULL, TRUE,
+        NULL, mutable_command, NULL, NULL, inherit_handles,
         CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
         NULL, working_dir, &startup, process);
+    if (input_handle != INVALID_HANDLE_VALUE) CloseHandle(input_handle);
     free(mutable_command);
     return result;
 }
@@ -400,6 +415,7 @@ static BOOL start_local_service(
     WCHAR python[PATH_CAP], service[PATH_CAP];
     WCHAR local_app_data[PATH_CAP], data_dir[PATH_CAP], log_path[PATH_CAP];
     WCHAR command[PATH_CAP * 4];
+    SECURITY_ATTRIBUTES security;
     HANDLE log_file;
     PROCESS_INFORMATION process;
     path_join(python, PATH_CAP, resources, L"python\\python.exe");
@@ -410,7 +426,12 @@ static BOOL start_local_service(
     path_join(data_dir, PATH_CAP, local_app_data, SERVICE_DATA_DIRECTORY);
     if (!ensure_directory(data_dir)) return FALSE;
     path_join(log_path, PATH_CAP, data_dir, L"local-service.log");
-    log_file = CreateFileW(log_path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    ZeroMemory(&security, sizeof(security));
+    security.nLength = sizeof(security);
+    security.bInheritHandle = TRUE;
+    log_file = CreateFileW(
+        log_path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        &security, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     _snwprintf(
         command,
         sizeof(command) / sizeof(command[0]),

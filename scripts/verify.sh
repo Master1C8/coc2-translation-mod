@@ -9,6 +9,7 @@ VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 PRODUCT_NAME=$(manifest_value translatorName)
 ARCHIVE_PREFIX=$(manifest_value archivePrefix)
 DIST_NAME=$(manifest_value windowsDistributionName)
+WINDOWS_EXECUTABLE=$(manifest_value windowsExecutable)
 READY="$ROOT/launcher/READY_TO_SHARE"
 BUILD_DIR="$ROOT/.build"
 APP="$BUILD_DIR/macos/$PRODUCT_NAME.app"
@@ -23,6 +24,12 @@ WINDOWS_CHECKSUM="$BUILD_DIR/checksums/${WINDOWS_ZIP:t}.sha256"
 [[ -s "$APP/Contents/Resources/translator.bundle.js" ]]
 [[ -s "$APP/Contents/Resources/game.json" ]]
 [[ -s "$APP/Contents/Resources/AppIcon.icns" ]]
+PARALLELS_PAYLOAD="$APP/Contents/Resources/parallels/$DIST_NAME"
+[[ -s "$PARALLELS_PAYLOAD/$PRODUCT_NAME.exe" ]]
+[[ -s "$PARALLELS_PAYLOAD/resources/python/python.exe" ]]
+[[ -s "$PARALLELS_PAYLOAD/resources/local_service.py" ]]
+[[ -s "$PARALLELS_PAYLOAD/resources/translator.bundle.js" ]]
+cmp "$APP/Contents/Resources/translator.bundle.js" "$PARALLELS_PAYLOAD/resources/translator.bundle.js"
 [[ -s "$ZIP" ]]
 [[ -s "$WINDOWS_ZIP" ]]
 /usr/bin/codesign --verify --deep --strict "$APP"
@@ -33,7 +40,10 @@ grep -Eq '(^| )x86_64( |$)' <<< "$CONTROLLER_ARCHS"
 (cd "$READY" && shasum -a 256 -c "$WINDOWS_CHECKSUM")
 
 CONTENTS=$(unzip -Z1 "$ZIP")
-if grep -Ei '\.(exe|dll|pak|sav)$|/resources/app/|/steamapps/' <<< "$CONTENTS"; then
+grep -Fqx "$PRODUCT_NAME.app/Contents/Resources/parallels/$DIST_NAME/$PRODUCT_NAME.exe" <<< "$CONTENTS"
+grep -Fqx "$PRODUCT_NAME.app/Contents/Resources/parallels/$DIST_NAME/resources/python/python.exe" <<< "$CONTENTS"
+if grep -Ei '\.(pak|sav)$|/resources/app/|/steamapps/' <<< "$CONTENTS" \
+    || grep -Fq "/$WINDOWS_EXECUTABLE" <<< "$CONTENTS"; then
   echo "Archive contains game or user files" >&2
   exit 1
 fi
