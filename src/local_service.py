@@ -321,7 +321,7 @@ class LocalServiceBridge:
             return None
         normalized = detail.lower().replace("-", "_").replace(" ", "_")
         for parameter in (
-            "reasoning_effort", "verbosity", "temperature", "max_tokens", "max_completion_tokens"
+            "reasoning_effort", "verbosity", "max_tokens", "max_completion_tokens"
         ):
             if parameter in request_body and parameter in normalized:
                 return parameter
@@ -332,7 +332,7 @@ class LocalServiceBridge:
         if value is None:
             value = {}
         if not isinstance(value, dict) or any(key not in {
-            "reasoningEffort", "temperature", "maxTokens", "verbosity"
+            "reasoningEffort", "maxTokens", "verbosity"
         } for key in value):
             raise BridgeError("openai_model_parameters_invalid", "The model parameters are invalid", 400)
 
@@ -348,13 +348,6 @@ class LocalServiceBridge:
         elif not isinstance(verbosity, str) or verbosity not in OPENAI_COMPATIBLE_VERBOSITIES:
             raise BridgeError("openai_model_parameters_invalid", "The output verbosity is invalid", 400)
 
-        temperature = value.get("temperature")
-        if temperature in (None, ""):
-            temperature = None
-        elif isinstance(temperature, bool) or not isinstance(temperature, (int, float)) \
-                or not 0 <= temperature <= 2:
-            raise BridgeError("openai_model_parameters_invalid", "The temperature is invalid", 400)
-
         max_tokens = value.get("maxTokens")
         if max_tokens in (None, ""):
             max_tokens = min(8192, max(OPENAI_COMPATIBLE_MIN_COMPLETION_TOKENS, len(text) * 3))
@@ -366,8 +359,6 @@ class LocalServiceBridge:
             result["reasoning_effort"] = reasoning_effort
         if verbosity is not None:
             result["verbosity"] = verbosity
-        if temperature is not None:
-            result["temperature"] = temperature
         return result
 
     def _request_json(

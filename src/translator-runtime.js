@@ -79,7 +79,6 @@
     openAICompatibleModel: "",
     openAICompatibleSystemPrompt: OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT,
     openAICompatibleReasoningEffort: "",
-    openAICompatibleTemperature: null,
     openAICompatibleMaxTokens: null,
     openAICompatibleVerbosity: "",
     collapsed: false,
@@ -227,11 +226,6 @@
         OPENAI_COMPATIBLE_REASONING_EFFORTS,
         defaults.openAICompatibleReasoningEffort
       ),
-      openAICompatibleTemperature: normalizedOpenAICompatibleNumber(
-        hasOwn(source, "openAICompatibleTemperature")
-          ? source.openAICompatibleTemperature : defaults.openAICompatibleTemperature,
-        0, 2, false, defaults.openAICompatibleTemperature
-      ),
       openAICompatibleMaxTokens: normalizedOpenAICompatibleNumber(
         source.openAICompatibleMaxTokens, 64, 32768, true, defaults.openAICompatibleMaxTokens
       ),
@@ -287,9 +281,6 @@
           settings.openAICompatibleReasoningEffort,
           OPENAI_COMPATIBLE_REASONING_EFFORTS,
           defaults.openAICompatibleReasoningEffort
-        ),
-        temperature: normalizedOpenAICompatibleNumber(
-          settings.openAICompatibleTemperature, 0, 2, false, defaults.openAICompatibleTemperature
         ),
         maxTokens: normalizedOpenAICompatibleNumber(
           settings.openAICompatibleMaxTokens, 64, 32768, true, defaults.openAICompatibleMaxTokens
@@ -1441,7 +1432,6 @@
           <div class="openAICompatibleParameters">
             <label><span>Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort"><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
             <label><span>Verbosity</span><select class="openAICompatibleVerbosity" aria-label="Output verbosity"><option value="">Provider default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
-            <label><span>Temperature</span><input class="openAICompatibleTemperature" type="number" min="0" max="2" step="0.1" inputmode="decimal" placeholder="Provider default" aria-label="Temperature"></label>
             <label><span>Max output tokens</span><input class="openAICompatibleMaxTokens" type="number" min="64" max="32768" step="1" inputmode="numeric" placeholder="Auto" aria-label="Maximum output tokens"></label>
           </div>
           <div class="openAICompatibleParametersHint">Unsupported optional parameters are removed and retried automatically.</div>
@@ -1498,7 +1488,6 @@
   const openAICompatibleModelSelect = shadow.querySelector(".openAICompatibleModel");
   const openAICompatibleReasoningEffortSelect = shadow.querySelector(".openAICompatibleReasoningEffort");
   const openAICompatibleVerbositySelect = shadow.querySelector(".openAICompatibleVerbosity");
-  const openAICompatibleTemperatureInput = shadow.querySelector(".openAICompatibleTemperature");
   const openAICompatibleMaxTokensInput = shadow.querySelector(".openAICompatibleMaxTokens");
   const openAICompatiblePromptInput = shadow.querySelector(".openAICompatiblePrompt");
   const openAICompatiblePromptResetButton = shadow.querySelector(".openAICompatiblePromptReset");
@@ -1581,7 +1570,7 @@
       openAICompatiblePresetSelect, openAICompatibleBaseURLInput,
       openAICompatibleModelSelect,
       openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect,
-      openAICompatibleTemperatureInput, openAICompatibleMaxTokensInput,
+      openAICompatibleMaxTokensInput,
       openAICompatibleKeyInput, openAICompatibleSaveButton, openAICompatibleRefreshButton,
       openAICompatibleRemoveButton
     ]) control.disabled = busy || !LOCAL_BRIDGE;
@@ -1599,8 +1588,6 @@
     populateOpenAICompatibleModelOptions(openAICompatibleModels, connection.model);
     openAICompatibleReasoningEffortSelect.value = connection.modelParameters.reasoningEffort;
     openAICompatibleVerbositySelect.value = connection.modelParameters.verbosity;
-    openAICompatibleTemperatureInput.value = connection.modelParameters.temperature === null
-      ? "" : String(connection.modelParameters.temperature);
     openAICompatibleMaxTokensInput.value = connection.modelParameters.maxTokens === null
       ? "" : String(connection.modelParameters.maxTokens);
     openAICompatiblePromptInput.value = connection.systemPrompt;
@@ -1667,19 +1654,14 @@
       OPENAI_COMPATIBLE_VERBOSITIES,
       settings.openAICompatibleVerbosity
     );
-    const temperature = normalizedOpenAICompatibleNumber(
-      next.temperature, 0, 2, false, settings.openAICompatibleTemperature
-    );
     const maxTokens = normalizedOpenAICompatibleNumber(
       next.maxTokens, 64, 32768, true, settings.openAICompatibleMaxTokens
     );
     const changed = settings.openAICompatibleReasoningEffort !== reasoningEffort
       || settings.openAICompatibleVerbosity !== verbosity
-      || settings.openAICompatibleTemperature !== temperature
       || settings.openAICompatibleMaxTokens !== maxTokens;
     settings.openAICompatibleReasoningEffort = reasoningEffort;
     settings.openAICompatibleVerbosity = verbosity;
-    settings.openAICompatibleTemperature = temperature;
     settings.openAICompatibleMaxTokens = maxTokens;
     if (changed) {
       invalidateAppliedTranslations();
@@ -1810,13 +1792,12 @@
   });
   for (const control of [
     openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect,
-    openAICompatibleTemperatureInput, openAICompatibleMaxTokensInput
+    openAICompatibleMaxTokensInput
   ]) {
     control.addEventListener("change", () => {
       applyOpenAICompatibleModelParameters({
         reasoningEffort: openAICompatibleReasoningEffortSelect.value,
         verbosity: openAICompatibleVerbositySelect.value,
-        temperature: openAICompatibleTemperatureInput.value,
         maxTokens: openAICompatibleMaxTokensInput.value
       });
       setStatus("OpenAI-compatible model parameters saved");

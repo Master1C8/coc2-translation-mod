@@ -187,7 +187,6 @@ class LocalServiceTests(unittest.TestCase):
 
             parameters = {
                 "reasoningEffort": "high",
-                "temperature": 0.2,
                 "maxTokens": 4096,
                 "verbosity": "low",
             }
@@ -196,7 +195,6 @@ class LocalServiceTests(unittest.TestCase):
                     "ru", "Russian", "Hello", "model", "openrouter", "ignored", None, parameters
                 )
             self.assertEqual(captured["body"]["reasoning_effort"], "high")
-            self.assertEqual(captured["body"]["temperature"], 0.2)
             self.assertEqual(captured["body"]["max_tokens"], 4096)
             self.assertEqual(captured["body"]["verbosity"], "low")
 
@@ -214,10 +212,9 @@ class LocalServiceTests(unittest.TestCase):
             with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
                 bridge.openai_translate(
                     "ru", "Russian", "Hello", "model", "openrouter", "ignored", None,
-                    {"reasoningEffort": "", "temperature": None, "maxTokens": None, "verbosity": ""},
+                    {"reasoningEffort": "", "maxTokens": None, "verbosity": ""},
                 )
             self.assertNotIn("reasoning_effort", captured["body"])
-            self.assertNotIn("temperature", captured["body"])
             self.assertNotIn("verbosity", captured["body"])
             self.assertEqual(captured["body"]["max_tokens"], 2048)
 
@@ -240,14 +237,14 @@ class LocalServiceTests(unittest.TestCase):
             with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
                 result = bridge.openai_translate(
                     "ru", "Russian", "Hello", "model", "openrouter", "ignored", None,
-                    {"reasoningEffort": "high", "temperature": 0.2},
+                    {"reasoningEffort": "high", "verbosity": "low"},
                 )
             self.assertEqual(request_bodies[0]["reasoning_effort"], "high")
             self.assertNotIn("reasoning_effort", request_bodies[1])
-            self.assertEqual(request_bodies[1]["temperature"], 0.2)
+            self.assertEqual(request_bodies[1]["verbosity"], "low")
             self.assertEqual(result["ignoredModelParameters"], ["reasoning_effort"])
 
-    def test_translation_retries_when_provider_reports_a_parameter_range(self):
+    def test_translation_retries_when_provider_reports_a_parameter_requirement(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")
             request_bodies = []
@@ -257,7 +254,7 @@ class LocalServiceTests(unittest.TestCase):
                 if len(request_bodies) == 1:
                     raise urllib.error.HTTPError(
                         request.full_url, 400, "bad request", {},
-                        io.BytesIO(b'{"error":{"message":"temperature must be greater than 0"}}'),
+                        io.BytesIO(b'{"error":{"message":"reasoning_effort must be low or medium"}}'),
                     )
                 return FakeHTTPResponse({
                     "choices": [{"message": {"content": '{"translation":"Привет"}'}}]
@@ -266,11 +263,11 @@ class LocalServiceTests(unittest.TestCase):
             with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
                 result = bridge.openai_translate(
                     "ru", "Russian", "Hello", "model", "openrouter", "ignored", None,
-                    {"temperature": 0},
+                    {"reasoningEffort": "high"},
                 )
-            self.assertEqual(request_bodies[0]["temperature"], 0)
-            self.assertNotIn("temperature", request_bodies[1])
-            self.assertEqual(result["ignoredModelParameters"], ["temperature"])
+            self.assertEqual(request_bodies[0]["reasoning_effort"], "high")
+            self.assertNotIn("reasoning_effort", request_bodies[1])
+            self.assertEqual(result["ignoredModelParameters"], ["reasoning_effort"])
 
     def test_translation_switches_to_max_completion_tokens_when_required(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -373,7 +370,6 @@ class LocalServiceTests(unittest.TestCase):
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")
             for parameters in (
                 {"reasoningEffort": "extreme"},
-                {"temperature": 3},
                 {"maxTokens": 10},
                 {"verbosity": "huge"},
                 {"unknown": True},

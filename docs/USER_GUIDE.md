@@ -45,7 +45,7 @@ At first network use, select `Allow auto-translate` or `Manual only`. The choice
 3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and the model list refreshes automatically; `Save API key` performs the same action explicitly.
 4. Use `Refresh models` to retry loading the list when needed.
 5. Choose a model from the single list. Free models are pinned first, and both the free and paid groups are alphabetical. Use `Enter model ID manually…` when the endpoint does not list the required ID.
-6. Optionally set reasoning effort, output verbosity, temperature, and maximum output tokens. `Provider default` or an empty field omits that optional parameter; `Auto` calculates the token limit from the source length.
+6. Optionally set reasoning effort, output verbosity, and maximum output tokens. `Provider default` or an empty field omits that optional parameter; `Auto` calculates the token limit from the source length.
 7. Edit `System prompt` if needed. `{targetName}` and `{target}` are replaced with the selected language name and code. Use `Restore default` to recover the built-in instruction.
 
 Preset Base URLs:
@@ -132,7 +132,7 @@ advanced launches can select Parallels with
 3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Enter` или покиньте поле. Ключ сохранится, а список моделей обновится автоматически; кнопка `Save API key` выполняет то же действие явно.
 4. При необходимости повторите загрузку списка кнопкой `Refresh models`.
 5. Выберите модель в единственном списке. Бесплатные модели закреплены сверху, а бесплатная и платная группы отсортированы по алфавиту. Для отсутствующего в каталоге ID используйте `Enter model ID manually…`.
-6. При необходимости задайте reasoning effort, verbosity, temperature и максимальное число output tokens. `Provider default` или пустое поле не отправляет optional-параметр; `Auto` вычисляет token limit по длине исходника.
+6. При необходимости задайте reasoning effort, verbosity и максимальное число output tokens. `Provider default` или пустое поле не отправляет optional-параметр; `Auto` вычисляет token limit по длине исходника.
 7. При необходимости измените `System prompt`. Вместо `{targetName}` и `{target}` helper подставляет название и код выбранного языка. Кнопка `Restore default` возвращает встроенную инструкцию.
 
 Base URL preset:

@@ -32,7 +32,7 @@
 - модели выбираются в единственном обычном `select` без Chromium `datalist`;
   пункт `Enter model ID manually…` поддерживает отсутствующие в каталоге ID;
 - введённый API-ключ автоматически сохраняется при `Enter` или уходе из поля, после чего обновляется список моделей;
-- OpenAI-compatible передаёт проверенные reasoning effort, verbosity, temperature и output token limit,
+- OpenAI-compatible передаёт проверенные reasoning effort, verbosity и output token limit,
   а явно неподдерживаемые optional-параметры удаляет ограниченным повтором запроса;
 - прежняя v1/v2 → v3 миграция Google-кэша остаётся доступной;
 - DOM runtime сохраняет контекстную группировку, пофрагментный fallback, формы/слоты/имена, `Ctrl+Shift+T`, RTL, шрифты и переносы;
