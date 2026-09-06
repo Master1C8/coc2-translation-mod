@@ -45,7 +45,8 @@ At first network use, select `Allow auto-translate` or `Manual only`. The choice
 3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and the model list refreshes automatically; `Save API key` performs the same action explicitly.
 4. Use `Refresh models` to retry loading the list when needed.
 5. Choose a listed model suggestion or type the exact model ID manually.
-6. Edit `System prompt` if needed. `{targetName}` and `{target}` are replaced with the selected language name and code. Use `Restore default` to recover the built-in instruction.
+6. Optionally set reasoning effort, output verbosity, temperature, and maximum output tokens. `Provider default` or an empty field omits that optional parameter; `Auto` calculates the token limit from the source length.
+7. Edit `System prompt` if needed. `{targetName}` and `{target}` are replaced with the selected language name and code. Use `Restore default` to recover the built-in instruction.
 
 Preset Base URLs:
 
@@ -61,11 +62,11 @@ The key field is cleared after saving. Keys are stored separately per Base URL i
 
 LM Studio is part of this same provider. Start its local server and load a model first; no key is required by the preset. If `/models` is unavailable but Chat Completions works, enter the model ID manually.
 
-The helper validates response structure and context markers before applying text. This is not editorial review, and the result is not an approved localization.
+The helper validates response structure and context markers before applying text. If an endpoint explicitly rejects an optional model parameter, the helper retries without it; `max_tokens` falls back to `max_completion_tokens` first. This is not editorial review, and the result is not an approved localization.
 
 ### Cache and layout
 
-Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, prompt version, and the complete system prompt. Changing the prompt therefore does not reuse results produced with an older instruction. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
+Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, model parameters, prompt version, and the complete system prompt. Changing the prompt or parameters therefore does not reuse results produced with an older configuration. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
 
 RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored before retranslation after a language or configuration change. Existing HTML elements and click handlers remain in place.
 
@@ -131,7 +132,8 @@ advanced launches can select Parallels with
 3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Enter` или покиньте поле. Ключ сохранится, а список моделей обновится автоматически; кнопка `Save API key` выполняет то же действие явно.
 4. При необходимости повторите загрузку списка кнопкой `Refresh models`.
 5. Выберите подсказанный model ID или введите точный ID вручную.
-6. При необходимости измените `System prompt`. Вместо `{targetName}` и `{target}` helper подставляет название и код выбранного языка. Кнопка `Restore default` возвращает встроенную инструкцию.
+6. При необходимости задайте reasoning effort, verbosity, temperature и максимальное число output tokens. `Provider default` или пустое поле не отправляет optional-параметр; `Auto` вычисляет token limit по длине исходника.
+7. При необходимости измените `System prompt`. Вместо `{targetName}` и `{target}` helper подставляет название и код выбранного языка. Кнопка `Restore default` возвращает встроенную инструкцию.
 
 Base URL preset:
 
@@ -147,11 +149,11 @@ Base URL preset:
 
 LM Studio входит в этот же провайдер. Сначала запустите local server и загрузите модель; preset не требует ключа. Если `/models` недоступен, но Chat Completions работает, введите model ID вручную.
 
-Helper проверяет структуру ответа и контекстные маркеры перед применением. Эта проверка не является редактурой, а результат не становится одобренной локализацией.
+Helper проверяет структуру ответа и контекстные маркеры перед применением. Если endpoint явно отклоняет optional model-параметр, helper повторяет запрос без него; для `max_tokens` сначала используется fallback `max_completion_tokens`. Эта проверка не является редактурой, а результат не становится одобренной локализацией.
 
 ### Кэш и оформление
 
-Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, версии и полному тексту системной инструкции. Поэтому после изменения prompt не используются ответы, созданные с прежней инструкцией. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
+Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, параметрам модели, версии и полному тексту системной инструкции. Поэтому после изменения prompt или параметров не используются ответы, созданные с прежней конфигурацией. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
 
 RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются перед повторным переводом при смене языка или конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 

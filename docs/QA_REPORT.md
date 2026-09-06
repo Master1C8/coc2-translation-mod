@@ -17,7 +17,7 @@
 - ответ получает `reviewed: false`, а повреждённые контекстные маркеры отклоняются;
 - API/auth/model/network ошибки возвращаются кодами без утечки секрета;
 - local helper слушает только loopback, требует одноразовый токен и ограничивает размер JSON;
-- provider cache v4 разделяет preset, Base URL, model ID и версию prompt;
+- provider cache v4 разделяет preset, Base URL, model ID, параметры модели и версию prompt;
 - каталог языков точно совпадает с 30 локалями VN Revival, а чистый первый запуск выбирает английский и `Auto translate: On`;
 - выбор языка постоянно находится в верхней части панели, вне скрываемых настроек;
 - общий размер кэша и подтверждаемая кнопка его полного удаления находятся в одной строке;
@@ -28,6 +28,8 @@
 - в свёрнутом состоянии название проекта скрыто и остаётся только компактная кнопка `+`;
 - в настройке OpenAI-compatible поле API-ключа расположено перед выбором модели;
 - введённый API-ключ автоматически сохраняется при `Enter` или уходе из поля, после чего обновляется список моделей;
+- OpenAI-compatible передаёт проверенные reasoning effort, verbosity, temperature и output token limit,
+  а явно неподдерживаемые optional-параметры удаляет ограниченным повтором запроса;
 - прежняя v1/v2 → v3 миграция Google-кэша остаётся доступной;
 - DOM runtime сохраняет контекстную группировку, пофрагментный fallback, формы/слоты/имена, `Ctrl+Shift+T`, RTL, шрифты и переносы;
 - `IntersectionObserver`, `MutationObserver` и `visibilitychange` сохраняют экономный видимый/изменённый проход;
@@ -49,9 +51,9 @@
 - 20 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
   cache isolation/migration, UTF-8 splitting, context markers and launcher
   lifecycle contracts;
-- 20 Python tests: manifest/launcher contracts и local helper, включая preset,
+- 29 Python tests: manifest/launcher contracts и local helper, включая preset,
   URL policy, credential vault, model discovery, Chat Completions, structured
-  response fallback, marker validation и safe errors;
+  response/model-parameter fallback, marker validation и safe errors;
 - source verification: 30 языков из общего каталога сайта;
 - syntax/build checks: JavaScript, Python, shell, Swift typecheck, rendered
   Windows launcher compiled with MinGW and `-Werror`;

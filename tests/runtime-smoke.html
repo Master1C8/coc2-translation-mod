@@ -167,6 +167,26 @@
       openAIPromptInput.dispatchEvent(new Event("change"));
       const openAIPromptSaved = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null")
         ?.openAICompatibleSystemPrompt === openAIPromptInput.value;
+      const reasoningEffortInput = shadow.querySelector(".openAICompatibleReasoningEffort");
+      const verbosityInput = shadow.querySelector(".openAICompatibleVerbosity");
+      const temperatureInput = shadow.querySelector(".openAICompatibleTemperature");
+      const maxTokensInput = shadow.querySelector(".openAICompatibleMaxTokens");
+      const openAIModelParametersVisible = reasoningEffortInput.options.length === 8
+        && reasoningEffortInput.value === ""
+        && verbosityInput.options.length === 4
+        && verbosityInput.value === ""
+        && temperatureInput.value === "0"
+        && maxTokensInput.value === "";
+      reasoningEffortInput.value = "high";
+      verbosityInput.value = "low";
+      temperatureInput.value = "0.2";
+      maxTokensInput.value = "4096";
+      reasoningEffortInput.dispatchEvent(new Event("change"));
+      const savedModelParameters = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null");
+      const openAIModelParametersSaved = savedModelParameters?.openAICompatibleReasoningEffort === "high"
+        && savedModelParameters?.openAICompatibleVerbosity === "low"
+        && savedModelParameters?.openAICompatibleTemperature === 0.2
+        && savedModelParameters?.openAICompatibleMaxTokens === 4096;
       const openAIHintRemoved = shadow.querySelector(".providerHint").textContent === ""
         && getComputedStyle(shadow.querySelector(".providerHint")).display === "none";
       const openAIKeyInput = shadow.querySelector(".openAICompatibleKey");
@@ -322,6 +342,8 @@
         && openAISetupVisible
         && openAIPromptEditable
         && openAIPromptSaved
+        && openAIModelParametersVisible
+        && openAIModelParametersSaved
         && openAIHintRemoved
         && openAIKeyAutoSaved
         && googleHintRemoved
@@ -367,6 +389,8 @@
         openAISetupVisible,
         openAIPromptEditable,
         openAIPromptSaved,
+        openAIModelParametersVisible,
+        openAIModelParametersSaved,
         openAIHintRemoved,
         openAIKeyAutoSaved,
         googleHintRemoved,

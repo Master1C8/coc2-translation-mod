@@ -61,7 +61,8 @@
             model: connection.model,
             preset: connection.preset,
             baseURL: connection.baseURL,
-            systemPrompt: connection.systemPrompt
+            systemPrompt: connection.systemPrompt,
+            modelParameters: connection.modelParameters
           },
           signal: context.signal
         });
