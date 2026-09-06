@@ -137,6 +137,10 @@
         .map((option) => [option.value, option.textContent]);
       const providerOptions = Array.from(shadow.querySelector(".provider").options)
         .map((option) => [option.value, option.textContent]);
+      const shortcutInsideMainButton = shadow.querySelector(".translate .translateShortcut")?.textContent === "Ctrl+Shift+T"
+        && shadow.querySelector(".translate .translateAction")?.textContent === "Translate"
+        && shadow.querySelector(".translate")?.getAttribute("aria-label") === "Translate (Ctrl+Shift+T)"
+        && !shadow.querySelector(".hotkey");
       const openAIKeyIsPasswordOnly = shadow.querySelector(".openAICompatibleKey").type === "password"
         && !Object.keys(localStorage).some((key) => /api.*key/i.test(key));
       shadow.querySelector(".provider").value = "openai-compatible";
@@ -176,8 +180,12 @@
         && shadow.querySelector('.contactIcon.telegram')?.href === "https://t.me/VnRevival"
         && shadow.querySelector('.contactIcon.email')?.getAttribute("href") === "mailto:master1c8@proton.me";
       window.__vnRevivalTranslator.showTranslations();
+      const translationPromise = Promise.resolve(window.__vnRevivalTranslator.translateScreen());
+      const cancelStateKeepsShortcut = shadow.querySelector(".translate .translateAction")?.textContent === "Cancel"
+        && shadow.querySelector(".translate .translateShortcut")?.textContent === "Ctrl+Shift+T"
+        && shadow.querySelector(".translate")?.getAttribute("aria-label") === "Cancel (Ctrl+Shift+T)";
       const outcome = await Promise.race([
-        Promise.resolve(window.__vnRevivalTranslator.translateScreen()).then(() => "completed"),
+        translationPromise.then(() => "completed"),
         new Promise((resolve) => setTimeout(() => resolve("timeout"), 1500))
       ]);
 
@@ -239,6 +247,8 @@
         && metadataDirty === null
         && legacyMigrated
         && legacyGlobalsScopedToCoC2
+        && shortcutInsideMainButton
+        && cancelStateKeepsShortcut
         && defaultLanguage === "en"
         && languageOptions.length === 30
         && JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
@@ -275,6 +285,8 @@
         metadataDirty,
         legacyMigrated,
         legacyGlobalsScopedToCoC2,
+        shortcutInsideMainButton,
+        cancelStateKeepsShortcut,
         defaultLanguage,
         languageOptions,
         providerOptions,

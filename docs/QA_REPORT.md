@@ -20,6 +20,7 @@
 - provider cache v4 разделяет preset, Base URL, model ID и версию prompt;
 - каталог языков точно совпадает с 30 локалями VN Revival, а чистый первый запуск выбирает английский;
 - автоперевод оформлен как доступный компактный toggle с явными состояниями On/Off;
+- `Ctrl+Shift+T` отображается внутри основной кнопки и сохраняется при `Translate / Cancel`;
 - прежняя v1/v2 → v3 миграция Google-кэша остаётся доступной;
 - DOM runtime сохраняет контекстную группировку, пофрагментный fallback, формы/слоты/имена, `Original / Translation`, `Ctrl+Shift+T`, RTL, шрифты и переносы;
 - `IntersectionObserver`, `MutationObserver` и `visibilitychange` сохраняют экономный видимый/изменённый проход;

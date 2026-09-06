@@ -16,7 +16,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 
 - `Translate / Cancel` starts or stops the current screen pass.
 - `Original / Translation` switches existing DOM text between English and the cached translation.
-- `Ctrl+Shift+T` performs the same translate/cancel action.
+- `Ctrl+Shift+T`, displayed inside the main button, performs the same translate/cancel action.
 - `...` opens settings.
 - `− / +` collapses or expands the panel.
 - Drag the top bar to move the panel.
@@ -99,7 +99,7 @@ advanced launches can select Parallels with
 
 - `Translate / Cancel` запускает или отменяет перевод текущего экрана.
 - `Original / Translation` переключает английский текст и кэшированный перевод.
-- `Ctrl+Shift+T` выполняет то же действие перевода/отмены.
+- `Ctrl+Shift+T`, указанная внутри основной кнопки, выполняет то же действие перевода/отмены.
 - `...` открывает настройки.
 - `− / +` сворачивает или разворачивает панель.
 - Верхняя полоса перемещает панель.
