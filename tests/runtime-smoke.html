@@ -151,7 +151,7 @@
       const openAIKeyIsPasswordOnly = shadow.querySelector(".openAICompatibleKey").type === "password"
         && !Object.keys(localStorage).some((key) => /api.*key/i.test(key));
       const openAIKeyBeforeModel = shadow.querySelector(".openAICompatibleKey").nextElementSibling
-        === shadow.querySelector(".openAICompatibleModel");
+        === shadow.querySelector(".openAICompatibleModelSuggestion");
       shadow.querySelector(".provider").value = "openai-compatible";
       shadow.querySelector(".provider").dispatchEvent(new Event("change"));
       await new Promise((resolve) => setTimeout(resolve, 30));
@@ -159,6 +159,19 @@
         && shadow.querySelector(".openAICompatibleStatus").textContent.includes("OpenCode Go")
         && !shadow.querySelector(".openAICompatibleSave").disabled
         && shadow.querySelector(".openAICompatiblePreset").options.length === 6;
+      const openAIModelSuggestionSelect = shadow.querySelector(".openAICompatibleModelSuggestion");
+      const openAIModelInput = shadow.querySelector(".openAICompatibleModel");
+      const safeOpenAIModelPicker = openAIModelSuggestionSelect instanceof HTMLSelectElement
+        && openAIModelSuggestionSelect.options.length === 3
+        && openAIModelSuggestionSelect.options[1].value === "model-a"
+        && openAIModelSuggestionSelect.options[2].value === "model-b"
+        && !openAIModelInput.hasAttribute("list")
+        && !shadow.querySelector("datalist");
+      openAIModelSuggestionSelect.value = "model-b";
+      openAIModelSuggestionSelect.dispatchEvent(new Event("change"));
+      const openAIModelSelectionSaved = openAIModelInput.value === "model-b"
+        && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null")
+          ?.openAICompatibleModel === "model-b";
       const openAIPromptInput = shadow.querySelector(".openAICompatiblePrompt");
       const openAIPromptEditable = openAIPromptInput.value.includes("{targetName}")
         && openAIPromptInput.value.includes("VRCTXSEP<number>X")
@@ -340,6 +353,8 @@
         && openAIKeyIsPasswordOnly
         && openAIKeyBeforeModel
         && openAISetupVisible
+        && safeOpenAIModelPicker
+        && openAIModelSelectionSaved
         && openAIPromptEditable
         && openAIPromptSaved
         && openAIModelParametersVisible
@@ -387,6 +402,8 @@
         openAIKeyIsPasswordOnly,
         openAIKeyBeforeModel,
         openAISetupVisible,
+        safeOpenAIModelPicker,
+        openAIModelSelectionSaved,
         openAIPromptEditable,
         openAIPromptSaved,
         openAIModelParametersVisible,

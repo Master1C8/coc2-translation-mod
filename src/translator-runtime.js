@@ -1363,8 +1363,10 @@
           </select>
           <input class="openAICompatibleBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://provider.example/v1">
           <input class="openAICompatibleKey" type="password" autocomplete="off" spellcheck="false" placeholder="API key (stored securely)">
-          <input class="openAICompatibleModel" type="text" list="openAICompatibleModels" autocomplete="off" spellcheck="false" placeholder="Model ID">
-          <datalist id="openAICompatibleModels"></datalist>
+          <select class="openAICompatibleModelSuggestion" aria-label="Listed OpenAI-compatible model">
+            <option value="">Choose a listed model…</option>
+          </select>
+          <input class="openAICompatibleModel" type="text" autocomplete="off" spellcheck="false" placeholder="Model ID (or enter manually)">
           <div class="openAICompatibleParameterTitle">Model parameters</div>
           <div class="openAICompatibleParameters">
             <label><span>Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort"><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
@@ -1424,7 +1426,7 @@
   const openAICompatiblePresetSelect = shadow.querySelector(".openAICompatiblePreset");
   const openAICompatibleBaseURLInput = shadow.querySelector(".openAICompatibleBaseURL");
   const openAICompatibleModelInput = shadow.querySelector(".openAICompatibleModel");
-  const openAICompatibleModelsList = shadow.querySelector("#openAICompatibleModels");
+  const openAICompatibleModelSuggestionSelect = shadow.querySelector(".openAICompatibleModelSuggestion");
   const openAICompatibleReasoningEffortSelect = shadow.querySelector(".openAICompatibleReasoningEffort");
   const openAICompatibleVerbositySelect = shadow.querySelector(".openAICompatibleVerbosity");
   const openAICompatibleTemperatureInput = shadow.querySelector(".openAICompatibleTemperature");
@@ -1507,7 +1509,8 @@
   function setOpenAICompatibleBusy(busy) {
     openAICompatibleBusy = busy;
     for (const control of [
-      openAICompatiblePresetSelect, openAICompatibleBaseURLInput, openAICompatibleModelInput,
+      openAICompatiblePresetSelect, openAICompatibleBaseURLInput,
+      openAICompatibleModelSuggestionSelect, openAICompatibleModelInput,
       openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect,
       openAICompatibleTemperatureInput, openAICompatibleMaxTokensInput,
       openAICompatibleKeyInput, openAICompatibleSaveButton, openAICompatibleRefreshButton,
@@ -1525,6 +1528,8 @@
     openAICompatibleBaseURLInput.value = connection.baseURL;
     openAICompatibleBaseURLInput.disabled = openAICompatibleBusy || !LOCAL_BRIDGE || connection.preset !== "custom";
     openAICompatibleModelInput.value = connection.model;
+    openAICompatibleModelSuggestionSelect.value = Array.from(openAICompatibleModelSuggestionSelect.options)
+      .some((option) => option.value === connection.model) ? connection.model : "";
     openAICompatibleReasoningEffortSelect.value = connection.modelParameters.reasoningEffort;
     openAICompatibleVerbositySelect.value = connection.modelParameters.verbosity;
     openAICompatibleTemperatureInput.value = connection.modelParameters.temperature === null
@@ -1597,7 +1602,11 @@
     openAICompatibleBox.hidden = false;
     syncOpenAICompatibleInputs();
     openAICompatibleKeyInput.value = "";
-    openAICompatibleModelsList.replaceChildren();
+    openAICompatibleModelSuggestionSelect.replaceChildren();
+    const modelPlaceholder = document.createElement("option");
+    modelPlaceholder.value = "";
+    modelPlaceholder.textContent = "Choose a listed model…";
+    openAICompatibleModelSuggestionSelect.appendChild(modelPlaceholder);
     if (!LOCAL_BRIDGE) {
       openAICompatibleStatus = null;
       openAICompatibleStatusElement.textContent = `The local translation helper is not running. Restart the game through ${PRODUCT_NAME}.`;
@@ -1610,12 +1619,16 @@
       openAICompatibleStatus = await requestLocalHelper("/v1/openai-compatible/status", {
         body: { preset: connection.preset, baseURL: connection.baseURL }
       });
-      for (const model of Array.isArray(openAICompatibleStatus.models) ? openAICompatibleStatus.models : []) {
+      const models = Array.isArray(openAICompatibleStatus.models) ? openAICompatibleStatus.models : [];
+      for (const model of models) {
         if (typeof model !== "string" || !model) continue;
         const option = document.createElement("option");
         option.value = model;
-        openAICompatibleModelsList.appendChild(option);
+        option.textContent = model;
+        openAICompatibleModelSuggestionSelect.appendChild(option);
       }
+      openAICompatibleModelSuggestionSelect.value = models.includes(connection.model)
+        ? connection.model : "";
       openAICompatibleRemoveButton.hidden = !openAICompatibleStatus.configured;
       openAICompatibleSaveButton.textContent = openAICompatibleStatus.configured
         ? "Replace API key" : (openAICompatibleStatus.requiresKey ? "Save API key" : "Save optional key");
@@ -1683,6 +1696,17 @@
       preset: "custom", baseURL: openAICompatibleBaseURLInput.value, model: ""
     });
     await refreshOpenAICompatibleStatus();
+  });
+  openAICompatibleModelSuggestionSelect.addEventListener("change", () => {
+    if (!openAICompatibleModelSuggestionSelect.value) return;
+    const connection = openAICompatibleConnection();
+    openAICompatibleModelInput.value = openAICompatibleModelSuggestionSelect.value;
+    applyOpenAICompatibleSettings({
+      preset: connection.preset,
+      baseURL: connection.baseURL,
+      model: openAICompatibleModelSuggestionSelect.value
+    });
+    setStatus("OpenAI-compatible model selected");
   });
   openAICompatibleModelInput.addEventListener("change", () => {
     const connection = openAICompatibleConnection();

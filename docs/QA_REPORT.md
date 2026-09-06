@@ -27,6 +27,8 @@
 - кнопка `...` отсутствует, а настройки видны в полностью развёрнутой панели и скрыты только вместе со всей панелью;
 - в свёрнутом состоянии название проекта скрыто и остаётся только компактная кнопка `+`;
 - в настройке OpenAI-compatible поле API-ключа расположено перед выбором модели;
+- подсказки моделей используют обычный `select`, а ручной Model ID — отдельное
+  поле без Chromium `datalist`, несовместимого со встроенным браузером CoC2;
 - введённый API-ключ автоматически сохраняется при `Enter` или уходе из поля, после чего обновляется список моделей;
 - OpenAI-compatible передаёт проверенные reasoning effort, verbosity, temperature и output token limit,
   а явно неподдерживаемые optional-параметры удаляет ограниченным повтором запроса;
@@ -48,7 +50,7 @@
 
 Результат: `PASS`.
 
-- 20 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
+- 21 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
   cache isolation/migration, UTF-8 splitting, context markers and launcher
   lifecycle contracts;
 - 29 Python tests: manifest/launcher contracts и local helper, включая preset,

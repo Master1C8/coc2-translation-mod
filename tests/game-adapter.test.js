@@ -11,6 +11,7 @@ const gameDirectory = path.join(__dirname, "..", "src", "games", gameId);
 const manifest = JSON.parse(fs.readFileSync(path.join(gameDirectory, "game.json"), "utf8"));
 require(path.join(gameDirectory, "adapter.js"));
 const adapter = globalThis.VNRevivalGameAdapter;
+const runtimeSource = fs.readFileSync(path.join(__dirname, "..", "src", "translator-runtime.js"), "utf8");
 
 test("selected game manifest supplies universal runtime identity", () => {
   assert.equal(manifest.id, gameId);
@@ -32,4 +33,10 @@ test("selected DOM adapter satisfies contract version 2", () => {
   for (const duplicatedField of ["id", "title", "sourceLanguage", "storageNamespace", "supportedVersions"]) {
     assert.equal(Object.hasOwn(adapter, duplicatedField), false, duplicatedField);
   }
+});
+
+test("model suggestions avoid the Chromium datalist crash path", () => {
+  assert.match(runtimeSource, /class="openAICompatibleModelSuggestion"/);
+  assert.match(runtimeSource, /class="openAICompatibleModel" type="text"/);
+  assert.doesNotMatch(runtimeSource, /<datalist\b|\blist="openAICompatibleModels"/);
 });
