@@ -1564,7 +1564,8 @@
     const status = await refreshOpenAICompatibleStatus();
     setStatus(status && status.available ? "OpenAI-compatible models refreshed" : "Connection could not be verified");
   });
-  openAICompatibleSaveButton.addEventListener("click", async () => {
+  async function saveOpenAICompatibleKey() {
+    if (openAICompatibleBusy) return;
     const apiKey = openAICompatibleKeyInput.value.trim();
     if (!apiKey) {
       openAICompatibleStatusElement.textContent = "Enter an API key first.";
@@ -1586,6 +1587,15 @@
     } finally {
       setOpenAICompatibleBusy(false);
     }
+  }
+  openAICompatibleSaveButton.addEventListener("click", saveOpenAICompatibleKey);
+  openAICompatibleKeyInput.addEventListener("change", () => {
+    if (openAICompatibleKeyInput.value.trim()) saveOpenAICompatibleKey();
+  });
+  openAICompatibleKeyInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    saveOpenAICompatibleKey();
   });
   openAICompatibleRemoveButton.addEventListener("click", async () => {
     const connection = openAICompatibleConnection();

@@ -161,6 +161,14 @@
         && shadow.querySelector(".openAICompatiblePreset").options.length === 6;
       const openAIHintRemoved = shadow.querySelector(".providerHint").textContent === ""
         && getComputedStyle(shadow.querySelector(".providerHint")).display === "none";
+      const openAIKeyInput = shadow.querySelector(".openAICompatibleKey");
+      openAIKeyInput.value = "smoke-test-api-key";
+      openAIKeyInput.dispatchEvent(new Event("change"));
+      for (let attempt = 0; attempt < 50 && openAIKeyInput.value; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      const openAIKeyAutoSaved = window.localHelperCalls.includes("/v1/openai-compatible/key")
+        && openAIKeyInput.value === "";
       shadow.querySelector(".language").value = "ar";
       shadow.querySelector(".language").dispatchEvent(new Event("change"));
       shadow.querySelector(".provider").value = "google";
@@ -305,6 +313,7 @@
         && openAIKeyBeforeModel
         && openAISetupVisible
         && openAIHintRemoved
+        && openAIKeyAutoSaved
         && googleHintRemoved
         && organicAutoToggle
         && autoChangeSaved
@@ -347,6 +356,7 @@
         openAIKeyBeforeModel,
         openAISetupVisible,
         openAIHintRemoved,
+        openAIKeyAutoSaved,
         googleHintRemoved,
         organicAutoToggle,
         autoChangeSaved,

@@ -42,8 +42,8 @@ At first network use, select `Allow auto-translate` or `Manual only`. The choice
 
 1. Select `OpenAI-compatible`.
 2. Choose a preset.
-3. If the endpoint requires authentication, paste its key and click `Save API key`.
-4. Click `Refresh models`.
+3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and the model list refreshes automatically; `Save API key` performs the same action explicitly.
+4. Use `Refresh models` to retry loading the list when needed.
 5. Choose a listed model suggestion or type the exact model ID manually.
 
 Preset Base URLs:
@@ -127,8 +127,8 @@ advanced launches can select Parallels with
 
 1. Выберите `OpenAI-compatible`.
 2. Выберите preset.
-3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Save API key`.
-4. Нажмите `Refresh models`.
+3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Enter` или покиньте поле. Ключ сохранится, а список моделей обновится автоматически; кнопка `Save API key` выполняет то же действие явно.
+4. При необходимости повторите загрузку списка кнопкой `Refresh models`.
 5. Выберите подсказанный model ID или введите точный ID вручную.
 
 Base URL preset:
