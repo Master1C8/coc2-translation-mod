@@ -147,6 +147,37 @@ class LocalServiceTests(unittest.TestCase):
             self.assertEqual(result["translatedText"], "Вы видите VRCTXSEP1X дверь.")
             self.assertIs(result["reviewed"], False)
 
+    def test_translation_uses_editable_system_prompt_and_expands_language_placeholders(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            captured = {}
+
+            def fake_open(request, timeout):
+                captured["body"] = json.loads(request.data.decode("utf-8"))
+                return FakeHTTPResponse({
+                    "choices": [{"message": {"content": '{"translation":"Привет"}'}}]
+                })
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
+                bridge.openai_translate(
+                    "ru", "Russian", "Hello", "model", "openrouter", "ignored",
+                    "Translate faithfully into {targetName} with locale {target}.",
+                )
+            self.assertEqual(
+                captured["body"]["messages"][0]["content"],
+                "Translate faithfully into Russian with locale ru.",
+            )
+            self.assertEqual(captured["body"]["messages"][1]["content"], "Hello")
+
+    def test_translation_rejects_an_empty_system_prompt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            with self.assertRaises(local_service.BridgeError) as caught:
+                bridge.openai_translate(
+                    "ru", "Russian", "Hello", "model", "openrouter", "ignored", "   "
+                )
+            self.assertEqual(caught.exception.code, "openai_system_prompt_invalid")
+
     def test_translation_rejects_changed_context_markers(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")

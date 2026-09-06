@@ -45,6 +45,7 @@ At first network use, select `Allow auto-translate` or `Manual only`. The choice
 3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and the model list refreshes automatically; `Save API key` performs the same action explicitly.
 4. Use `Refresh models` to retry loading the list when needed.
 5. Choose a listed model suggestion or type the exact model ID manually.
+6. Edit `System prompt` if needed. `{targetName}` and `{target}` are replaced with the selected language name and code. Use `Restore default` to recover the built-in instruction.
 
 Preset Base URLs:
 
@@ -64,7 +65,7 @@ The helper validates response structure and context markers before applying text
 
 ### Cache and layout
 
-Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, and prompt version. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
+Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, prompt version, and the complete system prompt. Changing the prompt therefore does not reuse results produced with an older instruction. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
 
 RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored before retranslation after a language or configuration change. Existing HTML elements and click handlers remain in place.
 
@@ -130,6 +131,7 @@ advanced launches can select Parallels with
 3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Enter` или покиньте поле. Ключ сохранится, а список моделей обновится автоматически; кнопка `Save API key` выполняет то же действие явно.
 4. При необходимости повторите загрузку списка кнопкой `Refresh models`.
 5. Выберите подсказанный model ID или введите точный ID вручную.
+6. При необходимости измените `System prompt`. Вместо `{targetName}` и `{target}` helper подставляет название и код выбранного языка. Кнопка `Restore default` возвращает встроенную инструкцию.
 
 Base URL preset:
 
@@ -149,7 +151,7 @@ Helper проверяет структуру ответа и контекстн�
 
 ### Кэш и оформление
 
-Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели и версии инструкции. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
+Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, версии и полному тексту системной инструкции. Поэтому после изменения prompt не используются ответы, созданные с прежней инструкцией. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
 
 RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются перед повторным переводом при смене языка или конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 

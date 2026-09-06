@@ -60,7 +60,8 @@
             targetName: context.languageName || context.language,
             model: connection.model,
             preset: connection.preset,
-            baseURL: connection.baseURL
+            baseURL: connection.baseURL,
+            systemPrompt: connection.systemPrompt
           },
           signal: context.signal
         });

@@ -38,7 +38,8 @@ test("OpenAI-compatible delegates endpoint profile and model without exposing it
   const translated = await registry.byId["openai-compatible"].translateChunk({
     text: "Hello", language: "ru", languageName: "Russian", signal: undefined,
     openAICompatible: {
-      preset: "openrouter", baseURL: "https://openrouter.ai/api/v1", model: "provider/model"
+      preset: "openrouter", baseURL: "https://openrouter.ai/api/v1", model: "provider/model",
+      systemPrompt: "Translate into {targetName} ({target})."
     },
     localRequest: async (path, options) => {
       request = { path, options };
@@ -49,7 +50,8 @@ test("OpenAI-compatible delegates endpoint profile and model without exposing it
   assert.equal(request.path, "/v1/openai-compatible/translate");
   assert.deepEqual(request.options.body, {
     text: "Hello", target: "ru", targetName: "Russian", model: "provider/model",
-    preset: "openrouter", baseURL: "https://openrouter.ai/api/v1"
+    preset: "openrouter", baseURL: "https://openrouter.ai/api/v1",
+    systemPrompt: "Translate into {targetName} ({target})."
   });
   assert.equal(registry.byId["openai-compatible"].credentialManager, "openai-compatible");
   assert.equal(registry.byId["openai-compatible"].concurrency, 1);

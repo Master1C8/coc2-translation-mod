@@ -49,7 +49,7 @@ runtime
 - `google` — публичный endpoint без API-ключа;
 - `openai-compatible` — последовательные запросы через локальный helper.
 
-OpenAI-compatible включает preset OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom. Runtime сохраняет только preset, Base URL и model ID. `Refresh models` вызывает `GET /models`; пользователь может выбрать подсказанный ID или ввести его вручную. Перевод использует `POST /chat/completions`.
+OpenAI-compatible включает preset OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom. Runtime сохраняет preset, Base URL, model ID и редактируемый шаблон системного prompt. Шаблон поддерживает `{targetName}` и `{target}`; helper подставляет выбранный язык перед запросом. `Refresh models` вызывает `GET /models`; пользователь может выбрать подсказанный ID или ввести его вручную. Перевод использует `POST /chat/completions`.
 
 Helper сначала просит JSON Schema. При явном отказе endpoint от этого формата он
 переходит на `json_object`, а при ещё одном явном отказе — на запрос без
@@ -73,7 +73,7 @@ Custom URL отклоняется при наличии credentials, query, frag
 
 ## Кэш
 
-IndexedDB хранит полный кэш; RAM-кэш — LRU на 20 000 записей. V3-ключ включает `game-id`, provider и language. Для OpenAI-compatible используется v4: fingerprint включает preset, Base URL, model ID и версию prompt, поэтому смена endpoint или модели не подменяет новый результат старым.
+IndexedDB хранит полный кэш; RAM-кэш — LRU на 20 000 записей. V3-ключ включает `game-id`, provider и language. Для OpenAI-compatible используется v4: fingerprint включает preset, Base URL, model ID, версию и полный текст системного prompt, поэтому смена endpoint, модели или инструкции не подменяет новый результат старым.
 
 Существующие CoC2 Google-ключи v1/v2 читаются как fallback и лениво заменяются v3 после успешной записи. Для OpenAI-compatible legacy fallback не применяется. Метаданные количества/байтов защищены dirty-маркером и при расхождении восстанавливаются потоковым курсором.
 

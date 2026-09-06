@@ -105,7 +105,7 @@
             preset: "opencode-go", name: "OpenCode Go",
             baseURL: "https://opencode.ai/zen/go/v1", models: ["test/model"],
             message: "Add the OpenCode Go API key first",
-            credentialStorage: "test credential vault", promptVersion: "vnrevival-openai-compatible-v1"
+            credentialStorage: "test credential vault", promptVersion: "vnrevival-openai-compatible-v2"
           }) };
         }
         return { ok: true, json: async () => ({ ok: true, reselectOnNextLaunch: true }) };
@@ -159,6 +159,14 @@
         && shadow.querySelector(".openAICompatibleStatus").textContent.includes("OpenCode Go")
         && !shadow.querySelector(".openAICompatibleSave").disabled
         && shadow.querySelector(".openAICompatiblePreset").options.length === 6;
+      const openAIPromptInput = shadow.querySelector(".openAICompatiblePrompt");
+      const openAIPromptEditable = openAIPromptInput.value.includes("{targetName}")
+        && openAIPromptInput.value.includes("VRCTXSEP<number>X")
+        && !!shadow.querySelector(".openAICompatiblePromptReset");
+      openAIPromptInput.value = "Translate into {targetName} ({target}) and preserve markers.";
+      openAIPromptInput.dispatchEvent(new Event("change"));
+      const openAIPromptSaved = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null")
+        ?.openAICompatibleSystemPrompt === openAIPromptInput.value;
       const openAIHintRemoved = shadow.querySelector(".providerHint").textContent === ""
         && getComputedStyle(shadow.querySelector(".providerHint")).display === "none";
       const openAIKeyInput = shadow.querySelector(".openAICompatibleKey");
@@ -312,6 +320,8 @@
         && openAIKeyIsPasswordOnly
         && openAIKeyBeforeModel
         && openAISetupVisible
+        && openAIPromptEditable
+        && openAIPromptSaved
         && openAIHintRemoved
         && openAIKeyAutoSaved
         && googleHintRemoved
@@ -355,6 +365,8 @@
         openAIKeyIsPasswordOnly,
         openAIKeyBeforeModel,
         openAISetupVisible,
+        openAIPromptEditable,
+        openAIPromptSaved,
         openAIHintRemoved,
         openAIKeyAutoSaved,
         googleHintRemoved,
