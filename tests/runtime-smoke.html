@@ -99,10 +99,13 @@
       const url = new URL(String(input));
       if (url.hostname === "127.0.0.1") {
         window.localHelperCalls.push(url.pathname);
-        if (url.pathname === "/v1/gemini/status") {
+        if (url.pathname === "/v1/openai-compatible/status") {
           return { ok: true, json: async () => ({
-            ok: true, configured: false, model: "gemini-2.5-flash-lite",
-            credentialStorage: "test credential vault"
+            ok: true, configured: false, available: false, requiresKey: true,
+            preset: "opencode-go", name: "OpenCode Go",
+            baseURL: "https://opencode.ai/zen/go/v1", models: ["test/model"],
+            message: "Add the OpenCode Go API key first",
+            credentialStorage: "test credential vault", promptVersion: "vnrevival-openai-compatible-v1"
           }) };
         }
         return { ok: true, json: async () => ({ ok: true, reselectOnNextLaunch: true }) };
@@ -117,28 +120,29 @@
       return { ok: true, json: async () => [[[translated, source]]] };
     };
   </script>
-  <script src="../src/translation-core.js?v=0.9.1"></script>
-  <script src="../src/languages.js?v=0.9.1"></script>
-  <script src="../src/providers.js?v=0.9.1"></script>
-  <script src="../.build/game-config.js?v=0.9.1"></script>
-  <script src="../src/games/coc2/adapter.js?v=0.9.1"></script>
-  <script src="../src/translator-runtime.js?v=0.9.1"></script>
+  <script src="../src/translation-core.js?v=0.10.0"></script>
+  <script src="../src/languages.js?v=0.10.0"></script>
+  <script src="../src/providers.js?v=0.10.0"></script>
+  <script src="../.build/game-config.js?v=0.10.0"></script>
+  <script src="../src/games/coc2/adapter.js?v=0.10.0"></script>
+  <script src="../src/translator-runtime.js?v=0.10.0"></script>
   <script>
     (async function () {
       window.scrollTo(0, 0);
       await new Promise((resolve) => requestAnimationFrame(() => resolve()));
       const host = document.getElementById("vnrevival-translator-coc2");
       const shadow = host.shadowRoot;
-      const geminiOptionAvailable = Array.from(shadow.querySelector(".provider").options)
-        .some((option) => option.value === "gemini" && option.textContent === "Gemini AI");
-      const geminiKeyIsPasswordOnly = shadow.querySelector(".geminiKey").type === "password"
-        && !Object.keys(localStorage).some((key) => /gemini.*key|api.*key/i.test(key));
-      shadow.querySelector(".provider").value = "gemini";
+      const providerOptions = Array.from(shadow.querySelector(".provider").options)
+        .map((option) => [option.value, option.textContent]);
+      const openAIKeyIsPasswordOnly = shadow.querySelector(".openAICompatibleKey").type === "password"
+        && !Object.keys(localStorage).some((key) => /api.*key/i.test(key));
+      shadow.querySelector(".provider").value = "openai-compatible";
       shadow.querySelector(".provider").dispatchEvent(new Event("change"));
       await new Promise((resolve) => setTimeout(resolve, 30));
-      const geminiSetupVisible = !shadow.querySelector(".geminiBox").hidden
-        && shadow.querySelector(".geminiStatus").textContent.includes("test credential vault")
-        && !shadow.querySelector(".geminiSave").disabled;
+      const openAISetupVisible = !shadow.querySelector(".openAICompatibleBox").hidden
+        && shadow.querySelector(".openAICompatibleStatus").textContent.includes("OpenCode Go")
+        && !shadow.querySelector(".openAICompatibleSave").disabled
+        && shadow.querySelector(".openAICompatiblePreset").options.length === 6;
       shadow.querySelector(".language").value = "ar";
       shadow.querySelector(".language").dispatchEvent(new Event("change"));
       shadow.querySelector(".provider").value = "google";
@@ -229,9 +233,9 @@
         && metadataDirty === null
         && legacyMigrated
         && legacyGlobalsScopedToCoC2
-        && geminiOptionAvailable
-        && geminiKeyIsPasswordOnly
-        && geminiSetupVisible
+        && JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]])
+        && openAIKeyIsPasswordOnly
+        && openAISetupVisible
         && autoChangeSaved
         && autosavedSettings.language === "ar"
         && autosavedSettings.provider === "google"
@@ -257,9 +261,9 @@
         metadataDirty,
         legacyMigrated,
         legacyGlobalsScopedToCoC2,
-        geminiOptionAvailable,
-        geminiKeyIsPasswordOnly,
-        geminiSetupVisible,
+        providerOptions,
+        openAIKeyIsPasswordOnly,
+        openAISetupVisible,
         autoChangeSaved,
         autosavedSettings,
         removedSettingsButtons,

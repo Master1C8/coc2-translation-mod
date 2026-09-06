@@ -2,148 +2,140 @@
 
 ## English
 
-### Starting the mod
+### Start
 
-1. Close CoC2 if it is already running.
+1. Close CoC2 if it is running.
 2. On Windows, fully extract the ZIP and run `CoC2 Translator.exe`. On macOS, open `CoC2 Translator.app`.
-3. The translator starts CoC2 for you. If it cannot find the game, choose the main `CoC II.exe` file when asked.
-4. Wait for the translator panel to appear in the top-right corner of the game.
+3. If automatic discovery fails, select the main `CoC II.exe` file.
+4. Wait for the panel in the top-right corner.
 
-Always start the game through CoC2 Translator. The panel cannot appear if CoC2 was started normally.
+Always start CoC2 through the translator. It translates only the live DOM shown by the running game; it does not extract or modify game assets and does not create a static localization.
 
-### Main controls
+### Controls
 
-- `Translate` translates the text currently visible on the screen. While it is working, the button changes to `Cancel`.
-- `Original / Translation` switches between the original English text and the saved translation.
-- `...` opens the settings.
-- `− / +` collapses the panel into a thin bar or expands it again. This choice is remembered.
-- `Ctrl+Shift+T` starts or cancels translation.
-- Drag the panel by its top bar to move it. Its position is remembered.
+- `Translate / Cancel` starts or stops the current screen pass.
+- `Original / Translation` switches existing DOM text between English and the cached translation.
+- `Ctrl+Shift+T` performs the same translate/cancel action.
+- `...` opens settings.
+- `− / +` collapses or expands the panel.
+- Drag the top bar to move the panel.
 
-### Choosing a translation service and language
+Automatic translation processes only visible, newly visible, or changed blocks. It pauses and cancels an active request when the game window is hidden.
 
-Open the settings with `...`. First choose `Translation service`, then choose `Language`. These settings and the automatic-translation checkbox are saved as soon as you change them. There is no separate Save button.
+### Translation services
 
-- `Google Translate` works online. Its quality and speed are average. It usually works fine, but Google may temporarily limit requests.
-- `Gemini AI` usually gives the best and fastest contextual translation. It needs an internet connection and your own Gemini API key. Free-tier content may be used by Google to improve its products, and some explicit scenes may still be blocked.
-- `MyMemory` is a fast online service, but its quality can be poor. The mod lists 249 language codes, but MyMemory does not guarantee machine translation for every pair.
-- `Argos Offline` runs on your computer and does not send game text online. It is slower, its quality is lower, and it supports fewer languages. Internet is needed to install the engine or a language model; translation works offline after installation.
+The provider list contains exactly two choices:
 
-Google, Gemini, and MyMemory send visible game text to the selected online service. Save slots and input fields are excluded. A player name that is already part of a complete story sentence may still be included.
+- `Google Translate` works without an API key.
+- `OpenAI-compatible` supports OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio, and Custom.
 
-### Using Gemini AI
+Visible game text is sent to the selected service. Save slots, form controls, editable areas, and recognized standalone player names are excluded. A name already embedded in a full story sentence may still be sent.
 
-1. Select `Gemini AI`.
-2. Create your own key in [Google AI Studio](https://aistudio.google.com/apikey).
-3. Paste it into `Gemini API key`.
-4. Click `Save API key`.
+At first network use, select `Allow auto-translate` or `Manual only`. The choice does not certify provider output: every machine translation remains unreviewed.
 
-The field is cleared after saving. The key is stored in Windows Credential Manager or macOS Keychain, not in the game settings or translation cache. Use `Remove key` to delete it.
+### OpenAI-compatible setup
 
-### Using Argos Offline
+1. Select `OpenAI-compatible`.
+2. Choose a preset.
+3. If the endpoint requires authentication, paste its key and click `Save API key`.
+4. Click `Refresh models`.
+5. Choose a listed model suggestion or type the exact model ID manually.
 
-1. Select `Argos Offline`.
-2. Choose a supported language.
-3. Click `Install Argos and model` or `Download model`.
-4. Wait until the status says that offline translation is ready.
+Preset Base URLs:
 
-The first installation may take several minutes. A language model usually needs about 80–250 MB. Use `Remove model` if you no longer need the selected model.
+- OpenCode Go — `https://opencode.ai/zen/go/v1`
+- OpenCode Zen — `https://opencode.ai/zen/v1`
+- OpenRouter — `https://openrouter.ai/api/v1`
+- DeepSeek — `https://api.deepseek.com`
+- LM Studio — `http://127.0.0.1:1234/v1`
 
-### Automatic and manual translation
+For Custom, enter a Base URL. Remote URLs must use HTTPS. HTTP is accepted only for `localhost` or another loopback address. A custom URL cannot contain credentials, a query, a fragment, or path traversal.
 
-Enable `Automatically translate new screens` to translate new visible text as it appears. When an online service is selected for the first time, choose `Allow auto-translate` to allow sending visible text online, or `Manual only` to translate only when requested.
+The key field is cleared after saving. Keys are stored separately per Base URL in Windows Credential Manager or macOS Keychain; they are not saved in game settings, the DOM, or the translation cache. `Remove key` removes the current endpoint's key.
 
-With automatic translation disabled, use `Translate` or `Ctrl+Shift+T`. The mod translates visible text and also handles newly visible blocks when you scroll.
+LM Studio is part of this same provider. Start its local server and load a model first; no key is required by the preset. If `/models` is unavailable but Chat Completions works, enter the model ID manually.
 
-### Cache and contacts
+The helper validates response structure and context markers before applying text. This is not editorial review, and the result is not an approved localization.
 
-Translations are cached automatically. The settings show the number of saved translations and their size. The panel has no manual cache-management buttons.
+### Cache and layout
 
-At the bottom of the panel, use the icons next to VN Revival to open:
+Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, and prompt version. Old Google cache entries are migrated lazily. Settings show cache size; no manual cache-management buttons are exposed.
 
-- [Discord](https://discord.gg/QgyeWW3Jg)
-- [Telegram](https://t.me/VnRevival)
-- [Email](mailto:master1c8@proton.me)
+RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored by `Original` or a configuration change. Existing HTML elements and click handlers remain in place.
 
-### Closing and troubleshooting
+### Troubleshooting
 
-Close CoC2 normally. The translator and its local helper should exit automatically within a few seconds.
+If the panel does not appear, close CoC2 completely and start it through the translator again. If OpenAI-compatible says the local helper is unavailable, reinstall/extract the complete app instead of moving only the executable. Confirm that the endpoint supports OpenAI Chat Completions (`/models` and `/chat/completions`) and that the selected model ID is valid.
 
-If an old panel appears after rebuilding the mod, close CoC2 completely, extract the newly built ZIP into a fresh folder, and run the translator from that folder. Rebuilding does not update a panel that is already injected into a running game.
-
-If the panel does not appear, make sure CoC2 was closed before launch and that you started it through CoC2 Translator.
+Closing CoC2 normally also ends the launcher and local helper.
 
 ---
 
 ## Русский
 
-### Запуск мода
+### Запуск
 
-1. Закройте CoC2, если игра уже запущена.
+1. Закройте CoC2, если игра запущена.
 2. На Windows полностью распакуйте ZIP и запустите `CoC2 Translator.exe`. На macOS откройте `CoC2 Translator.app`.
-3. Переводчик сам запустит CoC2. Если он не найдёт игру, укажите основной файл `CoC II.exe`.
-4. Дождитесь появления панели переводчика в правом верхнем углу игры.
+3. Если автоматический поиск не сработал, укажите основной `CoC II.exe`.
+4. Дождитесь панели в правом верхнем углу.
 
-Всегда запускайте игру через CoC2 Translator. При обычном запуске CoC2 панель появиться не сможет.
+Всегда запускайте CoC2 через переводчик. Он обрабатывает только живой DOM работающей игры, не извлекает и не меняет игровые ассеты и не создаёт статическую локализацию.
 
-### Основное управление
+### Управление
 
-- `Translate` переводит текст, который сейчас виден на экране. Во время работы кнопка меняется на `Cancel`.
-- `Original / Translation` переключает оригинальный английский текст и сохранённый перевод.
+- `Translate / Cancel` запускает или отменяет перевод текущего экрана.
+- `Original / Translation` переключает английский текст и кэшированный перевод.
+- `Ctrl+Shift+T` выполняет то же действие перевода/отмены.
 - `...` открывает настройки.
-- `− / +` сворачивает панель до тонкой полосы или разворачивает её. Состояние запоминается.
-- `Ctrl+Shift+T` запускает или отменяет перевод.
-- Панель можно перемещать за верхнюю полоску. Позиция сохраняется.
+- `− / +` сворачивает или разворачивает панель.
+- Верхняя полоса перемещает панель.
 
-### Выбор сервиса и языка
+Автоперевод обрабатывает только видимые, впервые появившиеся или изменённые блоки. При скрытом окне таймер останавливается, активный запрос отменяется.
 
-Откройте настройки кнопкой `...`. Сначала выберите `Translation service`, затем `Language`. Сервис, язык и флажок автоматического перевода сохраняются сразу после изменения. Отдельной кнопки Save нет.
+### Сервисы перевода
 
-- `Google Translate` работает через интернет. Качество и скорость средние. Обычно сервис работает нормально, но Google может временно ограничить запросы.
-- `Gemini AI` обычно даёт самый качественный и быстрый контекстный перевод. Нужны интернет и собственный API-ключ Gemini. На бесплатном тарифе Google может использовать отправленный текст для улучшения продуктов, а отдельные откровенные сцены всё равно могут блокироваться.
-- `MyMemory` — быстрый онлайн-сервис, но качество может быть низким. Мод показывает 249 языковых кодов, однако MyMemory не гарантирует машинный перевод для каждой пары.
-- `Argos Offline` работает на компьютере и не отправляет игровой текст в интернет. Он медленнее, качество ниже, а языков доступно меньше. Для установки движка или языковой модели нужен интернет; после установки перевод работает офлайн.
+В списке ровно два варианта:
 
-Google, Gemini и MyMemory отправляют видимый текст игры выбранному онлайн-сервису. Слоты сохранения и поля ввода исключаются. Имя игрока, которое уже входит в цельное сюжетное предложение, тоже может попасть в запрос.
+- `Google Translate` работает без API-ключа.
+- `OpenAI-compatible` поддерживает OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom.
 
-### Использование Gemini AI
+Видимый игровой текст отправляется выбранному сервису. Слоты сохранения, формы, редактируемые области и распознанные отдельные имена игрока исключаются. Имя внутри цельного сюжетного предложения всё равно может попасть в запрос.
 
-1. Выберите `Gemini AI`.
-2. Создайте собственный ключ в [Google AI Studio](https://aistudio.google.com/apikey).
-3. Вставьте его в поле `Gemini API key`.
-4. Нажмите `Save API key`.
+При первом сетевом использовании выберите `Allow auto-translate` или `Manual only`. Это разрешение на режим работы, а не одобрение ответа провайдера: машинный перевод остаётся непроверенным.
 
-После сохранения поле очищается. Ключ хранится в Windows Credential Manager или macOS Keychain, а не в настройках игры или кэше переводов. Кнопка `Remove key` удаляет ключ.
+### Настройка OpenAI-compatible
 
-### Использование Argos Offline
+1. Выберите `OpenAI-compatible`.
+2. Выберите preset.
+3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Save API key`.
+4. Нажмите `Refresh models`.
+5. Выберите подсказанный model ID или введите точный ID вручную.
 
-1. Выберите `Argos Offline`.
-2. Выберите поддерживаемый язык.
-3. Нажмите `Install Argos and model` или `Download model`.
-4. Дождитесь сообщения о готовности офлайн-перевода.
+Base URL preset:
 
-Первая установка может занять несколько минут. Языковая модель обычно занимает около 80–250 МБ. Кнопка `Remove model` удаляет выбранную модель.
+- OpenCode Go — `https://opencode.ai/zen/go/v1`
+- OpenCode Zen — `https://opencode.ai/zen/v1`
+- OpenRouter — `https://openrouter.ai/api/v1`
+- DeepSeek — `https://api.deepseek.com`
+- LM Studio — `http://127.0.0.1:1234/v1`
 
-### Автоматический и ручной перевод
+Для Custom введите Base URL. Удалённый адрес обязан использовать HTTPS. HTTP допустим только для `localhost` или другого loopback-адреса. В custom URL запрещены credentials, query, fragment и переход по пути `..`.
 
-Включите `Automatically translate new screens`, чтобы новый видимый текст переводился автоматически. При первом выборе онлайн-сервиса нажмите `Allow auto-translate`, чтобы разрешить отправку видимого текста, или `Manual only`, чтобы перевод запускался только вручную.
+После сохранения поле ключа очищается. Ключи хранятся отдельно по Base URL в Windows Credential Manager или macOS Keychain и не попадают в игровые настройки, DOM или кэш. `Remove key` удаляет ключ текущего endpoint.
 
-Если автоматический перевод отключён, используйте `Translate` или `Ctrl+Shift+T`. Мод переводит видимый текст и обрабатывает новые блоки, появляющиеся при прокрутке.
+LM Studio входит в этот же провайдер. Сначала запустите local server и загрузите модель; preset не требует ключа. Если `/models` недоступен, но Chat Completions работает, введите model ID вручную.
 
-### Кэш и контакты
+Helper проверяет структуру ответа и контекстные маркеры перед применением. Эта проверка не является редактурой, а результат не становится одобренной локализацией.
 
-Переводы кэшируются автоматически. В настройках показываются количество сохранённых переводов и их размер. Кнопок ручного управления кэшем в панели нет.
+### Кэш и оформление
 
-Внизу панели рядом с VN Revival находятся иконки:
+Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели и версии инструкции. Старые Google-записи мигрируют лениво. В настройках виден объём кэша; ручных кнопок управления кэшем нет.
 
-- [Discord](https://discord.gg/QgyeWW3Jg)
-- [Telegram](https://t.me/VnRevival)
-- [Почта](mailto:master1c8@proton.me)
+RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются через `Original` или при смене конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 
-### Закрытие и решение проблем
+### Решение проблем
 
-Закройте CoC2 обычным способом. Переводчик и его локальный помощник должны автоматически завершиться через несколько секунд.
+Если панель не появилась, полностью закройте CoC2 и снова запустите игру через переводчик. Если OpenAI-compatible сообщает об отсутствии helper, переустановите или полностью распакуйте приложение, не переносите один EXE. Убедитесь, что endpoint поддерживает OpenAI Chat Completions (`/models` и `/chat/completions`) и model ID существует.
 
-Если после пересборки показывается старая панель, полностью закройте CoC2, распакуйте новый ZIP в отдельную папку и запустите переводчик из неё. Пересборка не обновляет панель, уже внедрённую в работающую игру.
-
-Если панель не появилась, убедитесь, что CoC2 была закрыта перед запуском и что игра запущена через CoC2 Translator.
+Обычное закрытие CoC2 завершает launcher и локальный helper.

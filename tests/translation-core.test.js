@@ -21,14 +21,11 @@ test("recognizes right-to-left target languages and normalizes Hebrew for HTML",
   assert.equal(core.htmlLanguageCode("fa-AF"), "fa-AF");
 });
 
-test("maps provider language codes and filters Argos to its model catalog", () => {
+test("supports the two runtime providers across the language catalog", () => {
   assert.equal(core.providerLanguageCode("google", "iw"), "iw");
-  assert.equal(core.providerLanguageCode("mymemory", "iw"), "he");
-  assert.equal(core.providerLanguageCode("mymemory", "tl"), "fil");
   assert.equal(core.providerSupportsLanguage("google", "ab"), true);
-  assert.equal(core.providerSupportsLanguage("mymemory", "zh-TW"), true);
-  assert.equal(core.providerSupportsLanguage("argos", "ru", ["de", "ru"]), true);
-  assert.equal(core.providerSupportsLanguage("argos", "ab", ["de", "ru"]), false);
+  assert.equal(core.providerSupportsLanguage("openai-compatible", "zh-TW"), true);
+  assert.equal(core.providerSupportsLanguage("removed-provider", "ru"), false);
 });
 
 test("selects script-aware font fallbacks without dropping universal fonts", () => {
@@ -75,7 +72,7 @@ test("splits long Google text on Unicode-safe boundaries", () => {
   assert.ok(chunks.every((chunk) => !/[\uD800-\uDBFF]$/.test(chunk)));
 });
 
-test("splits MyMemory text by UTF-8 byte count", () => {
+test("splits text by UTF-8 byte count for runtime limits", () => {
   const text = "English 😀 Кириллица. ".repeat(80);
   const chunks = core.splitUtf8Text(text, 480);
   assert.ok(chunks.length > 1);
@@ -94,27 +91,27 @@ test("builds and parses Google requests", () => {
   assert.throws(() => core.parseGoogleResponse({ nope: true }));
 });
 
-test("builds and parses MyMemory requests", () => {
-  const url = new URL(core.buildMyMemoryUrl("Hello world", "de"));
-  assert.equal(url.hostname, "api.mymemory.translated.net");
-  assert.equal(url.searchParams.get("langpair"), "en|de");
-  assert.equal(url.searchParams.get("q"), "Hello world");
-  assert.equal(new URL(core.buildMyMemoryUrl("Bonjour", "de", "fr")).searchParams.get("langpair"), "fr|de");
-  assert.equal(core.parseMyMemoryResponse({ responseStatus: 200, responseData: { translatedText: "Hallo Welt" } }), "Hallo Welt");
-  assert.throws(() => core.parseMyMemoryResponse({ responseStatus: 403, responseDetails: "limit" }));
-});
-
 test("cache separates providers and languages while retaining legacy Google keys", () => {
   const googleRu = core.makeCacheKey("Hello", "ru", "google");
   const googleDe = core.makeCacheKey("Hello", "de", "google");
-  const memoryRu = core.makeCacheKey("Hello", "ru", "mymemory");
+  const openAIRu = core.makeCacheKey("Hello", "ru", "openai-compatible");
   assert.notEqual(googleRu, googleDe);
-  assert.notEqual(googleRu, memoryRu);
+  assert.notEqual(googleRu, openAIRu);
   assert.equal(core.cacheKeyLanguage(googleRu), "ru");
   assert.equal(core.cacheKeyProvider(googleRu), "google");
-  assert.equal(core.cacheKeyLanguage(memoryRu), "ru");
-  assert.equal(core.cacheKeyProvider(memoryRu), "mymemory");
+  assert.equal(core.cacheKeyLanguage(openAIRu), "ru");
+  assert.equal(core.cacheKeyProvider(openAIRu), "openai-compatible");
   assert.equal(googleRu.split("\n")[0], "v1");
+});
+
+test("v4 cache keys isolate OpenAI-compatible endpoint and model variants", () => {
+  const left = core.makeCacheKey("Hello", "ru", "openai-compatible", "coc2", "one/model-a/prompt-v1");
+  const right = core.makeCacheKey("Hello", "ru", "openai-compatible", "coc2", "two/model-b/prompt-v1");
+  assert.notEqual(left, right);
+  assert.equal(left.split("\n")[0], "v4");
+  assert.equal(core.cacheKeyGame(left), "coc2");
+  assert.equal(core.cacheKeyLanguage(left), "ru");
+  assert.equal(core.cacheKeyProvider(left), "openai-compatible");
 });
 
 test("v3 cache keys isolate games and expose their owning adapter", () => {

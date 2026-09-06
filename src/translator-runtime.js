@@ -25,6 +25,15 @@
   const SOURCE_LANGUAGE = game.sourceLanguage || "en";
   const SITE_NAME = "VN Revival";
   const SITE_URL = "https://vnrevival.fun/";
+  const OPENAI_COMPATIBLE_PROMPT_VERSION = "vnrevival-openai-compatible-v1";
+  const OPENAI_COMPATIBLE_PRESETS = Object.freeze({
+    "opencode-go": Object.freeze({ name: "OpenCode Go", baseURL: "https://opencode.ai/zen/go/v1", requiresKey: true }),
+    "opencode-zen": Object.freeze({ name: "OpenCode Zen", baseURL: "https://opencode.ai/zen/v1", requiresKey: true }),
+    openrouter: Object.freeze({ name: "OpenRouter", baseURL: "https://openrouter.ai/api/v1", requiresKey: true }),
+    deepseek: Object.freeze({ name: "DeepSeek", baseURL: "https://api.deepseek.com", requiresKey: true }),
+    lmstudio: Object.freeze({ name: "LM Studio", baseURL: "http://127.0.0.1:1234/v1", requiresKey: false }),
+    custom: Object.freeze({ name: "Custom", baseURL: "", requiresKey: false })
+  });
   const SETTINGS_KEY = `${game.storageNamespace}.settings.v2`;
   const LEGACY_SETTINGS_KEY = `${game.storageNamespace}.settings.v1`;
   const CACHE_META_KEY = `${game.storageNamespace}.cache-meta.v1`;
@@ -42,8 +51,7 @@
   const LANGUAGES = window.VNRevivalTranslatorLanguages;
   const PROVIDER_LIST = providerRegistry.list;
   const PROVIDERS = providerRegistry.byId;
-  const injectedLocalBridge = window.__vnRevivalLocalBridge || window.__vnRevivalArgosBridge
-    || (legacyCompatibility.argosBridgeGlobal ? window[legacyCompatibility.argosBridgeGlobal] : null);
+  const injectedLocalBridge = window.__vnRevivalLocalBridge;
   const LOCAL_BRIDGE = injectedLocalBridge
     && /^http:\/\/127\.0\.0\.1:\d+$/.test(String(injectedLocalBridge.baseURL || ""))
     && /^[A-Za-z0-9-]{16,}$/.test(String(injectedLocalBridge.token || ""))
@@ -55,6 +63,9 @@
     autoTranslate: true,
     privacyAccepted: false,
     mode: "translated",
+    openAICompatiblePreset: "opencode-go",
+    openAICompatibleBaseURL: OPENAI_COMPATIBLE_PRESETS["opencode-go"].baseURL,
+    openAICompatibleModel: "",
     collapsed: false,
     x: null,
     y: null
@@ -78,11 +89,8 @@
   let cacheMetadataPromise = null;
   let cacheMetadataVerified = false;
   let cacheMetadataSaveTimer = 0;
-  let argosStatus = null;
-  let argosBusy = false;
-  let argosSupportedLanguages = null;
-  let geminiStatus = null;
-  let geminiBusy = false;
+  let openAICompatibleStatus = null;
+  let openAICompatibleBusy = false;
   const applied = new WeakMap();
   const appliedNodes = new Set();
   const originalPresentation = new WeakMap();
@@ -163,12 +171,21 @@
       } catch (_) {}
     }
     const source = parsed || {};
+    const openAICompatiblePreset = Object.hasOwn(OPENAI_COMPATIBLE_PRESETS, source.openAICompatiblePreset)
+      ? source.openAICompatiblePreset : defaults.openAICompatiblePreset;
+    const customBaseURL = typeof source.openAICompatibleBaseURL === "string"
+      && source.openAICompatibleBaseURL.length <= 2048 ? source.openAICompatibleBaseURL.trim() : "";
     return {
       language: LANGUAGES.some(([code]) => code === source.language) ? source.language : defaults.language,
       provider: PROVIDERS[source.provider] ? source.provider : defaults.provider,
       autoTranslate: typeof source.autoTranslate === "boolean" ? source.autoTranslate : defaults.autoTranslate,
       privacyAccepted: typeof source.privacyAccepted === "boolean" ? source.privacyAccepted : migratedLegacy,
       mode: source.mode === "source" ? "source" : defaults.mode,
+      openAICompatiblePreset,
+      openAICompatibleBaseURL: openAICompatiblePreset === "custom"
+        ? customBaseURL : OPENAI_COMPATIBLE_PRESETS[openAICompatiblePreset].baseURL,
+      openAICompatibleModel: typeof source.openAICompatibleModel === "string"
+        && source.openAICompatibleModel.length <= 512 ? source.openAICompatibleModel.trim() : "",
       collapsed: typeof source.collapsed === "boolean" ? source.collapsed : defaults.collapsed,
       x: Number.isFinite(source.x) ? source.x : null,
       y: Number.isFinite(source.y) ? source.y : null
@@ -178,6 +195,28 @@
   function saveSettings() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     localStorage.removeItem(LEGACY_SETTINGS_KEY);
+  }
+
+  function providerUsesOpenAICompatible(provider) {
+    return !!(PROVIDERS[provider] && PROVIDERS[provider].modelManager === "openai-compatible");
+  }
+
+  function openAICompatibleConnection() {
+    const preset = Object.hasOwn(OPENAI_COMPATIBLE_PRESETS, settings.openAICompatiblePreset)
+      ? settings.openAICompatiblePreset : defaults.openAICompatiblePreset;
+    return {
+      preset,
+      baseURL: preset === "custom"
+        ? String(settings.openAICompatibleBaseURL || "").trim()
+        : OPENAI_COMPATIBLE_PRESETS[preset].baseURL,
+      model: String(settings.openAICompatibleModel || "").trim()
+    };
+  }
+
+  function providerCacheVariant(provider) {
+    if (!providerUsesOpenAICompatible(provider)) return "";
+    const connection = openAICompatibleConnection();
+    return [connection.preset, connection.baseURL, connection.model, OPENAI_COMPATIBLE_PROMPT_VERSION].join("\n");
   }
 
   // Persist the sanitized v2 shape immediately so obsolete v1-only fields are discarded.
@@ -462,6 +501,7 @@
       try {
         return await selectedProvider.translateChunk({
           text, language, sourceLanguage: SOURCE_LANGUAGE, signal,
+          openAICompatible: providerUsesOpenAICompatible(provider) ? openAICompatibleConnection() : null,
           languageName: (LANGUAGES.find(([code]) => code === language) || [null, language])[1],
           fetch: (input, init) => fetch(input, init),
           localRequest: requestLocalHelper,
@@ -477,9 +517,9 @@
   }
 
   async function translateText(source, language, provider, signal) {
-    const key = core.makeCacheKey(source, language, provider, game.id);
+    const key = core.makeCacheKey(source, language, provider, game.id, providerCacheVariant(provider));
     let cached = await cacheGet(key);
-    if (!cached) {
+    if (!cached && provider === "google") {
       const legacyKey = core.makeCacheKey(source, language, provider);
       cached = await cacheGet(legacyKey);
       if (cached) {
@@ -881,21 +921,23 @@
 
   async function runJobs(jobs, options) {
     const manual = !!(options && options.manual);
-    if (providerUsesArgos(settings.provider)) {
-      const status = await refreshArgosStatus();
-      if (!status || !status.offlineReady) {
+    if (providerUsesOpenAICompatible(settings.provider)) {
+      const connection = openAICompatibleConnection();
+      if (!connection.model) {
         settingsPanel.classList.add("open");
-        setStatus(status && status.runtimeInstalled && status.sentenceModelInstalled ? "Download the Argos model first" : "Install Argos first");
+        setStatus("Enter or select an OpenAI-compatible model first");
         return;
       }
-    } else if (providerUsesGemini(settings.provider)) {
-      const status = await refreshGeminiStatus();
-      if (!status || !status.configured) {
+      const status = openAICompatibleStatus && openAICompatibleStatus.preset === connection.preset
+        && openAICompatibleStatus.baseURL === connection.baseURL
+        ? openAICompatibleStatus : await refreshOpenAICompatibleStatus();
+      if (!status || (status.requiresKey && !status.configured)) {
         settingsPanel.classList.add("open");
-        setStatus("Add a Gemini API key first");
+        setStatus(status && status.message ? status.message : "Configure the OpenAI-compatible provider first");
         return;
       }
-    } else if (providerRequiresPrivacy(settings.provider) && !settings.privacyAccepted) {
+    }
+    if (providerRequiresPrivacy(settings.provider) && !settings.privacyAccepted) {
       privacyBox.hidden = false;
       settingsPanel.classList.add("open");
       setStatus("Confirm online translation");
@@ -945,16 +987,16 @@
       const count = Math.min(PROVIDERS[provider].concurrency, jobs.length);
       await Promise.all(Array.from({ length: count }, () => worker()));
       if (lastFailedJobs.length) {
-        if (lastErrorCode === "gemini_quota_exceeded") setStatus("Gemini quota reached · retry later");
-        else if (lastErrorCode === "gemini_key_invalid") setStatus("Gemini API key was rejected");
-        else if (lastErrorCode === "gemini_safety_block") setStatus(`Gemini blocked ${lastFailedJobs.length} text blocks`);
+        if (lastErrorCode === "openai_rate_limited") setStatus("Provider rate limit reached · retry later");
+        else if (lastErrorCode === "openai_key_invalid") setStatus("The API key was rejected");
+        else if (lastErrorCode === "openai_model_unavailable") setStatus("The selected model is unavailable");
         else setStatus(`Done: ${jobs.length - lastFailedJobs.length}, errors: ${lastFailedJobs.length}`);
         retryButton.hidden = false;
       } else {
         setStatus(`Done: ${jobs.length}` + (cacheHits ? `, from cache: ${cacheHits}` : ""));
       }
     } catch (error) {
-      setStatus(error && error.name === "AbortError" ? "Cancelled" : (providerUsesArgos(provider) ? "Argos error" : "Network error"));
+      setStatus(error && error.name === "AbortError" ? "Cancelled" : "Network error");
     } finally {
       running = false;
       abortController = null;
@@ -1197,6 +1239,8 @@
     languageSelect.value = settings.language;
     providerSelect.value = settings.provider;
     autoCheckbox.checked = settings.autoTranslate;
+    openAICompatibleStatus = null;
+    syncOpenAICompatibleInputs();
     privacyBox.hidden = false;
     updateProviderHint();
     updateModeButton();
@@ -1210,7 +1254,7 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.gear,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.gear{width:38px}.status{min-height:23px;padding:0 9px 3px;color:#ddd;font-size:12px}.hotkey{padding:0 9px 7px;color:#f4d18f;font-size:11px}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:none;padding:0 8px 9px;border-top:1px solid #6e4d56}.settings.open{display:block}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input[type=password]{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px}.check{display:flex;gap:7px;align-items:center;margin:8px 0}.hint,.providerHint,.cacheStats,.argosStatus,.geminiStatus,.geminiNotice{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.argosBox,.geminiBox,.cacheBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.geminiKey{margin-top:6px}.argosActions,.geminiActions,.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.argosActions button,.geminiActions button,.privacyActions button{flex:1;min-width:82px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a,.geminiNotice a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover,.geminiNotice a:hover{text-decoration:underline}.hidden{display:none!important}
+      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.gear,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.gear{width:38px}.status{min-height:23px;padding:0 9px 3px;color:#ddd;font-size:12px}.hotkey{padding:0 9px 7px;color:#f4d18f;font-size:11px}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:none;padding:0 8px 9px;border-top:1px solid #6e4d56}.settings.open{display:block;max-height:calc(100vh - 90px);overflow-y:auto}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px}.check{display:flex;gap:7px;align-items:center;margin:8px 0}.hint,.providerHint,.cacheStats,.openAICompatibleStatus,.openAICompatibleNotice{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.openAICompatibleBox,.cacheBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.openAICompatiblePreset,.openAICompatibleBaseURL,.openAICompatibleModel,.openAICompatibleKey{margin-top:6px}.openAICompatibleActions,.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.openAICompatibleActions button,.privacyActions button{flex:1;min-width:82px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a,.openAICompatibleNotice a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover,.openAICompatibleNotice a:hover{text-decoration:underline}.hidden{display:none!important}
       .bar{display:flex;align-items:center;gap:8px;min-height:34px}.barTitle{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collapseToggle{width:24px;height:22px;padding:0;border:1px solid #c69b55;border-radius:5px;background:#6b344f;color:#fff;cursor:pointer;font:700 16px/18px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}.collapseToggle:hover{background:#7b405d}.panel.collapsed>:not(.bar){display:none!important}
       .site{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}.siteLabel{white-space:nowrap}.contacts{display:inline-flex;align-items:center;gap:5px}.site .contactIcon{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;border:1px solid #6e4d56;border-radius:6px;background:#2c1b26;text-decoration:none}.site .contactIcon:hover{border-color:#c69b55;background:#412436;text-decoration:none}.contactIcon svg{display:block;width:15px;height:15px;fill:currentColor}.site .discord{color:#8c9eff}.site .telegram{color:#55bde9}.site .email{color:#9b87f5}
     </style>
@@ -1229,15 +1273,26 @@
         <label class="title">Translation service</label><select class="provider"></select>
         <div class="providerHint"></div>
         <label class="title">Language</label><select class="language"></select>
-        <div class="argosBox" hidden>
-          <div class="argosStatus">Checking Argos…</div>
-          <div class="argosActions"><button class="primary argosAction">Install Argos</button><button class="danger argosRemove" hidden>Remove model</button></div>
-        </div>
-        <div class="geminiBox" hidden>
-          <div class="geminiStatus">Checking Gemini…</div>
-          <input class="geminiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Gemini API key">
-          <div class="geminiActions"><button class="primary geminiSave">Save API key</button><button class="danger geminiRemove" hidden>Remove key</button></div>
-          <div class="geminiNotice">Use your own key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>. Free-tier content may be used by Google to improve its products. Explicit text can still be blocked.</div>
+        <div class="openAICompatibleBox" hidden>
+          <div class="openAICompatibleStatus">Configure an OpenAI-compatible provider…</div>
+          <select class="openAICompatiblePreset" aria-label="OpenAI-compatible preset">
+            <option value="opencode-go">OpenCode Go</option>
+            <option value="opencode-zen">OpenCode Zen</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="lmstudio">LM Studio</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input class="openAICompatibleBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://provider.example/v1">
+          <input class="openAICompatibleModel" type="text" list="openAICompatibleModels" autocomplete="off" spellcheck="false" placeholder="Model ID">
+          <datalist id="openAICompatibleModels"></datalist>
+          <input class="openAICompatibleKey" type="password" autocomplete="off" spellcheck="false" placeholder="API key (stored securely)">
+          <div class="openAICompatibleActions">
+            <button class="primary openAICompatibleSave" type="button">Save API key</button>
+            <button class="secondary openAICompatibleRefresh" type="button">Refresh models</button>
+            <button class="danger openAICompatibleRemove" type="button" hidden>Remove key</button>
+          </div>
+          <div class="openAICompatibleNotice">Uses OpenAI Chat Completions. Remote text is sent to the selected provider; remote URLs must use HTTPS. Model output is unreviewed and is never treated as an approved localization.</div>
         </div>
         <label class="check"><input type="checkbox" class="auto"> Automatically translate new screens</label>
         <div class="cacheBox">
@@ -1272,15 +1327,16 @@
   const languageSelect = shadow.querySelector(".language");
   const providerSelect = shadow.querySelector(".provider");
   const providerHint = shadow.querySelector(".providerHint");
-  const argosBox = shadow.querySelector(".argosBox");
-  const argosStatusElement = shadow.querySelector(".argosStatus");
-  const argosActionButton = shadow.querySelector(".argosAction");
-  const argosRemoveButton = shadow.querySelector(".argosRemove");
-  const geminiBox = shadow.querySelector(".geminiBox");
-  const geminiStatusElement = shadow.querySelector(".geminiStatus");
-  const geminiKeyInput = shadow.querySelector(".geminiKey");
-  const geminiSaveButton = shadow.querySelector(".geminiSave");
-  const geminiRemoveButton = shadow.querySelector(".geminiRemove");
+  const openAICompatibleBox = shadow.querySelector(".openAICompatibleBox");
+  const openAICompatibleStatusElement = shadow.querySelector(".openAICompatibleStatus");
+  const openAICompatiblePresetSelect = shadow.querySelector(".openAICompatiblePreset");
+  const openAICompatibleBaseURLInput = shadow.querySelector(".openAICompatibleBaseURL");
+  const openAICompatibleModelInput = shadow.querySelector(".openAICompatibleModel");
+  const openAICompatibleModelsList = shadow.querySelector("#openAICompatibleModels");
+  const openAICompatibleKeyInput = shadow.querySelector(".openAICompatibleKey");
+  const openAICompatibleSaveButton = shadow.querySelector(".openAICompatibleSave");
+  const openAICompatibleRefreshButton = shadow.querySelector(".openAICompatibleRefresh");
+  const openAICompatibleRemoveButton = shadow.querySelector(".openAICompatibleRemove");
   const autoCheckbox = shadow.querySelector(".auto");
   const cacheStatsElement = shadow.querySelector(".cacheStats");
   const privacyBox = shadow.querySelector(".privacy");
@@ -1314,14 +1370,11 @@
     collapseButton.setAttribute("aria-label", collapseButton.title);
     collapseButton.setAttribute("aria-expanded", String(!settings.collapsed));
   }
-  function providerUsesArgos(provider) { return !!(PROVIDERS[provider] && PROVIDERS[provider].modelManager === "argos"); }
-  function providerUsesGemini(provider) { return !!(PROVIDERS[provider] && PROVIDERS[provider].credentialManager === "gemini"); }
   function providerRequiresPrivacy(provider) { return !!(PROVIDERS[provider] && PROVIDERS[provider].requiresPrivacy); }
   function languagesForProvider(provider) {
     const selectedProvider = PROVIDERS[provider];
     if (!selectedProvider) return [];
-    if (providerUsesArgos(provider) && !Array.isArray(argosSupportedLanguages)) return LANGUAGES;
-    return LANGUAGES.filter(([code]) => selectedProvider.supportsLanguage(code, { localLanguages: argosSupportedLanguages }));
+    return LANGUAGES.filter(([code]) => selectedProvider.supportsLanguage(code));
   }
   function populateLanguageOptions(provider, preferredLanguage) {
     const previous = preferredLanguage || languageSelect.value || settings.language;
@@ -1335,13 +1388,8 @@
     }
     const fallback = available.some(([code]) => code === defaults.language) ? defaults.language : (available[0] && available[0][0]);
     languageSelect.value = available.some(([code]) => code === previous) ? previous : (fallback || "");
-    languageSelect.disabled = argosBusy || geminiBusy || !available.length;
+    languageSelect.disabled = openAICompatibleBusy || !available.length;
     return languageSelect.value !== previous;
-  }
-  function selectedLanguageName() {
-    return languageSelect.options[languageSelect.selectedIndex]
-      ? languageSelect.options[languageSelect.selectedIndex].textContent
-      : languageSelect.value;
   }
   function persistControlSettings() {
     const languageChanged = settings.language !== languageSelect.value;
@@ -1355,123 +1403,99 @@
       scheduleAutoTranslation(50);
     }
   }
-  function setArgosBusy(busy) {
-    argosBusy = busy;
-    argosActionButton.disabled = busy;
-    argosRemoveButton.disabled = busy;
+  function setOpenAICompatibleBusy(busy) {
+    openAICompatibleBusy = busy;
+    for (const control of [
+      openAICompatiblePresetSelect, openAICompatibleBaseURLInput, openAICompatibleModelInput,
+      openAICompatibleKeyInput, openAICompatibleSaveButton, openAICompatibleRefreshButton,
+      openAICompatibleRemoveButton
+    ]) control.disabled = busy || !LOCAL_BRIDGE;
+    if (!busy && LOCAL_BRIDGE && openAICompatiblePresetSelect.value !== "custom") {
+      openAICompatibleBaseURLInput.disabled = true;
+    }
     languageSelect.disabled = busy || !languageSelect.options.length;
     providerSelect.disabled = busy;
   }
-  function setGeminiBusy(busy) {
-    geminiBusy = busy;
-    geminiKeyInput.disabled = busy || !LOCAL_BRIDGE;
-    geminiSaveButton.disabled = busy || !LOCAL_BRIDGE;
-    geminiRemoveButton.disabled = busy || !LOCAL_BRIDGE;
-    languageSelect.disabled = busy || argosBusy || !languageSelect.options.length;
-    providerSelect.disabled = busy || argosBusy;
+  function syncOpenAICompatibleInputs() {
+    const connection = openAICompatibleConnection();
+    openAICompatiblePresetSelect.value = connection.preset;
+    openAICompatibleBaseURLInput.value = connection.baseURL;
+    openAICompatibleBaseURLInput.disabled = openAICompatibleBusy || !LOCAL_BRIDGE || connection.preset !== "custom";
+    openAICompatibleModelInput.value = connection.model;
   }
-  async function refreshGeminiStatus() {
-    if (!providerUsesGemini(providerSelect.value)) {
-      geminiBox.hidden = true;
-      return geminiStatus;
+  function applyOpenAICompatibleSettings(next) {
+    const preset = Object.hasOwn(OPENAI_COMPATIBLE_PRESETS, next.preset)
+      ? next.preset : defaults.openAICompatiblePreset;
+    const baseURL = preset === "custom"
+      ? String(next.baseURL || "").trim().slice(0, 2048)
+      : OPENAI_COMPATIBLE_PRESETS[preset].baseURL;
+    const model = String(next.model || "").trim().slice(0, 512);
+    const changed = settings.openAICompatiblePreset !== preset
+      || settings.openAICompatibleBaseURL !== baseURL
+      || settings.openAICompatibleModel !== model;
+    settings.openAICompatiblePreset = preset;
+    settings.openAICompatibleBaseURL = baseURL;
+    settings.openAICompatibleModel = model;
+    if (changed) {
+      openAICompatibleStatus = null;
+      invalidateAppliedTranslations();
+      saveSettings();
     }
-    geminiBox.hidden = false;
-    geminiKeyInput.value = "";
-    if (!LOCAL_BRIDGE) {
-      geminiStatus = null;
-      geminiStatusElement.textContent = `The local translation helper is not running. Restart the game through ${PRODUCT_NAME}.`;
-      geminiKeyInput.disabled = true;
-      geminiSaveButton.disabled = true;
-      geminiRemoveButton.hidden = true;
-      return null;
-    }
-    try {
-      geminiStatus = await requestLocalHelper("/v1/gemini/status");
-      geminiKeyInput.disabled = false;
-      geminiSaveButton.disabled = false;
-      geminiSaveButton.textContent = geminiStatus.configured ? "Replace API key" : "Save API key";
-      geminiRemoveButton.hidden = !geminiStatus.configured;
-      geminiStatusElement.textContent = geminiStatus.configured
-        ? `Gemini is ready · ${geminiStatus.model} · key stored in ${geminiStatus.credentialStorage}`
-        : `Add a Gemini API key. It will be stored in ${geminiStatus.credentialStorage}.`;
-      return geminiStatus;
-    } catch (error) {
-      geminiStatus = null;
-      geminiStatusElement.textContent = error && error.message ? error.message : "Could not check Gemini";
-      geminiKeyInput.disabled = true;
-      geminiSaveButton.disabled = true;
-      geminiRemoveButton.hidden = true;
-      return null;
-    }
+    syncOpenAICompatibleInputs();
   }
-  async function refreshArgosStatus() {
-    if (!providerUsesArgos(providerSelect.value)) {
-      argosBox.hidden = true;
-      return argosStatus;
+  async function refreshOpenAICompatibleStatus() {
+    if (!providerUsesOpenAICompatible(providerSelect.value)) {
+      openAICompatibleBox.hidden = true;
+      return openAICompatibleStatus;
     }
-    argosBox.hidden = false;
+    openAICompatibleBox.hidden = false;
+    syncOpenAICompatibleInputs();
+    openAICompatibleKeyInput.value = "";
+    openAICompatibleModelsList.replaceChildren();
     if (!LOCAL_BRIDGE) {
-      argosStatus = null;
-      argosStatusElement.textContent = `The local Argos helper is not running. Restart the game through ${PRODUCT_NAME}.`;
-      argosActionButton.hidden = true;
-      argosRemoveButton.hidden = true;
+      openAICompatibleStatus = null;
+      openAICompatibleStatusElement.textContent = `The local translation helper is not running. Restart the game through ${PRODUCT_NAME}.`;
+      setOpenAICompatibleBusy(false);
       return null;
     }
+    setOpenAICompatibleBusy(true);
     try {
-      const target = languageSelect.value;
-      argosStatus = await requestLocalHelper("/v1/status?target=" + encodeURIComponent(target));
-      if (Array.isArray(argosStatus.supportedLanguages)) {
-        argosSupportedLanguages = argosStatus.supportedLanguages;
-        if (populateLanguageOptions(providerSelect.value, target)) {
-          if (providerUsesArgos(settings.provider)) persistControlSettings();
-          return refreshArgosStatus();
-        }
+      const connection = openAICompatibleConnection();
+      openAICompatibleStatus = await requestLocalHelper("/v1/openai-compatible/status", {
+        body: { preset: connection.preset, baseURL: connection.baseURL }
+      });
+      for (const model of Array.isArray(openAICompatibleStatus.models) ? openAICompatibleStatus.models : []) {
+        if (typeof model !== "string" || !model) continue;
+        const option = document.createElement("option");
+        option.value = model;
+        openAICompatibleModelsList.appendChild(option);
       }
-      if (!argosStatus.supported) {
-        argosStatusElement.textContent = `Argos has no offline model for ${selectedLanguageName()}. Choose Google or another language.`;
-        argosActionButton.hidden = true;
-        argosRemoveButton.hidden = true;
-      } else if (!argosStatus.runtimeInstalled || !argosStatus.sentenceModelInstalled) {
-        argosStatusElement.textContent = "Argos is not fully installed. The engine uses about 150 MB; internet is only required for installation.";
-        argosActionButton.textContent = "Install Argos and model";
-        argosActionButton.hidden = false;
-        argosRemoveButton.hidden = true;
-      } else if (!argosStatus.modelInstalled) {
-        argosStatusElement.textContent = `The English → ${selectedLanguageName()} model has not been downloaded.`;
-        argosActionButton.textContent = "Download model";
-        argosActionButton.hidden = false;
-        argosRemoveButton.hidden = true;
-      } else {
-        argosStatusElement.textContent = `Ready for offline translation · model ${formatBytes(argosStatus.modelBytes)} · engine ${formatBytes(argosStatus.runtimeBytes)}`;
-        argosActionButton.hidden = true;
-        argosRemoveButton.hidden = false;
-      }
-      return argosStatus;
+      openAICompatibleRemoveButton.hidden = !openAICompatibleStatus.configured;
+      openAICompatibleSaveButton.textContent = openAICompatibleStatus.configured
+        ? "Replace API key" : (openAICompatibleStatus.requiresKey ? "Save API key" : "Save optional key");
+      openAICompatibleStatusElement.textContent = openAICompatibleStatus.available
+        ? `Connected · ${openAICompatibleStatus.name} · ${openAICompatibleStatus.models.length} models listed`
+          + (openAICompatibleStatus.configured ? ` · key in ${openAICompatibleStatus.credentialStorage}` : "")
+        : (openAICompatibleStatus.message || "Connection could not be verified; enter a model ID manually.");
+      return openAICompatibleStatus;
     } catch (error) {
-      argosStatus = null;
-      argosStatusElement.textContent = error && error.message ? error.message : "Could not check Argos";
-      argosActionButton.hidden = true;
-      argosRemoveButton.hidden = true;
+      openAICompatibleStatus = null;
+      openAICompatibleStatusElement.textContent = error && error.message
+        ? error.message : "Could not check the OpenAI-compatible provider";
       return null;
+    } finally {
+      setOpenAICompatibleBusy(false);
     }
   }
   function updateProviderHint() {
     const selectedProvider = PROVIDERS[providerSelect.value];
-    if (providerUsesArgos(providerSelect.value)) {
-      geminiBox.hidden = true;
-      providerHint.textContent = selectedProvider.hint(languageSelect.options.length);
-      privacyBox.hidden = true;
-      refreshArgosStatus();
-    } else if (providerUsesGemini(providerSelect.value)) {
-      populateLanguageOptions(providerSelect.value, languageSelect.value || settings.language);
-      argosBox.hidden = true;
+    populateLanguageOptions(providerSelect.value, languageSelect.value || settings.language);
+    if (providerUsesOpenAICompatible(providerSelect.value)) {
       providerHint.textContent = selectedProvider.hint(languageSelect.options.length);
       privacyBox.hidden = settings.privacyAccepted;
-      refreshGeminiStatus();
+      refreshOpenAICompatibleStatus();
     } else {
-      populateLanguageOptions(providerSelect.value, languageSelect.value || settings.language);
-      argosBox.hidden = true;
-      geminiBox.hidden = true;
+      openAICompatibleBox.hidden = true;
       providerHint.textContent = selectedProvider ? selectedProvider.hint(languageSelect.options.length) : "";
       privacyBox.hidden = settings.privacyAccepted || !providerRequiresPrivacy(providerSelect.value);
     }
@@ -1498,81 +1522,79 @@
   });
   languageSelect.addEventListener("change", () => {
     persistControlSettings();
-    if (providerUsesArgos(providerSelect.value)) refreshArgosStatus();
   });
   autoCheckbox.addEventListener("change", () => {
     persistControlSettings();
     privacyBox.hidden = settings.privacyAccepted || !providerRequiresPrivacy(settings.provider);
   });
-  geminiSaveButton.addEventListener("click", async () => {
-    const apiKey = geminiKeyInput.value.trim();
+  openAICompatiblePresetSelect.addEventListener("change", async () => {
+    const preset = openAICompatiblePresetSelect.value;
+    applyOpenAICompatibleSettings({
+      preset,
+      baseURL: OPENAI_COMPATIBLE_PRESETS[preset] ? OPENAI_COMPATIBLE_PRESETS[preset].baseURL : "",
+      model: ""
+    });
+    await refreshOpenAICompatibleStatus();
+  });
+  openAICompatibleBaseURLInput.addEventListener("change", async () => {
+    applyOpenAICompatibleSettings({
+      preset: "custom", baseURL: openAICompatibleBaseURLInput.value, model: ""
+    });
+    await refreshOpenAICompatibleStatus();
+  });
+  openAICompatibleModelInput.addEventListener("change", () => {
+    const connection = openAICompatibleConnection();
+    applyOpenAICompatibleSettings({
+      preset: connection.preset, baseURL: connection.baseURL, model: openAICompatibleModelInput.value
+    });
+  });
+  openAICompatibleRefreshButton.addEventListener("click", async () => {
+    const connection = openAICompatibleConnection();
+    applyOpenAICompatibleSettings({
+      preset: openAICompatiblePresetSelect.value,
+      baseURL: openAICompatibleBaseURLInput.value,
+      model: openAICompatibleModelInput.value || connection.model
+    });
+    const status = await refreshOpenAICompatibleStatus();
+    setStatus(status && status.available ? "OpenAI-compatible models refreshed" : "Connection could not be verified");
+  });
+  openAICompatibleSaveButton.addEventListener("click", async () => {
+    const apiKey = openAICompatibleKeyInput.value.trim();
     if (!apiKey) {
-      geminiStatusElement.textContent = "Enter a Gemini API key first.";
+      openAICompatibleStatusElement.textContent = "Enter an API key first.";
       return;
     }
-    setGeminiBusy(true);
+    const connection = openAICompatibleConnection();
+    setOpenAICompatibleBusy(true);
     try {
-      await requestLocalHelper("/v1/gemini/key", { body: { apiKey } });
-      geminiKeyInput.value = "";
-      await refreshGeminiStatus();
-      setStatus("Gemini API key saved securely");
+      await requestLocalHelper("/v1/openai-compatible/key", {
+        body: { preset: connection.preset, baseURL: connection.baseURL, apiKey }
+      });
+      openAICompatibleKeyInput.value = "";
+      await refreshOpenAICompatibleStatus();
+      setStatus(`${OPENAI_COMPATIBLE_PRESETS[connection.preset].name} API key saved securely`);
     } catch (error) {
-      geminiKeyInput.value = "";
-      geminiStatusElement.textContent = error && error.message ? error.message : "Could not save the Gemini API key";
-      setStatus("Gemini setup failed");
+      openAICompatibleKeyInput.value = "";
+      openAICompatibleStatusElement.textContent = error && error.message ? error.message : "Could not save the API key";
+      setStatus("OpenAI-compatible setup failed");
     } finally {
-      setGeminiBusy(false);
+      setOpenAICompatibleBusy(false);
     }
   });
-  geminiRemoveButton.addEventListener("click", async () => {
-    if (!confirm("Remove the saved Gemini API key?")) return;
-    setGeminiBusy(true);
+  openAICompatibleRemoveButton.addEventListener("click", async () => {
+    const connection = openAICompatibleConnection();
+    if (!confirm(`Remove the saved API key for ${OPENAI_COMPATIBLE_PRESETS[connection.preset].name}?`)) return;
+    setOpenAICompatibleBusy(true);
     try {
-      await requestLocalHelper("/v1/gemini/key/remove", { body: { accepted: true } });
-      if (settings.provider === "gemini") settings.autoTranslate = false;
-      autoCheckbox.checked = settings.autoTranslate;
-      saveSettings();
-      await refreshGeminiStatus();
-      setStatus("Gemini API key removed");
+      await requestLocalHelper("/v1/openai-compatible/key/remove", {
+        body: { preset: connection.preset, baseURL: connection.baseURL, accepted: true }
+      });
+      await refreshOpenAICompatibleStatus();
+      setStatus("OpenAI-compatible API key removed");
     } catch (error) {
-      setStatus(error && error.message ? error.message : "Could not remove the Gemini API key");
+      setStatus(error && error.message ? error.message : "Could not remove the API key");
     } finally {
-      setGeminiBusy(false);
-    }
-  });
-  argosActionButton.addEventListener("click", async () => {
-    if (argosBusy || !LOCAL_BRIDGE) return;
-    setArgosBusy(true);
-    try {
-      const status = await refreshArgosStatus();
-      if (!status || !status.supported) return;
-      if (!status.runtimeInstalled || !status.sentenceModelInstalled) {
-        argosStatusElement.textContent = "Installing the Argos engine… This may take several minutes.";
-        await requestLocalHelper("/v1/runtime/install", { body: { accepted: true } });
-      }
-      argosStatusElement.textContent = `Downloading the English → ${selectedLanguageName()} model…`;
-      await requestLocalHelper("/v1/models/install", { body: { target: languageSelect.value } });
-      await refreshArgosStatus();
-      setStatus("Argos is ready for offline translation");
-    } catch (error) {
-      argosStatusElement.textContent = error && error.message ? error.message : "Could not install Argos";
-      setStatus("Argos installation failed");
-    } finally {
-      setArgosBusy(false);
-    }
-  });
-  argosRemoveButton.addEventListener("click", async () => {
-    if (argosBusy || !confirm(`Remove the offline model for ${selectedLanguageName()}?`)) return;
-    setArgosBusy(true);
-    try {
-      await requestLocalHelper("/v1/models/uninstall", { body: { target: languageSelect.value } });
-      invalidateAppliedTranslations();
-      await refreshArgosStatus();
-      setStatus("Argos model removed");
-    } catch (error) {
-      setStatus(error && error.message ? error.message : "Could not remove model");
-    } finally {
-      setArgosBusy(false);
+      setOpenAICompatibleBusy(false);
     }
   });
   shadow.querySelector(".allowAuto").addEventListener("click", () => {

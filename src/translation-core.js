@@ -6,7 +6,7 @@
   "use strict";
 
   const GOOGLE_MAX_CHARS = 3500;
-  const MYMEMORY_MAX_BYTES = 480;
+  const DEFAULT_UTF8_CHUNK_BYTES = 480;
   const RTL_LANGUAGES = new Set([
     "ar", "bal", "bm-Nkoo", "ckb", "dv", "fa", "fa-AF", "iw", "he",
     "ms-Arab", "pa-Arab", "ps", "sd", "ug", "ur", "yi"
@@ -98,19 +98,14 @@
     const selected = String(provider || "google");
     const code = String(language || "");
     if (!code) return "";
-    if (selected === "mymemory") {
-      const aliases = { iw: "he", jw: "jv", tl: "fil" };
-      return aliases[code] || code;
-    }
     return code;
   }
 
-  function providerSupportsLanguage(provider, language, argosLanguages) {
+  function providerSupportsLanguage(provider, language) {
     const selected = String(provider || "google");
     const code = providerLanguageCode(selected, language);
     if (!code) return false;
-    if (selected === "argos") return Array.isArray(argosLanguages) && argosLanguages.includes(code);
-    return selected === "google" || selected === "mymemory";
+    return selected === "google" || selected === "openai-compatible";
   }
 
   function normalizeText(value) {
@@ -229,7 +224,7 @@
 
   function splitUtf8Text(value, maxBytes) {
     const text = String(value || "");
-    const limit = Math.max(64, Number(maxBytes) || MYMEMORY_MAX_BYTES);
+    const limit = Math.max(64, Number(maxBytes) || DEFAULT_UTF8_CHUNK_BYTES);
     if (utf8Length(text) <= limit) return [text];
     const chunks = [];
     let rest = text;
@@ -257,18 +252,6 @@
   function parseGoogleResponse(payload) {
     if (!Array.isArray(payload) || !Array.isArray(payload[0])) throw new Error("Unexpected Google response");
     return payload[0].map((part) => Array.isArray(part) ? String(part[0] || "") : "").join("");
-  }
-
-  function buildMyMemoryUrl(text, targetLanguage, sourceLanguage) {
-    const params = new URLSearchParams({ q: text, langpair: (sourceLanguage || "en") + "|" + targetLanguage, mt: "1" });
-    return "https://api.mymemory.translated.net/get?" + params.toString();
-  }
-
-  function parseMyMemoryResponse(payload) {
-    const translated = payload && payload.responseData && payload.responseData.translatedText;
-    if (typeof translated !== "string" || !translated.trim()) throw new Error("Unexpected MyMemory response");
-    if (Number(payload.responseStatus || 200) >= 400) throw new Error(String(payload.responseDetails || "MyMemory error"));
-    return translated;
   }
 
   function buildContextSource(parts) {
@@ -299,9 +282,12 @@
     return parts.length === expected && parts.every(Boolean) ? parts : null;
   }
 
-  function makeCacheKey(source, language, provider, gameId) {
+  function makeCacheKey(source, language, provider, gameId, providerVariant) {
     const normalized = normalizeText(source);
     const selected = provider || "google";
+    if (gameId && providerVariant) {
+      return ["v4", gameId, selected, language, fingerprint(providerVariant), normalized].join("\n");
+    }
     if (gameId) return ["v3", gameId, selected, language, normalized].join("\n");
     if (selected === "google") return ["v1", language, fingerprint(""), normalized].join("\n");
     return ["v2", selected, language, normalized].join("\n");
@@ -312,6 +298,7 @@
     if (parts[0] === "v1") return parts[1] || "";
     if (parts[0] === "v2") return parts[2] || "";
     if (parts[0] === "v3") return parts[3] || "";
+    if (parts[0] === "v4") return parts[3] || "";
     return "";
   }
 
@@ -320,17 +307,17 @@
     if (parts[0] === "v1") return "google";
     if (parts[0] === "v2") return parts[1] || "";
     if (parts[0] === "v3") return parts[2] || "";
+    if (parts[0] === "v4") return parts[2] || "";
     return "";
   }
 
   function cacheKeyGame(key) {
     const parts = String(key || "").split("\n");
-    return parts[0] === "v3" ? (parts[1] || "") : "";
+    return parts[0] === "v3" || parts[0] === "v4" ? (parts[1] || "") : "";
   }
 
   return {
     GOOGLE_MAX_CHARS,
-    MYMEMORY_MAX_BYTES,
     isRtlLanguage,
     isTallScriptLanguage,
     isCjkLanguage,
@@ -347,8 +334,6 @@
     splitUtf8Text,
     buildGoogleUrl,
     parseGoogleResponse,
-    buildMyMemoryUrl,
-    parseMyMemoryResponse,
     buildContextSource,
     parseContextTranslation,
     makeCacheKey,

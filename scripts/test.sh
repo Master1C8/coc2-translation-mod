@@ -56,15 +56,21 @@ if grep -RIniE "glossary|словар" src launcher/macos launcher/windows; then
   exit 1
 fi
 
+if grep -RIniE "omori|asset-cache|asset extraction|workbench|bulk translate" \
+  src launcher/macos launcher/windows; then
+  echo "Found non-realtime translation architecture in the CoC2 runtime" >&2
+  exit 1
+fi
+
 if grep -RIniE "coc2|corruption of champions" \
   src/translation-core.js src/languages.js src/providers.js src/translator-runtime.js \
-  src/argos_service.py src/controller launcher/macos launcher/windows/launcher.c; then
+  src/local_service.py src/controller launcher/macos launcher/windows/launcher.c; then
   echo "Found a CoC2-specific identity in the shared runtime" >&2
   exit 1
 fi
 
 if grep -RInE '[А-Яа-яЁё]' \
-  src/translator-runtime.js src/argos_service.py \
+  src/translator-runtime.js src/local_service.py \
   src/providers.js launcher/macos/launch.sh launcher/windows/launcher.c launcher/windows/README-Windows.txt "src/games/$GAME_ID/adapter.js"; then
   echo "The mod interface must remain English-only" >&2
   exit 1
@@ -82,26 +88,38 @@ grep -Fq 'const MEMORY_CACHE_LIMIT = 20000;' src/translator-runtime.js || {
   exit 1
 }
 
-for REQUIRED in 'google' 'gemini' 'mymemory' 'argos' 'translateChunk' 'supportsLanguage' 'splitText'; do
+for REQUIRED in 'google' 'openai-compatible' 'translateChunk' 'supportsLanguage' 'splitText'; do
   grep -Fq "$REQUIRED" src/providers.js || {
     echo "Missing provider feature: $REQUIRED" >&2
     exit 1
   }
 done
 
-for REQUIRED in "#define APP_ID $STEAM_APP_ID" 'WinHttpWebSocket' "$WINDOWS_EXECUTABLE" 'argos_service.py' 'python.exe' '__vnRevivalLocalBridge' '--credential-id' 'GetOpenFileNameW' 'load_saved_game_path' 'consume_reselect_marker' 'debug_target_running'; do
+PROVIDER_COUNT=$(node -e 'require("./src/translation-core.js"); require("./src/providers.js"); process.stdout.write(String(globalThis.VNRevivalTranslationProviders.list.length))')
+[[ "$PROVIDER_COUNT" == "2" ]] || {
+  echo "The user-facing provider list must contain exactly two entries" >&2
+  exit 1
+}
+
+for REQUIRED in "#define APP_ID $STEAM_APP_ID" 'WinHttpWebSocket' "$WINDOWS_EXECUTABLE" 'local_service.py' 'python.exe' '__vnRevivalLocalBridge' '--credential-id' 'GetOpenFileNameW' 'load_saved_game_path' 'consume_reselect_marker' 'debug_target_running'; do
   grep -Fq -- "$REQUIRED" "$ROOT/.build/windows-launcher-smoke.c" || {
     echo "Missing Windows launcher feature: $REQUIRED" >&2
     exit 1
   }
 done
 
-for REQUIRED in 'ARGOS_PACKAGES_DIR' 'install_runtime' 'install_model' 'uninstall_model' 'translate' 'GeminiCredentialStore' 'gemini_translate' '/v1/gemini/status' '/v1/gemini/key' '/v1/gemini/translate' 'request_game_executable_change' '/v1/launcher/reselect-executable'; do
-  grep -Eq "$REQUIRED" src/argos_service.py || {
-    echo "Missing Argos bridge feature: $REQUIRED" >&2
+for REQUIRED in 'OpenAICompatibleCredentialStore' 'openai_status' 'set_openai_key' 'remove_openai_key' 'openai_translate' '/v1/openai-compatible/status' '/v1/openai-compatible/key' '/v1/openai-compatible/translate' 'request_game_executable_change' '/v1/launcher/reselect-executable'; do
+  grep -Fq "$REQUIRED" src/local_service.py || {
+    echo "Missing local service feature: $REQUIRED" >&2
     exit 1
   }
 done
+
+if rg -i 'argos|gemini|mymemory' \
+  src scripts launcher docs README.md tests --glob '!src/languages.js' --glob '!src/languages.txt' --glob '!scripts/test.sh'; then
+  echo "A removed translation provider is still referenced" >&2
+  exit 1
+fi
 
 grep -Eq 'SITE_NAME = "VN Revival"' src/translator-runtime.js
 grep -Eq 'SITE_URL = "https://vnrevival.fun/"' src/translator-runtime.js
@@ -120,7 +138,7 @@ if grep -Eq 'class="(cacheActions|launcherActions|settingsActions|clearLanguage|
   echo "Removed settings actions are still present in the panel" >&2
   exit 1
 fi
-grep -Fq 'makeCacheKey(source, language, provider, game.id)' src/translator-runtime.js
+grep -Fq 'makeCacheKey(source, language, provider, game.id, providerCacheVariant(provider))' src/translator-runtime.js
 
 COUNT=$(wc -l < src/languages.txt | tr -d ' ')
 if [[ "$COUNT" != "249" ]]; then

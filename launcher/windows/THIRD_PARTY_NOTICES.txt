@@ -1,14 +1,8 @@
-__PRODUCT_NAME__ bundles the Python embeddable runtime and an optimized Argos
-Translate runtime for offline translation.
+__PRODUCT_NAME__ bundles the Python embeddable runtime for its authenticated
+loopback credential helper.
 
 Python — Python Software Foundation License
 https://www.python.org/psf/license/
 
-Argos Translate — MIT / CC0
-https://github.com/argosopentech/argos-translate
-
-CTranslate2 — MIT
-https://github.com/OpenNMT/CTranslate2
-
-Additional dependency license files are retained in the bundled Python
-runtime under Lib\site-packages\*.dist-info.
+The helper uses only the Python standard library. No translation engine or
+language model is bundled.

@@ -13,7 +13,6 @@
   "cacheDatabase": "coc2-translator-cache",
   "legacyCompatibility": {
     "cacheFormats": ["coc2-translator-cache"],
-    "argosBridgeGlobal": "__coc2ArgosBridge",
     "coreGlobal": "CoC2TranslationCore",
     "languagesGlobal": "CoC2TranslatorLanguages",
     "translatorGlobal": "__coc2Translator"
@@ -22,7 +21,7 @@
   "windowsExecutable": "CoC II.exe",
   "crossOverBottle": "Steam",
   "crossOverGamePath": "drive_c/Program Files (x86)/Steam/steamapps/common/Corruption of Champions II/CoC II.exe",
-  "dataDirectory": "VN Revival/CoC2 Translator/Argos",
+  "dataDirectory": "VN Revival/CoC2 Translator",
   "bundleIdentifier": "local.coc2.translator",
   "iconPng": "assets/icon-1024.png",
   "iconIcns": "assets/AppIcon.icns",

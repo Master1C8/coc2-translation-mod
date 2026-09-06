@@ -22,7 +22,7 @@
 #define APP_TITLE L"__PRODUCT_NAME_C__"
 #define GAME_TITLE L"__GAME_TITLE_C__"
 #define GAME_EXECUTABLE L"__WINDOWS_EXECUTABLE_C__"
-#define ARGOS_DATA_DIRECTORY L"__DATA_DIRECTORY_WINDOWS_C__"
+#define SERVICE_DATA_DIRECTORY L"__DATA_DIRECTORY_WINDOWS_C__"
 #define SOURCE_LABEL "__GAME_ID_C__-translator.bundle.js"
 #define GAME_ID_W L"__GAME_ID_C__"
 #define TARGET_TITLE_HINT "__DEBUG_TARGET_TITLE_C__"
@@ -33,7 +33,7 @@
 #define PATH_CAP 32768
 #define HTTP_CAP (8 * 1024 * 1024)
 
-static HANDLE g_argos_process = NULL;
+static HANDLE g_service_process = NULL;
 static HINTERNET g_http_session = NULL;
 
 static BOOL path_join(WCHAR *out, size_t cap, const WCHAR *left, const WCHAR *right)
@@ -283,7 +283,7 @@ static BOOL consume_reselect_marker(void)
 {
     WCHAR local_app_data[PATH_CAP], data_dir[PATH_CAP], marker[PATH_CAP];
     if (SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, local_app_data) != S_OK) return FALSE;
-    path_join(data_dir, PATH_CAP, local_app_data, ARGOS_DATA_DIRECTORY);
+    path_join(data_dir, PATH_CAP, local_app_data, SERVICE_DATA_DIRECTORY);
     path_join(marker, PATH_CAP, data_dir, RESELECT_MARKER);
     if (!file_exists(marker)) return FALSE;
     DeleteFileW(marker);
@@ -390,44 +390,43 @@ static BOOL start_hidden_process(const WCHAR *command, const WCHAR *working_dir,
     return result;
 }
 
-static BOOL start_argos(
+static BOOL start_local_service(
     const WCHAR *resources,
     USHORT port,
     const WCHAR *token,
     WCHAR *base_url,
     size_t base_url_cap)
 {
-    WCHAR python[PATH_CAP], service[PATH_CAP], runtime[PATH_CAP];
+    WCHAR python[PATH_CAP], service[PATH_CAP];
     WCHAR local_app_data[PATH_CAP], data_dir[PATH_CAP], log_path[PATH_CAP];
     WCHAR command[PATH_CAP * 4];
     HANDLE log_file;
     PROCESS_INFORMATION process;
     path_join(python, PATH_CAP, resources, L"python\\python.exe");
-    path_join(runtime, PATH_CAP, resources, L"python\\Lib\\site-packages");
-    path_join(service, PATH_CAP, resources, L"argos_service.py");
-    if (!file_exists(python) || !dir_exists(runtime) || !file_exists(service)) return FALSE;
+    path_join(service, PATH_CAP, resources, L"local_service.py");
+    if (!file_exists(python) || !file_exists(service)) return FALSE;
     if (SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, local_app_data) != S_OK)
         return FALSE;
-    path_join(data_dir, PATH_CAP, local_app_data, ARGOS_DATA_DIRECTORY);
+    path_join(data_dir, PATH_CAP, local_app_data, SERVICE_DATA_DIRECTORY);
     if (!ensure_directory(data_dir)) return FALSE;
-    path_join(log_path, PATH_CAP, data_dir, L"argos-service.log");
+    path_join(log_path, PATH_CAP, data_dir, L"local-service.log");
     log_file = CreateFileW(log_path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     _snwprintf(
         command,
         sizeof(command) / sizeof(command[0]),
-        L"\"%ls\" -s \"%ls\" --port %u --token %ls --data-dir \"%ls\" --runtime-dir \"%ls\" --credential-id %ls",
-        python, service, (unsigned int)port, token, data_dir, runtime, GAME_ID_W);
+        L"\"%ls\" -s \"%ls\" --port %u --token %ls --data-dir \"%ls\" --credential-id %ls",
+        python, service, (unsigned int)port, token, data_dir, GAME_ID_W);
     if (!start_hidden_process(command, resources, log_file, &process)) {
         if (log_file != INVALID_HANDLE_VALUE) CloseHandle(log_file);
         return FALSE;
     }
     if (log_file != INVALID_HANDLE_VALUE) CloseHandle(log_file);
     CloseHandle(process.hThread);
-    g_argos_process = process.hProcess;
+    g_service_process = process.hProcess;
     if (!wait_for_port(port, 15000)) {
-        TerminateProcess(g_argos_process, 1);
-        CloseHandle(g_argos_process);
-        g_argos_process = NULL;
+        TerminateProcess(g_service_process, 1);
+        CloseHandle(g_service_process);
+        g_service_process = NULL;
         return FALSE;
     }
     _snwprintf(base_url, base_url_cap, L"http://127.0.0.1:%u", (unsigned int)port);
@@ -670,26 +669,26 @@ cleanup:
     return success;
 }
 
-static BOOL connect_and_inject(USHORT debug_port, const WCHAR *bundle_path, const WCHAR *argos_url, const char *token)
+static BOOL connect_and_inject(USHORT debug_port, const WCHAR *bundle_path, const WCHAR *service_url, const char *token)
 {
     DWORD bundle_size = 0;
     char *bundle = read_file_utf8(bundle_path, &bundle_size);
-    char argos_url_utf8[128];
+    char service_url_utf8[128];
     char *source;
     size_t source_size;
     DWORD start;
-    if (!bundle || !wide_to_utf8(argos_url, argos_url_utf8, sizeof(argos_url_utf8))) {
+    if (!bundle || !wide_to_utf8(service_url, service_url_utf8, sizeof(service_url_utf8))) {
         free(bundle);
         return FALSE;
     }
-    source_size = strlen(bundle) + strlen(argos_url_utf8) + strlen(token) + 160;
+    source_size = strlen(bundle) + strlen(service_url_utf8) + strlen(token) + 120;
     source = (char *)malloc(source_size);
     if (!source) { free(bundle); return FALSE; }
     snprintf(
         source,
         source_size,
-        "window.__vnRevivalLocalBridge={baseURL:\"%s\",token:\"%s\"};window.__vnRevivalArgosBridge=window.__vnRevivalLocalBridge;\n%s\n//# sourceURL=%s",
-        argos_url_utf8, token, bundle, SOURCE_LABEL);
+        "window.__vnRevivalLocalBridge={baseURL:\"%s\",token:\"%s\"};\n%s\n//# sourceURL=%s",
+        service_url_utf8, token, bundle, SOURCE_LABEL);
     free(bundle);
     start = GetTickCount();
     while (GetTickCount() - start < 120000) {
@@ -724,11 +723,11 @@ static BOOL debug_target_running(USHORT debug_port)
 
 static void cleanup(void)
 {
-    if (g_argos_process) {
-        TerminateProcess(g_argos_process, 0);
-        WaitForSingleObject(g_argos_process, 3000);
-        CloseHandle(g_argos_process);
-        g_argos_process = NULL;
+    if (g_service_process) {
+        TerminateProcess(g_service_process, 0);
+        WaitForSingleObject(g_service_process, 3000);
+        CloseHandle(g_service_process);
+        g_service_process = NULL;
     }
     if (g_http_session) {
         WinHttpCloseHandle(g_http_session);
@@ -739,10 +738,10 @@ static void cleanup(void)
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, int show_command)
 {
     WCHAR executable[PATH_CAP], executable_dir[PATH_CAP], resources[PATH_CAP], bundle[PATH_CAP];
-    WCHAR game_path[PATH_CAP], steam_path[PATH_CAP], token_wide[64], argos_url[128];
+    WCHAR game_path[PATH_CAP], steam_path[PATH_CAP], token_wide[64], service_url[128];
     char token_utf8[64];
     const WCHAR *game_process_name;
-    USHORT debug_port, argos_port;
+    USHORT debug_port, service_port;
     WSADATA winsock;
     (void)instance; (void)previous; (void)command_line; (void)show_command;
     if (WSAStartup(MAKEWORD(2, 2), &winsock) != 0 || CoInitializeEx(NULL, COINIT_APARTMENTTHREADED) < 0) {
@@ -783,13 +782,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         return 1;
     }
     debug_port = free_loopback_port(9317, 9399);
-    argos_port = free_loopback_port(9400, 9499);
-    if (!debug_port || !argos_port || !make_token(token_wide, 64, token_utf8, sizeof(token_utf8))) {
+    service_port = free_loopback_port(9400, 9499);
+    if (!debug_port || !service_port || !make_token(token_wide, 64, token_utf8, sizeof(token_utf8))) {
         show_error(L"Could not prepare the translator's local ports.");
         return 1;
     }
-    if (!start_argos(resources, argos_port, token_wide, argos_url, sizeof(argos_url) / sizeof(argos_url[0]))) {
-        show_error(L"Could not start local Argos. Make sure the translator archive was fully extracted.");
+    if (!start_local_service(resources, service_port, token_wide, service_url, sizeof(service_url) / sizeof(service_url[0]))) {
+        show_error(L"Could not start the local translation helper. Make sure the translator archive was fully extracted.");
         return 1;
     }
     g_http_session = WinHttpOpen(
@@ -803,7 +802,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         show_error(L"Could not launch " GAME_TITLE L".");
         return 1;
     }
-    if (!connect_and_inject(debug_port, bundle, argos_url, token_utf8)) {
+    if (!connect_and_inject(debug_port, bundle, service_url, token_utf8)) {
         show_error(L"The game started, but the translator could not connect. Close the game and try again.");
         return 1;
     }

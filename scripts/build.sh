@@ -78,11 +78,11 @@ cp "$ROOT/launcher/macos/launch.sh" "$APP/Contents/MacOS/$PRODUCT_NAME"
 cp "$BUILD_DIR/VNRevivalTranslatorController" "$APP/Contents/Resources/"
 cp "$BUILD_DIR/translator.bundle.js" "$APP/Contents/Resources/"
 cp "$GAME_MANIFEST" "$APP/Contents/Resources/game.json"
-cp "$ROOT/src/argos_service.py" "$APP/Contents/Resources/"
+cp "$ROOT/src/local_service.py" "$APP/Contents/Resources/"
 cp "$ROOT/$ICON_ICNS" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/README.md" "$APP/Contents/Resources/README.md"
 cp "$ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
-chmod +x "$APP/Contents/MacOS/$PRODUCT_NAME" "$APP/Contents/Resources/VNRevivalTranslatorController" "$APP/Contents/Resources/argos_service.py"
+chmod +x "$APP/Contents/MacOS/$PRODUCT_NAME" "$APP/Contents/Resources/VNRevivalTranslatorController" "$APP/Contents/Resources/local_service.py"
 
 if [[ "$MAC_SIGN_IDENTITY" == "-" ]]; then
   /usr/bin/codesign --force --deep --sign - "$APP" >/dev/null

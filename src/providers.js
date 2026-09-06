@@ -33,89 +33,39 @@
       }
     },
     {
-      id: "gemini",
-      label: "Gemini AI",
+      id: "openai-compatible",
+      label: "OpenAI-compatible",
       concurrency: 1,
-      delay: 250,
-      retries: 3,
+      delay: 100,
+      retries: 1,
       contextLimit: 6000,
       requiresPrivacy: true,
-      credentialManager: "gemini",
+      credentialManager: "openai-compatible",
+      modelManager: "openai-compatible",
       supportsLanguage(code) {
-        return core.providerSupportsLanguage("google", code);
+        return core.providerSupportsLanguage("openai-compatible", code);
       },
       splitText(text) {
         return core.splitLongText(text, 6000);
       },
       hint() {
-        return "Gemini: contextual AI translation using your own API key. Free-tier content may be used by Google to improve its products. Best quality and fast. Need Internet for work";
+        return "OpenAI-compatible: OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio, or a custom Chat Completions endpoint. Provider output is unreviewed.";
       },
       async translateChunk(context) {
-        const payload = await context.localRequest("/v1/gemini/translate", {
+        const connection = context.openAICompatible || {};
+        const payload = await context.localRequest("/v1/openai-compatible/translate", {
           body: {
             text: context.text,
             target: context.language,
-            targetName: context.languageName || context.language
+            targetName: context.languageName || context.language,
+            model: connection.model,
+            preset: connection.preset,
+            baseURL: connection.baseURL
           },
           signal: context.signal
         });
         if (typeof payload.translatedText !== "string" || !payload.translatedText.trim()) {
-          throw new Error("Gemini returned an empty translation");
-        }
-        return payload.translatedText;
-      }
-    },
-    {
-      id: "mymemory",
-      label: "MyMemory",
-      concurrency: 2,
-      delay: 120,
-      retries: 3,
-      contextLimit: 420,
-      requiresPrivacy: true,
-      supportsLanguage(code) {
-        return core.providerSupportsLanguage("mymemory", code);
-      },
-      splitText(text) {
-        return core.splitUtf8Text(text, core.MYMEMORY_MAX_BYTES);
-      },
-      hint(languageCount) {
-        return `MyMemory: ${languageCount} language codes can be selected, but the service does not guarantee machine translation for every pair. Poor quality, but fast. Need Internet for work.`;
-      },
-      async translateChunk(context) {
-        const target = core.providerLanguageCode("mymemory", context.language);
-        if (!target) throw new Error("The selected language is not supported by this service");
-        const response = await context.fetch(core.buildMyMemoryUrl(context.text, target, context.sourceLanguage), {
-          signal: context.signal, cache: "no-store"
-        });
-        if (!response.ok) throw new Error("HTTP " + response.status);
-        return context.decodeHtmlEntities(core.parseMyMemoryResponse(await response.json()));
-      }
-    },
-    {
-      id: "argos",
-      label: "Argos Offline",
-      concurrency: 1,
-      delay: 0,
-      retries: 1,
-      contextLimit: 3200,
-      requiresPrivacy: false,
-      modelManager: "argos",
-      supportsLanguage(code, context) {
-        return core.providerSupportsLanguage("argos", code, context && context.localLanguages);
-      },
-      splitText(text) {
-        return [text];
-      },
-      hint() {
-        return "Argos: translation runs on this computer and does not send text online. Mediocre quality and slow. Support limited amount of language";
-      },
-      async translateChunk(context) {
-        const payload = await context.localRequest("/v1/translate", {
-          body: { text: context.text, target: context.language }, signal: context.signal
-        });
-        if (typeof payload.translatedText !== "string" || !payload.translatedText.trim()) {
-          throw new Error("Argos returned an empty translation");
+          throw new Error("The OpenAI-compatible provider returned an empty translation");
         }
         return payload.translatedText;
       }

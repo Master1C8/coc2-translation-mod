@@ -8,7 +8,7 @@ const registry = globalThis.VNRevivalTranslationProviders;
 
 test("provider registry exposes a stable extension contract", () => {
   assert.equal(registry.contractVersion, 1);
-  assert.deepEqual(registry.list.map(({ id }) => id), ["google", "gemini", "mymemory", "argos"]);
+  assert.deepEqual(registry.list.map(({ id }) => id), ["google", "openai-compatible"]);
   for (const provider of registry.list) {
     assert.equal(typeof provider.supportsLanguage, "function");
     assert.equal(typeof provider.splitText, "function");
@@ -31,34 +31,25 @@ test("online providers own URL construction and response parsing", async () => {
   assert.equal(new URL(requestedURL).searchParams.get("tl"), "ru");
 });
 
-test("offline provider delegates translation to the authenticated local helper", async () => {
+test("OpenAI-compatible delegates endpoint profile and model without exposing its API key", async () => {
   let request = null;
-  const translated = await registry.byId.argos.translateChunk({
-    text: "Hello", language: "ru", signal: undefined,
+  const translated = await registry.byId["openai-compatible"].translateChunk({
+    text: "Hello", language: "ru", languageName: "Russian", signal: undefined,
+    openAICompatible: {
+      preset: "openrouter", baseURL: "https://openrouter.ai/api/v1", model: "provider/model"
+    },
     localRequest: async (path, options) => {
       request = { path, options };
       return { translatedText: "Привет" };
     }
   });
   assert.equal(translated, "Привет");
-  assert.equal(request.path, "/v1/translate");
-  assert.deepEqual(request.options.body, { text: "Hello", target: "ru" });
-});
-
-test("Gemini delegates contextual translation without exposing its API key", async () => {
-  let request = null;
-  const translated = await registry.byId.gemini.translateChunk({
-    text: "Hello, adventurer.", language: "ru", languageName: "Russian", signal: undefined,
-    localRequest: async (path, options) => {
-      request = { path, options };
-      return { translatedText: "Привет, искатель приключений." };
-    }
-  });
-  assert.equal(translated, "Привет, искатель приключений.");
-  assert.equal(request.path, "/v1/gemini/translate");
+  assert.equal(request.path, "/v1/openai-compatible/translate");
   assert.deepEqual(request.options.body, {
-    text: "Hello, adventurer.", target: "ru", targetName: "Russian"
+    text: "Hello", target: "ru", targetName: "Russian", model: "provider/model",
+    preset: "openrouter", baseURL: "https://openrouter.ai/api/v1"
   });
-  assert.equal(registry.byId.gemini.credentialManager, "gemini");
-  assert.equal(registry.byId.gemini.concurrency, 1);
+  assert.equal(registry.byId["openai-compatible"].credentialManager, "openai-compatible");
+  assert.equal(registry.byId["openai-compatible"].concurrency, 1);
+  assert.equal(registry.byId["openai-compatible"].retries, 1);
 });

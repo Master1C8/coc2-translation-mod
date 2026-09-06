@@ -21,13 +21,11 @@ DEBUG_TARGET_TITLE=$(manifest_value debugTargetTitleContains)
 DEBUG_TARGET_URL=$(manifest_value debugTargetUrlContains)
 [[ "$LAUNCH_STRATEGY" == "electron-cdp" ]] || { echo "Unsupported launch strategy: $LAUNCH_STRATEGY" >&2; exit 1; }
 PYTHON_VERSION="3.11.9"
-PYTHON_ABI="311"
 BUILD_ROOT="$ROOT/.build/windows"
 DIST_NAME=$(manifest_value windowsDistributionName)
 DIST_DIR="$BUILD_ROOT/$DIST_NAME"
 RESOURCE_DIR="$DIST_DIR/resources"
 PYTHON_DIR="$RESOURCE_DIR/python"
-SITE_PACKAGES="$PYTHON_DIR/Lib/site-packages"
 READY_DIR="$ROOT/launcher/READY_TO_SHARE"
 ZIP_PATH="$READY_DIR/$ARCHIVE_PREFIX-Windows-$VERSION.zip"
 CHECKSUM_PATH="$ROOT/.build/checksums/${ZIP_PATH:t}.sha256"
@@ -36,16 +34,15 @@ PYTHON_URL="https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VER
 CC="${VNREVIVAL_WINDOWS_CC:-$(command -v x86_64-w64-mingw32-gcc)}"
 WINDRES="${VNREVIVAL_WINDOWS_WINDRES:-$(command -v x86_64-w64-mingw32-windres)}"
 PROJECT_PYTHON="$ROOT/.venv/bin/python"
-HOST_PYTHON="${VNREVIVAL_HOST_PYTHON:-$PROJECT_PYTHON}"
-ICON_PYTHON="${VNREVIVAL_ICON_PYTHON:-$HOST_PYTHON}"
+ICON_PYTHON="${VNREVIVAL_ICON_PYTHON:-$PROJECT_PYTHON}"
 BUNDLE="${1:-$ROOT/.build/translator.bundle.js}"
 WINDOWS_SIGN_CERT="${VNREVIVAL_WINDOWS_SIGN_CERT:-}"
 WINDOWS_SIGN_PASSWORD="${VNREVIVAL_WINDOWS_SIGN_PASSWORD:-}"
 WINDOWS_SIGN_TIMESTAMP="${VNREVIVAL_WINDOWS_SIGN_TIMESTAMP:-http://timestamp.digicert.com}"
 WINDOWS_SIGN_TOOL="${VNREVIVAL_WINDOWS_SIGN_TOOL:-$(command -v osslsigncode || true)}"
 
-if [[ ! -x "$HOST_PYTHON" || ! -x "$ICON_PYTHON" ]]; then
-  echo "Python build environment is missing. Run 'uv sync' in $ROOT or set VNREVIVAL_HOST_PYTHON and VNREVIVAL_ICON_PYTHON." >&2
+if [[ ! -x "$ICON_PYTHON" ]]; then
+  echo "Python image build environment is missing. Run 'uv sync' in $ROOT or set VNREVIVAL_ICON_PYTHON." >&2
   exit 1
 fi
 [[ -x "$CC" && -x "$WINDRES" && -s "$BUNDLE" && -s "$ROOT/$ICON_PNG" ]]
@@ -55,36 +52,11 @@ if [[ ! -s "$PYTHON_ZIP" ]]; then
 fi
 
 rm -rf "$BUILD_ROOT"
-mkdir -p "$SITE_PACKAGES"
+mkdir -p "$PYTHON_DIR"
 unzip -q "$PYTHON_ZIP" -d "$PYTHON_DIR"
 
-PTH_FILE=$(find "$PYTHON_DIR" -maxdepth 1 -name 'python*._pth' -print -quit)
-[[ -n "$PTH_FILE" ]]
-sed -e 's/\r$//' -e '/^#import site$/i\
-Lib/site-packages' -e 's/^#import site$/import site/' "$PTH_FILE" > "$PTH_FILE.tmp"
-mv "$PTH_FILE.tmp" "$PTH_FILE"
-
-PIP_TARGET=(
-  --disable-pip-version-check
-  --upgrade
-  --ignore-installed
-  --only-binary=:all:
-  --platform win_amd64
-  --python-version 3.11
-  --implementation cp
-  --abi cp311
-  --target "$SITE_PACKAGES"
-)
-"$HOST_PYTHON" -m pip install "${PIP_TARGET[@]}" \
-  'ctranslate2>=4.0,<5' packaging 'sacremoses>=0.0.53,<0.2' 'sentencepiece>=0.2.0,<0.3'
-"$HOST_PYTHON" -m pip install "${PIP_TARGET[@]}" --no-deps 'argostranslate==1.11.0'
-rm -rf "$SITE_PACKAGES/bin" "$SITE_PACKAGES/tests"
-find "$SITE_PACKAGES" -type d -name '__pycache__' -prune -exec rm -rf {} +
-RUNTIME_BYTES=$(find "$SITE_PACKAGES" -type f -exec stat -f '%z' {} + | awk '{ total += $1 } END { print total + 0 }')
-print -r -- "$RUNTIME_BYTES" > "$SITE_PACKAGES/.vnrevival-runtime-bytes"
-
 cp "$BUNDLE" "$RESOURCE_DIR/translator.bundle.js"
-cp "$ROOT/src/argos_service.py" "$RESOURCE_DIR/argos_service.py"
+cp "$ROOT/src/local_service.py" "$RESOURCE_DIR/local_service.py"
 cp "$GAME_MANIFEST" "$RESOURCE_DIR/game.json"
 python3 "$ROOT/scripts/render-template.py" "$ROOT/launcher/windows/README-Windows.txt" "$DIST_DIR/README.txt" \
   PRODUCT_NAME "$PRODUCT_NAME" GAME_TITLE "$GAME_TITLE" DATA_DIRECTORY_WINDOWS "$DATA_DIRECTORY_WINDOWS"
@@ -136,7 +108,7 @@ grep -Eq 'PE32\+ executable.*x86-64' "$BUILD_ROOT/executable-type.txt"
 unzip -Z1 "$ZIP_PATH" > "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/$PRODUCT_NAME.exe" "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/resources/python/python.exe" "$BUILD_ROOT/archive-contents.txt"
-grep -Fqx "$DIST_NAME/resources/argos_service.py" "$BUILD_ROOT/archive-contents.txt"
+grep -Fqx "$DIST_NAME/resources/local_service.py" "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/resources/translator.bundle.js" "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/resources/game.json" "$BUILD_ROOT/archive-contents.txt"
 
