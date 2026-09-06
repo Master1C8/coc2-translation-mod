@@ -36,7 +36,14 @@ test("selected DOM adapter satisfies contract version 2", () => {
 });
 
 test("model suggestions avoid the Chromium datalist crash path", () => {
-  assert.match(runtimeSource, /class="openAICompatibleModelSuggestion"/);
-  assert.match(runtimeSource, /class="openAICompatibleModel" type="text"/);
+  assert.match(runtimeSource, /<select class="openAICompatibleModel"/);
+  assert.doesNotMatch(runtimeSource, /openAICompatibleModelSuggestion/);
+  assert.doesNotMatch(runtimeSource, /class="openAICompatibleModel" type="text"/);
   assert.doesNotMatch(runtimeSource, /<datalist\b|\blist="openAICompatibleModels"/);
+});
+
+test("model picker prioritizes free models and alphabetizes each group", () => {
+  assert.match(runtimeSource, /normalized === "big-pickle"/);
+  assert.match(runtimeSource, /freeOrder/);
+  assert.match(runtimeSource, /localeCompare/);
 });

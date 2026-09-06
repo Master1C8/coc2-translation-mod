@@ -112,11 +112,16 @@ class LocalServiceTests(unittest.TestCase):
             def fake_open(request, timeout):
                 captured["request"] = request
                 captured["timeout"] = timeout
-                return FakeHTTPResponse({"data": [{"id": "model/b"}, {"id": "model/a"}]})
+                return FakeHTTPResponse({"data": [
+                    {"id": "model/b"}, {"id": "mimo-v2.5-free"},
+                    {"id": "model/a"}, {"id": "big-pickle"},
+                ]})
 
             with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
                 status = bridge.openai_status("openrouter", "ignored")
-            self.assertEqual(status["models"], ["model/b", "model/a"])
+            self.assertEqual(status["models"], [
+                "big-pickle", "mimo-v2.5-free", "model/a", "model/b",
+            ])
             self.assertEqual(captured["request"].get_header("Authorization"), "Bearer secret-key-that-is-long-enough")
             self.assertNotIn("secret-key", captured["request"].full_url)
 
@@ -322,6 +327,22 @@ class LocalServiceTests(unittest.TestCase):
             self.assertEqual(caught.exception.code, "openai_request_failed")
             self.assertEqual(len(requests), 1)
 
+    def test_rate_limit_preserves_provider_status_and_retry_after(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            error = urllib.error.HTTPError(
+                "https://openrouter.ai/api/v1/chat/completions", 429, "limited",
+                {"Retry-After": "2.5"}, io.BytesIO(b'{"error":{"message":"slow down"}}'),
+            )
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=error):
+                with self.assertRaises(local_service.BridgeError) as caught:
+                    bridge.openai_translate(
+                        "ru", "Russian", "Hello", "model", "openrouter", "ignored"
+                    )
+            self.assertEqual(caught.exception.code, "openai_rate_limited")
+            self.assertEqual(caught.exception.provider_status, 429)
+            self.assertEqual(caught.exception.retry_after_ms, 2500)
+
     def test_translation_rejects_invalid_model_parameters(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")
@@ -405,6 +426,23 @@ class LocalServiceTests(unittest.TestCase):
             self.assertIn("response_format", request_bodies[0])
             self.assertIn("response_format", request_bodies[1])
             self.assertNotIn("response_format", request_bodies[2])
+            self.assertEqual(result["translatedText"], "Привет")
+
+    def test_opencode_zen_free_models_start_without_structured_output_parameters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            captured = {}
+
+            def fake_open(request, timeout):
+                captured["body"] = json.loads(request.data.decode("utf-8"))
+                return FakeHTTPResponse({"choices": [{"message": {"content": "Привет"}}]})
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
+                result = bridge.openai_translate(
+                    "ru", "Russian", "Hello", "mimo-v2.5-free",
+                    "opencode-zen", "ignored",
+                )
+            self.assertNotIn("response_format", captured["body"])
             self.assertEqual(result["translatedText"], "Привет")
 
     def test_key_and_model_errors_are_reported_without_leaking_secrets(self):

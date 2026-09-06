@@ -37,7 +37,7 @@
       label: "OpenAI-compatible",
       concurrency: 1,
       delay: 100,
-      retries: 1,
+      retries: 4,
       contextLimit: 6000,
       requiresPrivacy: true,
       credentialManager: "openai-compatible",

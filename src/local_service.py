@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import hashlib
 import ipaddress
 import json
@@ -64,10 +66,20 @@ MAX_TEXT_CHARS = 12_000
 
 
 class BridgeError(Exception):
-    def __init__(self, code: str, message: str, status: int = 400):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        status: int = 400,
+        *,
+        provider_status: int | None = None,
+        retry_after_ms: int | None = None,
+    ):
         super().__init__(message)
         self.code = code
         self.status = status
+        self.provider_status = provider_status
+        self.retry_after_ms = retry_after_ms
 
 
 class OpenAICompatibleCredentialStore:
@@ -404,7 +416,41 @@ class LocalServiceBridge:
                 model_id = item.get("id") if isinstance(item, dict) else None
                 if isinstance(model_id, str) and 1 <= len(model_id) <= 512 and model_id not in models:
                     models.append(model_id)
-        return models
+        return sorted(models, key=LocalServiceBridge._model_sort_key)
+
+    @staticmethod
+    def _model_sort_key(model_id: str) -> tuple[int, str, str]:
+        normalized = model_id.casefold()
+        is_free = LocalServiceBridge._is_free_model(model_id)
+        return (0 if is_free else 1, normalized, model_id)
+
+    @staticmethod
+    def _is_free_model(model_id: str) -> bool:
+        normalized = model_id.casefold()
+        return normalized == "big-pickle" or bool(re.search(
+            r"(?:^|[-._/:])free(?:$|[-._/:])", normalized
+        ))
+
+    @staticmethod
+    def _retry_after_ms(error: urllib.error.HTTPError) -> int | None:
+        headers = getattr(error, "headers", None)
+        raw_value = headers.get("Retry-After") if headers is not None else None
+        if not raw_value:
+            return None
+        value = str(raw_value).strip()
+        try:
+            seconds = float(value)
+        except ValueError:
+            try:
+                retry_at = parsedate_to_datetime(value)
+                if retry_at.tzinfo is None:
+                    retry_at = retry_at.replace(tzinfo=timezone.utc)
+                seconds = (retry_at - datetime.now(timezone.utc)).total_seconds()
+            except (TypeError, ValueError, OverflowError):
+                return None
+        if seconds <= 0:
+            return None
+        return max(250, min(300_000, round(seconds * 1000)))
 
     def openai_status(self, preset: Any, base_url: Any) -> dict[str, Any]:
         connection = self._connection(preset, base_url)
@@ -548,7 +594,9 @@ class LocalServiceBridge:
         try:
             payload = None
             ignored_model_parameters: list[str] = []
-            response_formats = [schema, {"type": "json_object"}, None]
+            response_formats = [None] if (
+                connection["preset"] == "opencode-zen" and self._is_free_model(model.strip())
+            ) else [schema, {"type": "json_object"}, None]
             response_format_index = 0
             while response_format_index < len(response_formats):
                 response_format = response_formats[response_format_index]
@@ -557,6 +605,7 @@ class LocalServiceBridge:
                     payload = self._request_json(connection, "/chat/completions", request_body, timeout=300)
                     break
                 except urllib.error.HTTPError as error:
+                    retry_after_ms = self._retry_after_ms(error)
                     detail = self._error_detail(error)
                     unsupported_parameter = self._unsupported_model_parameter(
                         error.code, detail, request_body
@@ -572,15 +621,23 @@ class LocalServiceBridge:
                         response_format_index += 1
                         continue
                     if error.code in (401, 403):
-                        raise BridgeError("openai_key_invalid", "The API key was rejected", 401) from error
+                        raise BridgeError(
+                            "openai_key_invalid", "The API key was rejected", 401,
+                            provider_status=error.code,
+                        ) from error
                     if error.code in (404, 409):
                         raise BridgeError(
-                            "openai_model_unavailable", "The selected model is unavailable", 409
+                            "openai_model_unavailable", "The selected model is unavailable", 409,
+                            provider_status=error.code,
                         ) from error
                     if error.code == 429:
-                        raise BridgeError("openai_rate_limited", "The provider rate limit was reached", 429) from error
+                        raise BridgeError(
+                            "openai_rate_limited", "The provider rate limit was reached", 429,
+                            provider_status=error.code, retry_after_ms=retry_after_ms,
+                        ) from error
                     raise BridgeError(
-                        "openai_request_failed", f"Provider returned HTTP {error.code}", 502
+                        "openai_request_failed", f"Provider returned HTTP {error.code}", 502,
+                        provider_status=error.code,
                     ) from error
             if payload is None:
                 raise BridgeError("openai_request_failed", "The provider returned no response", 502)
@@ -672,7 +729,12 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 raise BridgeError("not_found", "Unknown endpoint", 404)
             self._write_json({"ok": True, "service": "vnrevival-local"})
         except BridgeError as error:
-            self._write_json({"ok": False, "error": error.code, "message": str(error)}, error.status)
+            payload: dict[str, Any] = {"ok": False, "error": error.code, "message": str(error)}
+            if error.provider_status is not None:
+                payload["providerStatus"] = error.provider_status
+            if error.retry_after_ms is not None:
+                payload["retryAfterMs"] = error.retry_after_ms
+            self._write_json(payload, error.status)
         except Exception:
             self._write_json({"ok": False, "error": "internal_error", "message": "Internal service error"}, 500)
 
@@ -704,7 +766,12 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 raise BridgeError("not_found", "Unknown endpoint", 404)
             self._write_json(result)
         except BridgeError as error:
-            self._write_json({"ok": False, "error": error.code, "message": str(error)}, error.status)
+            payload = {"ok": False, "error": error.code, "message": str(error)}
+            if error.provider_status is not None:
+                payload["providerStatus"] = error.provider_status
+            if error.retry_after_ms is not None:
+                payload["retryAfterMs"] = error.retry_after_ms
+            self._write_json(payload, error.status)
         except Exception:
             self._write_json({"ok": False, "error": "internal_error", "message": "Internal service error"}, 500)
 

@@ -13,6 +13,8 @@
 - macOS Keychain получает ключ через stdin, а не аргумент процесса;
 - status не обращается к key-required endpoint до сохранения ключа;
 - `/models` разбирает model ID, а Bearer key находится в header и отсутствует в URL;
+- единый model picker показывает бесплатные модели первыми, сортирует группы по алфавиту и не использует аварийный Chromium `datalist`;
+- временные OpenAI-compatible ошибки повторяются с backoff/`Retry-After`, а финальная безопасная причина отображается пользователю;
 - Chat Completions использует системную инструкцию, JSON Schema и ручной model ID;
 - ответ получает `reviewed: false`, а повреждённые контекстные маркеры отклоняются;
 - API/auth/model/network ошибки возвращаются кодами без утечки секрета;
@@ -27,8 +29,8 @@
 - кнопка `...` отсутствует, а настройки видны в полностью развёрнутой панели и скрыты только вместе со всей панелью;
 - в свёрнутом состоянии название проекта скрыто и остаётся только компактная кнопка `+`;
 - в настройке OpenAI-compatible поле API-ключа расположено перед выбором модели;
-- подсказки моделей используют обычный `select`, а ручной Model ID — отдельное
-  поле без Chromium `datalist`, несовместимого со встроенным браузером CoC2;
+- модели выбираются в единственном обычном `select` без Chromium `datalist`;
+  пункт `Enter model ID manually…` поддерживает отсутствующие в каталоге ID;
 - введённый API-ключ автоматически сохраняется при `Enter` или уходе из поля, после чего обновляется список моделей;
 - OpenAI-compatible передаёт проверенные reasoning effort, verbosity, temperature и output token limit,
   а явно неподдерживаемые optional-параметры удаляет ограниченным повтором запроса;
@@ -50,10 +52,10 @@
 
 Результат: `PASS`.
 
-- 21 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
+- 22 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
   cache isolation/migration, UTF-8 splitting, context markers and launcher
   lifecycle contracts;
-- 29 Python tests: manifest/launcher contracts и local helper, включая preset,
+- 31 Python tests: manifest/launcher contracts и local helper, включая preset,
   URL policy, credential vault, model discovery, Chat Completions, structured
   response/model-parameter fallback, marker validation и safe errors;
 - source verification: 30 языков из общего каталога сайта;
