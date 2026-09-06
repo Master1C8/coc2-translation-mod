@@ -179,18 +179,25 @@
       );
       const removedBottomHint = !shadow.querySelector(".hint");
       const collapseButton = shadow.querySelector(".collapseToggle");
+      const panel = shadow.querySelector(".panel");
+      const barTitle = shadow.querySelector(".barTitle");
       const settingsPanel = shadow.querySelector(".settings");
       const fullyExpandedPanel = !shadow.querySelector(".gear")
         && getComputedStyle(settingsPanel).display === "block";
       collapseButton.click();
-      const collapsedStateSaved = shadow.querySelector(".panel").classList.contains("collapsed")
+      const compactCollapsedHeader = getComputedStyle(barTitle).display === "none"
+        && getComputedStyle(panel).width === "36px";
+      const collapsedStateSaved = panel.classList.contains("collapsed")
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === true
         && collapseButton.textContent === "+"
+        && compactCollapsedHeader
         && getComputedStyle(settingsPanel).display === "none";
       collapseButton.click();
-      const expandedStateSaved = !shadow.querySelector(".panel").classList.contains("collapsed")
+      const expandedStateSaved = !panel.classList.contains("collapsed")
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === false
         && collapseButton.textContent === "−"
+        && getComputedStyle(barTitle).display !== "none"
+        && getComputedStyle(panel).width === "306px"
         && getComputedStyle(settingsPanel).display === "block";
       const contactLinksPresent = shadow.querySelector('.contactIcon.discord')?.href === "https://discord.gg/QgyeWW3Jg"
         && shadow.querySelector('.contactIcon.telegram')?.href === "https://t.me/VnRevival"
@@ -343,6 +350,7 @@
         removedSettingsButtons,
         removedBottomHint,
         fullyExpandedPanel,
+        compactCollapsedHeader,
         collapsedStateSaved,
         expandedStateSaved,
         contactLinksPresent,
