@@ -240,6 +240,7 @@
       const cacheDeleted = window.smokeCache.size === 0
         && shadow.querySelector(".cacheStats").textContent === "Cache: 0 B"
         && cacheDeleteButton.disabled === false;
+      const originalButtonRemoved = !shadow.querySelector(".mode");
 
       const legacyGlobalsScopedToCoC2 = window.CoC2TranslationCore === window.VNRevivalTranslationCore
         && window.CoC2TranslatorLanguages === window.VNRevivalTranslatorLanguages
@@ -268,6 +269,7 @@
         && repairedMetadata.records === 4
         && compactCacheRow
         && cacheDeleted
+        && originalButtonRemoved
         && metadataDirty === null
         && legacyMigrated
         && legacyGlobalsScopedToCoC2

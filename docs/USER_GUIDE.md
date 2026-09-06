@@ -15,7 +15,6 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 ### Controls
 
 - `Translate / Cancel` starts or stops the current screen pass.
-- `Original / Translation` switches existing DOM text between English and the cached translation.
 - The `Language` selector remains visible at the top of the panel.
 - `Ctrl+Shift+T`, displayed inside the main button, performs the same translate/cancel action.
 - `...` opens provider and auto-translate settings.
@@ -65,7 +64,7 @@ The helper validates response structure and context markers before applying text
 
 Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, and prompt version. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
 
-RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored by `Original` or a configuration change. Existing HTML elements and click handlers remain in place.
+RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored before retranslation after a language or configuration change. Existing HTML elements and click handlers remain in place.
 
 ### Troubleshooting
 
@@ -99,7 +98,6 @@ advanced launches can select Parallels with
 ### Управление
 
 - `Translate / Cancel` запускает или отменяет перевод текущего экрана.
-- `Original / Translation` переключает английский текст и кэшированный перевод.
 - Список `Language` постоянно виден в верхней части панели.
 - `Ctrl+Shift+T`, указанная внутри основной кнопки, выполняет то же действие перевода/отмены.
 - `...` открывает настройки провайдера и автоперевода.
@@ -149,7 +147,7 @@ Helper проверяет структуру ответа и контекстн�
 
 Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели и версии инструкции. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
 
-RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются через `Original` или при смене конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
+RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются перед повторным переводом при смене языка или конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 
 ### Решение проблем
 

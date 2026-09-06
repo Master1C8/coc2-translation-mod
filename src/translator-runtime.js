@@ -181,7 +181,7 @@
       provider: PROVIDERS[source.provider] ? source.provider : defaults.provider,
       autoTranslate: typeof source.autoTranslate === "boolean" ? source.autoTranslate : defaults.autoTranslate,
       privacyAccepted: typeof source.privacyAccepted === "boolean" ? source.privacyAccepted : migratedLegacy,
-      mode: source.mode === "source" ? "source" : defaults.mode,
+      mode: defaults.mode,
       openAICompatiblePreset,
       openAICompatibleBaseURL: openAICompatiblePreset === "custom"
         ? customBaseURL : OPENAI_COMPATIBLE_PRESETS[openAICompatiblePreset].baseURL,
@@ -803,7 +803,6 @@
     }
     restoreLanguageFormatting();
     saveSettings();
-    updateModeButton();
     setStatus("Showing original");
   }
 
@@ -816,14 +815,8 @@
     }
     refreshLanguageFormatting();
     saveSettings();
-    updateModeButton();
     setStatus("Showing translation");
     scheduleAutoTranslation(50);
-  }
-
-  function toggleMode() {
-    if (settings.mode === "translated") showOriginal();
-    else showTranslations();
   }
 
   function invalidateAppliedTranslations() {
@@ -1258,7 +1251,6 @@
     syncOpenAICompatibleInputs();
     privacyBox.hidden = false;
     updateProviderHint();
-    updateModeButton();
     await refreshCacheStats();
     setStatus("All translator data deleted");
   }
@@ -1277,7 +1269,7 @@
     <div class="panel">
       <div class="bar"><span class="barTitle">${PRODUCT_NAME} ${VERSION}</span><button class="collapseToggle" type="button" title="Collapse translator" aria-label="Collapse translator">−</button></div>
       <label class="quickLanguage"><span class="quickLanguageLabel">Language</span><select class="language" aria-label="Translation language"></select></label>
-      <div class="row"><button class="primary translate" aria-label="Translate (Ctrl+Shift+T)"><span class="translateAction">Translate</span><span class="translateShortcut" aria-hidden="true">Ctrl+Shift+T</span></button><button class="secondary mode">Original</button><button class="gear" title="Settings">...</button></div>
+      <div class="row"><button class="primary translate" aria-label="Translate (Ctrl+Shift+T)"><span class="translateAction">Translate</span><span class="translateShortcut" aria-hidden="true">Ctrl+Shift+T</span></button><button class="gear" title="Settings">...</button></div>
       <div class="status">Ready</div>
       <button class="secondary retry" hidden>Retry failed</button>
       <div class="compat" hidden></div>
@@ -1340,7 +1332,6 @@
   const collapseButton = shadow.querySelector(".collapseToggle");
   const mainButton = shadow.querySelector(".translate");
   const mainButtonAction = shadow.querySelector(".translateAction");
-  const modeButton = shadow.querySelector(".mode");
   const retryButton = shadow.querySelector(".retry");
   const statusElement = shadow.querySelector(".status");
   const settingsPanel = shadow.querySelector(".settings");
@@ -1386,7 +1377,6 @@
     mainButtonAction.textContent = text;
     mainButton.setAttribute("aria-label", `${text} (Ctrl+Shift+T)`);
   }
-  function updateModeButton() { modeButton.textContent = settings.mode === "translated" ? "Original" : "Translation"; }
   function updateCollapsedState() {
     panel.classList.toggle("collapsed", settings.collapsed);
     collapseButton.textContent = settings.collapsed ? "+" : "−";
@@ -1525,11 +1515,9 @@
     }
   }
 
-  updateModeButton();
   updateProviderHint();
 
   mainButton.addEventListener("click", () => translateScreen(true));
-  modeButton.addEventListener("click", toggleMode);
   retryButton.addEventListener("click", retryFailed);
   collapseButton.addEventListener("click", () => {
     settings.collapsed = !settings.collapsed;
