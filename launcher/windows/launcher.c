@@ -601,7 +601,7 @@ static char *json_escape(const char *text)
     return result;
 }
 
-static BOOL websocket_wait_for_id(HINTERNET socket_handle, int id)
+static BOOL websocket_wait_for_id(HINTERNET socket_handle, int id, const char *expected_fragment)
 {
     BYTE chunk[16384];
     char *message = NULL;
@@ -629,15 +629,16 @@ static BOOL websocket_wait_for_id(HINTERNET socket_handle, int id)
             BOOL matched = strstr(message, needle_utf8) != NULL;
             BOOL failed = matched && (strstr(message, "\"error\"") != NULL
                 || strstr(message, "\"exceptionDetails\"") != NULL);
+            BOOL expected = !expected_fragment || strstr(message, expected_fragment) != NULL;
             free(message);
             message = NULL;
             length = capacity = 0;
-            if (matched) return !failed;
+            if (matched) return !failed && expected;
         }
     }
 }
 
-static BOOL websocket_command(HINTERNET socket_handle, int id, const char *method, const char *params)
+static BOOL websocket_send_command(HINTERNET socket_handle, int id, const char *method, const char *params)
 {
     size_t length = strlen(method) + strlen(params) + 80;
     char *command = (char *)malloc(length);
@@ -650,14 +651,30 @@ static BOOL websocket_command(HINTERNET socket_handle, int id, const char *metho
         command,
         (DWORD)strlen(command));
     free(command);
-    return result == NO_ERROR && websocket_wait_for_id(socket_handle, id);
+    return result == NO_ERROR;
 }
 
-static BOOL inject_script(USHORT port, const WCHAR *socket_path, const char *source)
+static BOOL websocket_command(HINTERNET socket_handle, int id, const char *method, const char *params)
+{
+    return websocket_send_command(socket_handle, id, method, params)
+        && websocket_wait_for_id(socket_handle, id, NULL);
+}
+
+static BOOL websocket_command_expect(
+    HINTERNET socket_handle,
+    int id,
+    const char *method,
+    const char *params,
+    const char *expected_fragment)
+{
+    return websocket_send_command(socket_handle, id, method, params)
+        && websocket_wait_for_id(socket_handle, id, expected_fragment);
+}
+
+static HINTERNET open_cdp_websocket(USHORT port, const WCHAR *socket_path, HINTERNET *connection_out)
 {
     HINTERNET connection = NULL, request = NULL, websocket = NULL;
-    char *escaped = NULL, *params = NULL;
-    BOOL success = FALSE;
+    *connection_out = NULL;
     connection = WinHttpConnect(g_http_session, L"127.0.0.1", port, 0);
     if (!connection) goto cleanup;
     request = WinHttpOpenRequest(connection, L"GET", socket_path, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
@@ -667,7 +684,21 @@ static BOOL inject_script(USHORT port, const WCHAR *socket_path, const char *sou
     websocket = WinHttpWebSocketCompleteUpgrade(request, 0);
     if (!websocket) goto cleanup;
     WinHttpCloseHandle(request);
-    request = NULL;
+    *connection_out = connection;
+    return websocket;
+cleanup:
+    if (request) WinHttpCloseHandle(request);
+    if (connection) WinHttpCloseHandle(connection);
+    return NULL;
+}
+
+static BOOL inject_script(USHORT port, const WCHAR *socket_path, const char *source)
+{
+    HINTERNET connection = NULL, websocket = NULL;
+    char *escaped = NULL, *params = NULL;
+    BOOL success = FALSE;
+    websocket = open_cdp_websocket(port, socket_path, &connection);
+    if (!websocket) goto cleanup;
     escaped = json_escape(source);
     if (!escaped) goto cleanup;
     params = (char *)malloc(strlen(escaped) + 128);
@@ -675,17 +706,36 @@ static BOOL inject_script(USHORT port, const WCHAR *socket_path, const char *sou
     if (!websocket_command(websocket, 1, "Page.enable", "{}")) goto cleanup;
     sprintf(params, "{\"source\":\"%s\"}", escaped);
     if (!websocket_command(websocket, 2, "Page.addScriptToEvaluateOnNewDocument", params)) goto cleanup;
-    sprintf(params, "{\"expression\":\"%s\",\"awaitPromise\":true,\"returnByValue\":true}", escaped);
-    if (!websocket_command(websocket, 3, "Runtime.evaluate", params)) goto cleanup;
-    success = TRUE;
+    /* Some older Chromium CDP builds do not deliver the response for a large
+       evaluation even after the synchronous bundle has completed. Deliver it
+       on one socket, then verify the installed global on a fresh socket. */
+    sprintf(params, "{\"expression\":\"%s\"}", escaped);
+    if (!websocket_send_command(websocket, 3, "Runtime.evaluate", params)) goto cleanup;
+    Sleep(500);
+    WinHttpCloseHandle(websocket);
+    websocket = NULL;
+    WinHttpCloseHandle(connection);
+    connection = NULL;
+    for (int attempt = 0; attempt < 20 && !success; attempt++) {
+        websocket = open_cdp_websocket(port, socket_path, &connection);
+        if (websocket) {
+            success = websocket_command_expect(
+                websocket,
+                4,
+                "Runtime.evaluate",
+                "{\"expression\":\"Boolean(window.__vnRevivalTranslator && window.__vnRevivalTranslator.version)\",\"returnByValue\":true}",
+                "\"value\":true");
+            WinHttpCloseHandle(websocket);
+            websocket = NULL;
+            WinHttpCloseHandle(connection);
+            connection = NULL;
+        }
+        if (!success) Sleep(100);
+    }
 cleanup:
     free(params);
     free(escaped);
-    if (websocket) {
-        WinHttpWebSocketClose(websocket, WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, NULL, 0);
-        WinHttpCloseHandle(websocket);
-    }
-    if (request) WinHttpCloseHandle(request);
+    if (websocket) WinHttpCloseHandle(websocket);
     if (connection) WinHttpCloseHandle(connection);
     return success;
 }

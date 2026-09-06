@@ -19,7 +19,7 @@ DATA_DIRECTORY_WINDOWS=$(python3 -c 'import sys; print(sys.argv[1].replace("/", 
 DEBUG_TARGET_TITLE=$(manifest_value debugTargetTitleContains)
 DEBUG_TARGET_URL=$(manifest_value debugTargetUrlContains)
 
-NODE_TESTS=(tests/translation-core.test.js tests/providers.test.js tests/game-adapter.test.js)
+NODE_TESTS=(tests/translation-core.test.js tests/providers.test.js tests/languages.test.js tests/game-adapter.test.js)
 GAME_TESTS=("$GAME_DIR"/tests/*.test.js(N))
 (( ${#GAME_TESTS} > 0 )) || { echo "No game-specific tests found for $GAME_ID" >&2; exit 1; }
 NODE_TESTS+=("${GAME_TESTS[@]}")
@@ -121,6 +121,23 @@ if rg -i 'argos|gemini|mymemory' \
   exit 1
 fi
 
+if rg -n 'Object\.hasOwn\(' src; then
+  echo "Runtime uses Object.hasOwn, which is unavailable in CoC2's Chromium" >&2
+  exit 1
+fi
+
+if rg -n 'awaitPromise' launcher/windows/launcher.c; then
+  echo "Windows launcher uses awaitPromise, which can hang in CoC2's CDP" >&2
+  exit 1
+fi
+for REQUIRED in 'open_cdp_websocket' 'websocket_command_expect' \
+    'Boolean(window.__vnRevivalTranslator && window.__vnRevivalTranslator.version)'; do
+  grep -Fq "$REQUIRED" launcher/windows/launcher.c || {
+    echo "Missing verified two-socket CDP injection feature: $REQUIRED" >&2
+    exit 1
+  }
+done
+
 grep -Eq 'SITE_NAME = "VN Revival"' src/translator-runtime.js
 grep -Eq 'SITE_URL = "https://vnrevival.fun/"' src/translator-runtime.js
 grep -Fq 'https://discord.gg/QgyeWW3Jg' src/translator-runtime.js
@@ -152,9 +169,9 @@ fi
 grep -Fq 'makeCacheKey(source, language, provider, game.id, providerCacheVariant(provider))' src/translator-runtime.js
 
 COUNT=$(wc -l < src/languages.txt | tr -d ' ')
-if [[ "$COUNT" != "249" ]]; then
-  echo "Language catalog is unexpectedly short: $COUNT" >&2
+if [[ "$COUNT" != "30" ]]; then
+  echo "Language catalog has an unexpected entry count: $COUNT" >&2
   exit 1
 fi
 
-echo "Source verification passed ($COUNT languages)"
+echo "Source verification passed ($COUNT site languages)"

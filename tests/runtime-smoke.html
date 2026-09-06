@@ -120,18 +120,21 @@
       return { ok: true, json: async () => [[[translated, source]]] };
     };
   </script>
-  <script src="../src/translation-core.js?v=0.10.1"></script>
-  <script src="../src/languages.js?v=0.10.1"></script>
-  <script src="../src/providers.js?v=0.10.1"></script>
-  <script src="../.build/game-config.js?v=0.10.1"></script>
-  <script src="../src/games/coc2/adapter.js?v=0.10.1"></script>
-  <script src="../src/translator-runtime.js?v=0.10.1"></script>
+  <script src="../src/translation-core.js?v=0.10.2"></script>
+  <script src="../src/languages.js?v=0.10.2"></script>
+  <script src="../src/providers.js?v=0.10.2"></script>
+  <script src="../.build/game-config.js?v=0.10.2"></script>
+  <script src="../src/games/coc2/adapter.js?v=0.10.2"></script>
+  <script src="../src/translator-runtime.js?v=0.10.2"></script>
   <script>
     (async function () {
       window.scrollTo(0, 0);
       await new Promise((resolve) => requestAnimationFrame(() => resolve()));
       const host = document.getElementById("vnrevival-translator-coc2");
       const shadow = host.shadowRoot;
+      const defaultLanguage = shadow.querySelector(".language").value;
+      const languageOptions = Array.from(shadow.querySelector(".language").options)
+        .map((option) => [option.value, option.textContent]);
       const providerOptions = Array.from(shadow.querySelector(".provider").options)
         .map((option) => [option.value, option.textContent]);
       const openAIKeyIsPasswordOnly = shadow.querySelector(".openAICompatibleKey").type === "password"
@@ -233,6 +236,13 @@
         && metadataDirty === null
         && legacyMigrated
         && legacyGlobalsScopedToCoC2
+        && defaultLanguage === "en"
+        && languageOptions.length === 30
+        && JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
+          ["zh", "Chinese (Simplified) (中文（简体）)"],
+          ["en", "English"]
+        ])
+        && JSON.stringify(languageOptions.at(-1)) === JSON.stringify(["he", "Hebrew (עברית)"])
         && JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]])
         && openAIKeyIsPasswordOnly
         && openAISetupVisible
@@ -261,6 +271,8 @@
         metadataDirty,
         legacyMigrated,
         legacyGlobalsScopedToCoC2,
+        defaultLanguage,
+        languageOptions,
         providerOptions,
         openAIKeyIsPasswordOnly,
         openAISetupVisible,

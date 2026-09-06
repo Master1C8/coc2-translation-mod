@@ -1,4 +1,4 @@
-# Отчёт проверки 0.10.1
+# Отчёт проверки 0.10.2
 
 Дата: 2026-09-06
 Область: исходники CoC2 runtime/realtime DOM-переводчика
@@ -18,6 +18,7 @@
 - API/auth/model/network ошибки возвращаются кодами без утечки секрета;
 - local helper слушает только loopback, требует одноразовый токен и ограничивает размер JSON;
 - provider cache v4 разделяет preset, Base URL, model ID и версию prompt;
+- каталог языков точно совпадает с 30 локалями VN Revival, а чистый первый запуск выбирает английский;
 - прежняя v1/v2 → v3 миграция Google-кэша остаётся доступной;
 - DOM runtime сохраняет контекстную группировку, пофрагментный fallback, формы/слоты/имена, `Original / Translation`, `Ctrl+Shift+T`, RTL, шрифты и переносы;
 - `IntersectionObserver`, `MutationObserver` и `visibilitychange` сохраняют экономный видимый/изменённый проход;
@@ -36,13 +37,13 @@
 
 Результат: `PASS`.
 
-- 19 Node.js tests: provider registry, Google/OpenAI-compatible requests,
+- 20 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
   cache isolation/migration, UTF-8 splitting, context markers and launcher
   lifecycle contracts;
 - 20 Python tests: manifest/launcher contracts и local helper, включая preset,
   URL policy, credential vault, model discovery, Chat Completions, structured
   response fallback, marker validation и safe errors;
-- source verification: 249 языков;
+- source verification: 30 языков из общего каталога сайта;
 - syntax/build checks: JavaScript, Python, shell, Swift typecheck, rendered
   Windows launcher compiled with MinGW and `-Werror`;
 - repository invariant scans: `PASS`.
@@ -58,10 +59,11 @@ Google Chrome --headless ... tests/runtime-smoke.html
 Browser smoke: `PASS`. Проверены видимый и появившийся после прокрутки DOM,
 контекстные маркеры без `innerHTML`, переключение Original / Translation,
 RTL/шрифты/переносы, восстановление оригинала, миграция Google cache v1 -> v3,
-ровно два provider и OpenAI-compatible setup с шестью preset. Внешние API в
+точный 30-язычный селектор с английским при первом запуске, ровно два provider
+и OpenAI-compatible setup с шестью preset. Внешние API в
 smoke-тесте заменены локальными ответами.
 
-App-only сборка и реальный Parallels-маршрут также проверены:
+App-only сборка и живой runtime в Parallels также проверены:
 
 ```text
 VNREVIVAL_APP_ONLY=1 ./scripts/build-coc2.sh
@@ -69,15 +71,22 @@ VNREVIVAL_WINDOWS_RUNTIME=parallels VNREVIVAL_PARALLELS_VM="Windows 11" \
   "CoC2 Translator.app/Contents/MacOS/CoC2 Translator"
 ```
 
-Результат: `PASS` на Parallels Desktop 26.4.1 / Windows 11. Комплектный payload
-скопирован через Shared Folders в guest-local `%LOCALAPPDATA%`, Windows launcher
-запустил сохранённый Steam executable, `CoC II.exe` открыл CDP на
-`127.0.0.1:9317`, helper — на `127.0.0.1:9400`, а соединение launcher → CDP
-перешло в `ESTABLISHED`. Релизные архивы при этой проверке не создавались.
+Результат: app-only payload собран и скопирован через Shared Folders в
+guest-local `%LOCALAPPDATA%`; `CoC II.exe` открыл CDP на `127.0.0.1:9317`, а
+helper — на `127.0.0.1:9400`. Проверка раннего launcher выявила две причины
+отсутствия панели: неподдерживаемый старым Chromium `Object.hasOwn` и зависание
+WinHTTP при ожидании ответа на большой `Runtime.evaluate`. Runtime 0.10.2 не
+использует `Object.hasOwn`; launcher отправляет bundle через отдельное WebSocket-
+соединение и подтверждает `window.__vnRevivalTranslator` коротким запросом через
+новое соединение. Исправленный bundle внедрён в живую игру: объект панели имеет
+версию `0.10.2`, а каталог содержит ровно 30 языков. Чистый повторный запуск
+актуального launcher требует обычного закрытия уже открытой игры. Релизные
+архивы при проверке не создавались.
 
 ## Ручные проверки
 
-Реальный запуск на Windows 11 в Parallels выполнен. Реальные внешние API-запросы,
+Реальный runtime на Windows 11 в Parallels проверен; чистый повторный launcher-
+цикл ожидает безопасного закрытия текущей игры. Реальные внешние API-запросы,
 публикация архивов и проверка на физической Windows, CrossOver или Intel Mac не
 выполнялись. Предыдущие ручные проверки старой provider-архитектуры не выдаются
 за проверку этой версии.

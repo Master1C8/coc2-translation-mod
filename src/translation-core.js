@@ -16,7 +16,7 @@
     "km", "kn", "lo", "ml", "mr", "my", "ne", "or", "pa", "pa-Arab",
     "ps", "si", "ta", "te", "th", "ti", "ur"
   ]);
-  const CJK_LANGUAGES = new Set(["ja", "ko", "yue", "zh-CN", "zh-TW"]);
+  const CJK_LANGUAGES = new Set(["ja", "ko", "yue", "zh", "zh-CN", "zh-TW"]);
   const CONTEXT_MARKER_PREFIX = "VRCTXSEP";
   const CONTEXT_MARKER_SUFFIX = "X";
   let graphemeSegmenter;
@@ -86,6 +86,7 @@
       iw: "he",
       jw: "jv",
       tl: "fil",
+      zh: "zh-Hans",
       "zh-CN": "zh-Hans",
       "zh-TW": "zh-Hant",
       ber: "zgh-Tfng",
@@ -98,6 +99,10 @@
     const selected = String(provider || "google");
     const code = String(language || "");
     if (!code) return "";
+    if (selected === "google") {
+      const aliases = { zh: "zh-CN", "pt-BR": "pt", fil: "tl", he: "iw" };
+      return aliases[code] || code;
+    }
     return code;
   }
 

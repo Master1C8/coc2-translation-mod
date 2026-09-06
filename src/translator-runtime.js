@@ -58,7 +58,7 @@
     ? Object.freeze({ baseURL: injectedLocalBridge.baseURL, token: injectedLocalBridge.token })
     : null;
   const defaults = {
-    language: "ru",
+    language: "en",
     provider: "google",
     autoTranslate: true,
     privacyAccepted: false,
@@ -70,8 +70,9 @@
     x: null,
     y: null
   };
+  const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 
-  if (!Array.isArray(LANGUAGES) || LANGUAGES.length < 200) throw new Error("VN Revival language catalog is missing");
+  if (!Array.isArray(LANGUAGES) || LANGUAGES.length !== 30) throw new Error("VN Revival language catalog is missing");
   if (!PROVIDERS.google || !PROVIDER_LIST.every((provider) => provider && provider.id && provider.label
     && typeof provider.supportsLanguage === "function" && typeof provider.splitText === "function"
     && typeof provider.translateChunk === "function")) throw new Error("VN Revival provider contract is invalid");
@@ -171,7 +172,7 @@
       } catch (_) {}
     }
     const source = parsed || {};
-    const openAICompatiblePreset = Object.hasOwn(OPENAI_COMPATIBLE_PRESETS, source.openAICompatiblePreset)
+    const openAICompatiblePreset = hasOwn(OPENAI_COMPATIBLE_PRESETS, source.openAICompatiblePreset)
       ? source.openAICompatiblePreset : defaults.openAICompatiblePreset;
     const customBaseURL = typeof source.openAICompatibleBaseURL === "string"
       && source.openAICompatibleBaseURL.length <= 2048 ? source.openAICompatibleBaseURL.trim() : "";
@@ -202,7 +203,7 @@
   }
 
   function openAICompatibleConnection() {
-    const preset = Object.hasOwn(OPENAI_COMPATIBLE_PRESETS, settings.openAICompatiblePreset)
+    const preset = hasOwn(OPENAI_COMPATIBLE_PRESETS, settings.openAICompatiblePreset)
       ? settings.openAICompatiblePreset : defaults.openAICompatiblePreset;
     return {
       preset,
@@ -1380,10 +1381,10 @@
     const previous = preferredLanguage || languageSelect.value || settings.language;
     const available = languagesForProvider(provider);
     languageSelect.replaceChildren();
-    for (const [code, name] of available) {
+    for (const [code, name, nativeName] of available) {
       const option = document.createElement("option");
       option.value = code;
-      option.textContent = name;
+      option.textContent = nativeName && nativeName !== name ? `${name} (${nativeName})` : name;
       languageSelect.appendChild(option);
     }
     const fallback = available.some(([code]) => code === defaults.language) ? defaults.language : (available[0] && available[0][0]);
@@ -1424,7 +1425,7 @@
     openAICompatibleModelInput.value = connection.model;
   }
   function applyOpenAICompatibleSettings(next) {
-    const preset = Object.hasOwn(OPENAI_COMPATIBLE_PRESETS, next.preset)
+    const preset = hasOwn(OPENAI_COMPATIBLE_PRESETS, next.preset)
       ? next.preset : defaults.openAICompatiblePreset;
     const baseURL = preset === "custom"
       ? String(next.baseURL || "").trim().slice(0, 2048)

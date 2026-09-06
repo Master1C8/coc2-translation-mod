@@ -16,6 +16,7 @@ test("recognizes right-to-left target languages and normalizes Hebrew for HTML",
   }
   assert.equal(core.htmlLanguageCode("iw"), "he");
   assert.equal(core.htmlLanguageCode("jw"), "jv");
+  assert.equal(core.htmlLanguageCode("zh"), "zh-Hans");
   assert.equal(core.htmlLanguageCode("zh-CN"), "zh-Hans");
   assert.equal(core.htmlLanguageCode("zh-TW"), "zh-Hant");
   assert.equal(core.htmlLanguageCode("fa-AF"), "fa-AF");
@@ -23,8 +24,14 @@ test("recognizes right-to-left target languages and normalizes Hebrew for HTML",
 
 test("supports the two runtime providers across the language catalog", () => {
   assert.equal(core.providerLanguageCode("google", "iw"), "iw");
+  assert.equal(core.providerLanguageCode("google", "zh"), "zh-CN");
+  assert.equal(core.providerLanguageCode("google", "pt-BR"), "pt");
+  assert.equal(core.providerLanguageCode("google", "fil"), "tl");
+  assert.equal(core.providerLanguageCode("google", "he"), "iw");
+  assert.equal(core.providerLanguageCode("openai-compatible", "fil"), "fil");
   assert.equal(core.providerSupportsLanguage("google", "ab"), true);
   assert.equal(core.providerSupportsLanguage("openai-compatible", "zh-TW"), true);
+  assert.equal(core.providerSupportsLanguage("google", "fil"), true);
   assert.equal(core.providerSupportsLanguage("removed-provider", "ru"), false);
 });
 
@@ -32,6 +39,7 @@ test("selects script-aware font fallbacks without dropping universal fonts", () 
   assert.ok(core.fontFallbacks("ar").includes("Noto Sans Arabic"));
   assert.ok(core.fontFallbacks("hi").includes("Noto Sans Devanagari"));
   assert.ok(core.fontFallbacks("zh-TW").includes("PingFang TC"));
+  assert.ok(core.fontFallbacks("zh").includes("PingFang SC"));
   assert.ok(core.fontFallbacks("bm-Nkoo").includes("Noto Sans NKo"));
   assert.ok(core.fontFallbacks("no").includes("Noto Sans"));
   assert.equal(core.fontFallbacks("no").at(-1), "sans-serif");

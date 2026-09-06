@@ -23,6 +23,8 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 
 Automatic translation processes only visible, newly visible, or changed blocks. It pauses and cancels an active request when the game window is hidden.
 
+The language selector uses the same 30 locales and order as VN Revival. English is selected on the first launch; later choices are preserved locally.
+
 ### Translation services
 
 The provider list contains exactly two choices:
@@ -103,6 +105,8 @@ advanced launches can select Parallels with
 - Верхняя полоса перемещает панель.
 
 Автоперевод обрабатывает только видимые, впервые появившиеся или изменённые блоки. При скрытом окне таймер останавливается, активный запрос отменяется.
+
+Список и порядок 30 языков совпадают с каталогом VN Revival. При первом запуске выбран английский; последующий выбор сохраняется локально.
 
 ### Сервисы перевода
 
