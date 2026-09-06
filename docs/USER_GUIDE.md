@@ -63,7 +63,7 @@ The helper validates response structure and context markers before applying text
 
 ### Cache and layout
 
-Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, and prompt version. Old Google cache entries are migrated lazily. Settings show cache size; no manual cache-management buttons are exposed.
+Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, and prompt version. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
 
 RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored by `Original` or a configuration change. Existing HTML elements and click handlers remain in place.
 
@@ -147,7 +147,7 @@ Helper проверяет структуру ответа и контекстн�
 
 ### Кэш и оформление
 
-Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели и версии инструкции. Старые Google-записи мигрируют лениво. В настройках виден объём кэша; ручных кнопок управления кэшем нет.
+Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели и версии инструкции. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
 
 RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются через `Original` или при смене конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 

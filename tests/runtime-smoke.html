@@ -225,6 +225,19 @@
       await new Promise((resolve) => setTimeout(resolve, 700));
       const repairedMetadata = JSON.parse(localStorage.getItem("coc2-translator.cache-meta.v1") || "null");
       const metadataDirty = localStorage.getItem("coc2-translator.cache-meta-dirty.v1");
+      const cacheBox = shadow.querySelector(".cacheBox");
+      const cacheDeleteButton = shadow.querySelector(".cacheDelete");
+      const compactCacheRow = getComputedStyle(cacheBox).display === "flex"
+        && cacheBox.children.length === 2
+        && /^Cache: \d+(?:\.\d+)? (?:B|KB|MB)$/.test(shadow.querySelector(".cacheStats").textContent)
+        && cacheDeleteButton.textContent === "Delete";
+      cacheDeleteButton.click();
+      for (let attempt = 0; attempt < 50 && shadow.querySelector(".cacheStats").textContent !== "Cache: 0 B"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      const cacheDeleted = window.smokeCache.size === 0
+        && shadow.querySelector(".cacheStats").textContent === "Cache: 0 B"
+        && cacheDeleteButton.disabled === false;
 
       const legacyGlobalsScopedToCoC2 = window.CoC2TranslationCore === window.VNRevivalTranslationCore
         && window.CoC2TranslatorLanguages === window.VNRevivalTranslatorLanguages
@@ -251,6 +264,8 @@
         && translated.buttonWrap === "normal"
         && scrolledTranslation === "ترجمة"
         && repairedMetadata.records === 4
+        && compactCacheRow
+        && cacheDeleted
         && metadataDirty === null
         && legacyMigrated
         && legacyGlobalsScopedToCoC2
@@ -292,6 +307,8 @@
         fetchCalls: window.fetchCalls,
         scrolledTranslation,
         repairedMetadata,
+        compactCacheRow,
+        cacheDeleted,
         metadataDirty,
         legacyMigrated,
         legacyGlobalsScopedToCoC2,
