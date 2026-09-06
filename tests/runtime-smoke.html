@@ -135,6 +135,10 @@
       const defaultLanguage = shadow.querySelector(".language").value;
       const languageOptions = Array.from(shadow.querySelector(".language").options)
         .map((option) => [option.value, option.textContent]);
+      const languageIsTopLevel = !!shadow.querySelector(".panel > .quickLanguage > .language")
+        && !shadow.querySelector(".settings .language")
+        && shadow.querySelector(".quickLanguage").nextElementSibling?.classList.contains("row")
+        && getComputedStyle(shadow.querySelector(".quickLanguage")).display !== "none";
       const providerOptions = Array.from(shadow.querySelector(".provider").options)
         .map((option) => [option.value, option.textContent]);
       const shortcutInsideMainButton = shadow.querySelector(".translate .translateShortcut")?.textContent === "Ctrl+Shift+T"
@@ -251,6 +255,7 @@
         && shortcutInsideMainButton
         && cancelStateKeepsShortcut
         && defaultLanguage === "en"
+        && languageIsTopLevel
         && languageOptions.length === 30
         && JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
           ["zh", "Chinese (Simplified) (中文（简体）)"],
@@ -290,6 +295,7 @@
         shortcutInsideMainButton,
         cancelStateKeepsShortcut,
         defaultLanguage,
+        languageIsTopLevel,
         languageOptions,
         providerOptions,
         openAIKeyIsPasswordOnly,
