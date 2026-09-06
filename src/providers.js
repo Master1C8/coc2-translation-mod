@@ -49,7 +49,7 @@
         return core.splitLongText(text, 6000);
       },
       hint() {
-        return "OpenAI-compatible: OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio, or a custom Chat Completions endpoint. Provider output is unreviewed.";
+        return "";
       },
       async translateChunk(context) {
         const connection = context.openAICompatible || {};

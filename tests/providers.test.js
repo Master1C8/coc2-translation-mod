@@ -16,6 +16,7 @@ test("provider registry exposes a stable extension contract", () => {
     assert.ok(provider.concurrency > 0);
   }
   assert.equal(registry.byId.google.hint(), "");
+  assert.equal(registry.byId["openai-compatible"].hint(), "");
 });
 
 test("online providers own URL construction and response parsing", async () => {

@@ -157,6 +157,8 @@
         && shadow.querySelector(".openAICompatibleStatus").textContent.includes("OpenCode Go")
         && !shadow.querySelector(".openAICompatibleSave").disabled
         && shadow.querySelector(".openAICompatiblePreset").options.length === 6;
+      const openAIHintRemoved = shadow.querySelector(".providerHint").textContent === ""
+        && getComputedStyle(shadow.querySelector(".providerHint")).display === "none";
       shadow.querySelector(".language").value = "ar";
       shadow.querySelector(".language").dispatchEvent(new Event("change"));
       shadow.querySelector(".provider").value = "google";
@@ -292,6 +294,7 @@
         && JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]])
         && openAIKeyIsPasswordOnly
         && openAISetupVisible
+        && openAIHintRemoved
         && googleHintRemoved
         && organicAutoToggle
         && autoChangeSaved
@@ -332,6 +335,7 @@
         providerOptions,
         openAIKeyIsPasswordOnly,
         openAISetupVisible,
+        openAIHintRemoved,
         googleHintRemoved,
         organicAutoToggle,
         autoChangeSaved,
