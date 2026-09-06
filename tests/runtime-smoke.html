@@ -158,8 +158,11 @@
       await new Promise((resolve) => setTimeout(resolve, 30));
       const openAISetupVisible = !shadow.querySelector(".openAICompatibleBox").hidden
         && shadow.querySelector(".openAICompatibleStatus").textContent.includes("OpenCode Go")
-        && !shadow.querySelector(".openAICompatibleSave").disabled
         && shadow.querySelector(".openAICompatiblePreset").options.length === 6;
+      const streamlinedOpenAIControls = !shadow.querySelector(
+        ".openAICompatibleSave,.openAICompatibleRefresh,.openAICompatibleRemove,"
+          + ".openAICompatiblePromptHint,.openAICompatibleNotice"
+      );
       const openAIModelSelect = shadow.querySelector(".openAICompatibleModel");
       const modelOptionValues = Array.from(openAIModelSelect.options).map((option) => option.value);
       const safeOpenAIModelPicker = openAIModelSelect instanceof HTMLSelectElement
@@ -171,6 +174,13 @@
         && openAIModelSelect.options[2].textContent.startsWith("Free · ")
         && !openAIModelSelect.hasAttribute("list")
         && !shadow.querySelector("datalist");
+      const statusCallsBeforeModelOpen = window.localHelperCalls
+        .filter((path) => path === "/v1/openai-compatible/status").length;
+      openAIModelSelect.dispatchEvent(new Event("pointerdown"));
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      const modelListRefreshesOnOpen = window.localHelperCalls
+        .filter((path) => path === "/v1/openai-compatible/status").length
+        === statusCallsBeforeModelOpen + 1;
       openAIModelSelect.value = "model-b";
       openAIModelSelect.dispatchEvent(new Event("change"));
       const openAIModelSelectionSaved = openAIModelSelect.value === "model-b"
@@ -353,7 +363,9 @@
         && openAIKeyIsPasswordOnly
         && openAIKeyBeforeModel
         && openAISetupVisible
+        && streamlinedOpenAIControls
         && safeOpenAIModelPicker
+        && modelListRefreshesOnOpen
         && openAIModelSelectionSaved
         && openAIPromptEditable
         && openAIPromptSaved
@@ -402,7 +414,9 @@
         openAIKeyIsPasswordOnly,
         openAIKeyBeforeModel,
         openAISetupVisible,
+        streamlinedOpenAIControls,
         safeOpenAIModelPicker,
+        modelListRefreshesOnOpen,
         openAIModelSelectionSaved,
         openAIPromptEditable,
         openAIPromptSaved,

@@ -42,8 +42,8 @@ At first network use, select `Allow auto-translate` or `Manual only`. The choice
 
 1. Select `OpenAI-compatible`.
 2. Choose a preset.
-3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and the model list refreshes automatically; `Save API key` performs the same action explicitly.
-4. Use `Refresh models` to retry loading the list when needed.
+3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and replaces the previously stored key for this Base URL.
+4. Open the model list to refresh it from the provider.
 5. Choose a model from the single list. Free models are pinned first, and both the free and paid groups are alphabetical. OpenCode Go and Zen show only models documented for Chat Completions because their full catalogs also contain models for other incompatible APIs. Use `Enter model ID manually…` when the endpoint does not list the required ID.
 6. Optionally set reasoning effort and output verbosity. `Provider default` omits that optional parameter.
 7. Edit `System prompt` if needed. `{targetName}` and `{target}` are replaced with the selected language name and code. Use `Restore default` to recover the built-in instruction.
@@ -58,7 +58,7 @@ Preset Base URLs:
 
 For Custom, enter a Base URL. Remote URLs must use HTTPS. HTTP is accepted only for `localhost` or another loopback address. A custom URL cannot contain credentials, a query, a fragment, or path traversal.
 
-The key field is cleared after saving. Keys are stored separately per Base URL in Windows Credential Manager or macOS Keychain; they are not saved in game settings, the DOM, or the translation cache. `Remove key` removes the current endpoint's key.
+The key field is cleared after saving. Keys are stored separately per Base URL in Windows Credential Manager or macOS Keychain; they are not saved in game settings, the DOM, or the translation cache. Entering another key replaces the stored key for the current endpoint.
 
 LM Studio is part of this same provider. Start its local server and load a model first; no key is required by the preset. If `/models` is unavailable but Chat Completions works, enter the model ID manually.
 
@@ -129,8 +129,8 @@ advanced launches can select Parallels with
 
 1. Выберите `OpenAI-compatible`.
 2. Выберите preset.
-3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Enter` или покиньте поле. Ключ сохранится, а список моделей обновится автоматически; кнопка `Save API key` выполняет то же действие явно.
-4. При необходимости повторите загрузку списка кнопкой `Refresh models`.
+3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Enter` или покиньте поле. Ключ сохранится и заменит прежний ключ этого Base URL.
+4. Откройте список моделей, чтобы обновить его у провайдера.
 5. Выберите модель в единственном списке. Бесплатные модели закреплены сверху, а бесплатная и платная группы отсортированы по алфавиту. Для OpenCode Go и Zen показываются только модели, документированные для Chat Completions: полные каталоги этих провайдеров также содержат модели для других несовместимых API. Для отсутствующего в каталоге ID используйте `Enter model ID manually…`.
 6. При необходимости задайте reasoning effort и verbosity. `Provider default` не отправляет соответствующий optional-параметр.
 7. При необходимости измените `System prompt`. Вместо `{targetName}` и `{target}` helper подставляет название и код выбранного языка. Кнопка `Restore default` возвращает встроенную инструкцию.
@@ -145,7 +145,7 @@ Base URL preset:
 
 Для Custom введите Base URL. Удалённый адрес обязан использовать HTTPS. HTTP допустим только для `localhost` или другого loopback-адреса. В custom URL запрещены credentials, query, fragment и переход по пути `..`.
 
-После сохранения поле ключа очищается. Ключи хранятся отдельно по Base URL в Windows Credential Manager или macOS Keychain и не попадают в игровые настройки, DOM или кэш. `Remove key` удаляет ключ текущего endpoint.
+После сохранения поле ключа очищается. Ключи хранятся отдельно по Base URL в Windows Credential Manager или macOS Keychain и не попадают в игровые настройки, DOM или кэш. Ввод нового ключа заменяет сохранённый ключ текущего endpoint.
 
 LM Studio входит в этот же провайдер. Сначала запустите local server и загрузите модель; preset не требует ключа. Если `/models` недоступен, но Chat Completions работает, введите model ID вручную.
 

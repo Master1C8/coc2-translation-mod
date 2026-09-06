@@ -1378,7 +1378,7 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.quickLanguage{display:flex;align-items:center;gap:8px;padding:7px 7px 0}.quickLanguageLabel{flex:0 0 auto;color:#d4bdac;font-size:11px;font-weight:600}.quickLanguage select{min-width:0;flex:1;border:1px solid #927047;border-radius:5px;background:#20131c;color:#fff;padding:5px 6px;font:inherit}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.translate{display:flex;align-items:center;justify-content:center;gap:6px}.translateShortcut{padding:2px 4px;border:1px solid #c69b5588;border-radius:4px;color:#f4d18f;background:#412436;font-size:9px;font-weight:600;line-height:1;white-space:nowrap}.status{min-height:23px;padding:0 9px 5px;color:#ddd;font-size:12px}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:block;padding:0 8px 9px;border-top:1px solid #6e4d56;max-height:calc(100vh - 190px);overflow-y:auto}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input:not([type="checkbox"]),.settings textarea{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px;font:inherit}.providerHint,.cacheStats,.openAICompatibleStatus,.openAICompatibleNotice,.openAICompatiblePromptHint,.openAICompatibleParametersHint{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.providerHint:empty{display:none}.openAICompatibleBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.cacheBox{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 7px;border:1px solid #6e4d56;border-radius:6px}.cacheStats{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cacheDelete{flex:0 0 auto;padding:4px 7px;font-size:11px}.openAICompatiblePreset,.openAICompatibleBaseURL,.openAICompatibleModel,.openAICompatibleKey{margin-top:6px}.openAICompatibleParameterTitle{margin-top:8px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatibleParameters{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px}.openAICompatibleParameters label{display:block;min-width:0;color:#bdaeb6;font-size:10px}.openAICompatibleParameters label span{display:block;margin-bottom:2px}.openAICompatibleParameters select,.openAICompatibleParameters input{min-width:0;padding:5px}.openAICompatibleParametersHint{margin-top:3px}.openAICompatiblePromptLabel{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatiblePrompt{min-height:116px;margin-top:4px;resize:vertical;line-height:1.3}.openAICompatiblePromptReset{padding:3px 6px;font-size:10px}.openAICompatiblePromptHint{margin-top:3px}.openAICompatibleActions,.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.openAICompatibleActions button,.privacyActions button{flex:1;min-width:82px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a,.openAICompatibleNotice a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover,.openAICompatibleNotice a:hover{text-decoration:underline}.hidden{display:none!important}
+      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.quickLanguage{display:flex;align-items:center;gap:8px;padding:7px 7px 0}.quickLanguageLabel{flex:0 0 auto;color:#d4bdac;font-size:11px;font-weight:600}.quickLanguage select{min-width:0;flex:1;border:1px solid #927047;border-radius:5px;background:#20131c;color:#fff;padding:5px 6px;font:inherit}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.translate{display:flex;align-items:center;justify-content:center;gap:6px}.translateShortcut{padding:2px 4px;border:1px solid #c69b5588;border-radius:4px;color:#f4d18f;background:#412436;font-size:9px;font-weight:600;line-height:1;white-space:nowrap}.status{min-height:23px;padding:0 9px 5px;color:#ddd;font-size:12px}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:block;padding:0 8px 9px;border-top:1px solid #6e4d56;max-height:calc(100vh - 190px);overflow-y:auto}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input:not([type="checkbox"]),.settings textarea{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px;font:inherit}.providerHint,.cacheStats,.openAICompatibleStatus,.openAICompatibleParametersHint{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.providerHint:empty{display:none}.openAICompatibleBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.cacheBox{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 7px;border:1px solid #6e4d56;border-radius:6px}.cacheStats{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cacheDelete{flex:0 0 auto;padding:4px 7px;font-size:11px}.openAICompatiblePreset,.openAICompatibleBaseURL,.openAICompatibleModel,.openAICompatibleKey{margin-top:6px}.openAICompatibleParameterTitle{margin-top:8px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatibleParameters{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px}.openAICompatibleParameters label{display:block;min-width:0;color:#bdaeb6;font-size:10px}.openAICompatibleParameters label span{display:block;margin-bottom:2px}.openAICompatibleParameters select,.openAICompatibleParameters input{min-width:0;padding:5px}.openAICompatibleParametersHint{margin-top:3px}.openAICompatiblePromptLabel{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatiblePrompt{min-height:116px;margin-top:4px;resize:vertical;line-height:1.3}.openAICompatiblePromptReset{padding:3px 6px;font-size:10px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.privacyActions button{flex:1;min-width:82px}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover{text-decoration:underline}.hidden{display:none!important}
       .bar{display:flex;align-items:center;gap:8px;min-height:34px}.barTitle{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collapseToggle{width:24px;height:22px;padding:0;border:1px solid #c69b55;border-radius:5px;background:#6b344f;color:#fff;cursor:pointer;font:700 16px/18px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}.collapseToggle:hover{background:#7b405d}.panel.collapsed{width:36px}.panel.collapsed>:not(.bar){display:none!important}.panel.collapsed .bar{gap:0;min-height:32px;padding:5px}.panel.collapsed .barTitle{display:none}
       .autoToggle{position:relative;display:flex;align-items:center;gap:9px;margin:8px 0;padding:8px 9px;border:1px solid #6e4d56;border-radius:7px;background:#2c1b26;cursor:pointer;user-select:none;transition:border-color .15s,background .15s}.autoToggle:hover{border-color:#927047;background:#34202d}.autoToggle .auto{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.autoCopy{display:flex;flex:1;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}.autoTitle{color:#f4e8df;font-weight:600}.autoState{color:#9f9299;font-size:11px}.autoState::after{content:"Off"}.autoTrack{position:relative;flex:0 0 34px;width:34px;height:19px;border:1px solid #755663;border-radius:10px;background:#1b1118;box-shadow:inset 0 1px 2px #0008;transition:border-color .15s,background .15s}.autoThumb{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#a7989f;box-shadow:0 1px 2px #0009;transition:left .15s,background .15s}.auto:checked~.autoCopy .autoState{color:#f4d18f}.auto:checked~.autoCopy .autoState::after{content:"On"}.auto:checked~.autoTrack{border-color:#c69b55;background:#6b344f}.auto:checked~.autoTrack .autoThumb{left:17px;background:#ffe4a9}.auto:focus~.autoTrack{outline:2px solid #f4d18f;outline-offset:2px}
       .site{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}.siteLabel{white-space:nowrap}.contacts{display:inline-flex;align-items:center;gap:5px}.site .contactIcon{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;border:1px solid #6e4d56;border-radius:6px;background:#2c1b26;text-decoration:none}.site .contactIcon:hover{border-color:#c69b55;background:#412436;text-decoration:none}.contactIcon svg{display:block;width:15px;height:15px;fill:currentColor}.site .discord{color:#8c9eff}.site .telegram{color:#55bde9}.site .email{color:#9b87f5}
@@ -1420,13 +1420,6 @@
           <div class="openAICompatibleParametersHint">Unsupported optional parameters are removed and retried automatically.</div>
           <div class="openAICompatiblePromptLabel"><label for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button">Restore default</button></div>
           <textarea id="openAICompatiblePrompt" class="openAICompatiblePrompt" maxlength="${OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS}" spellcheck="false" aria-label="OpenAI-compatible system prompt"></textarea>
-          <div class="openAICompatiblePromptHint">Saved locally. Optional placeholders: {targetName} and {target}.</div>
-          <div class="openAICompatibleActions">
-            <button class="primary openAICompatibleSave" type="button">Save API key</button>
-            <button class="secondary openAICompatibleRefresh" type="button">Refresh models</button>
-            <button class="danger openAICompatibleRemove" type="button" hidden>Remove key</button>
-          </div>
-          <div class="openAICompatibleNotice">Uses OpenAI Chat Completions. Remote text is sent to the selected provider; remote URLs must use HTTPS. Model output is unreviewed and is never treated as an approved localization.</div>
         </div>
         <label class="autoToggle">
           <input type="checkbox" class="auto" aria-label="Automatically translate new screens">
@@ -1474,9 +1467,6 @@
   const openAICompatiblePromptInput = shadow.querySelector(".openAICompatiblePrompt");
   const openAICompatiblePromptResetButton = shadow.querySelector(".openAICompatiblePromptReset");
   const openAICompatibleKeyInput = shadow.querySelector(".openAICompatibleKey");
-  const openAICompatibleSaveButton = shadow.querySelector(".openAICompatibleSave");
-  const openAICompatibleRefreshButton = shadow.querySelector(".openAICompatibleRefresh");
-  const openAICompatibleRemoveButton = shadow.querySelector(".openAICompatibleRemove");
   const autoCheckbox = shadow.querySelector(".auto");
   const cacheStatsElement = shadow.querySelector(".cacheStats");
   const cacheDeleteButton = shadow.querySelector(".cacheDelete");
@@ -1546,15 +1536,14 @@
       scheduleAutoTranslation(50);
     }
   }
-  function setOpenAICompatibleBusy(busy) {
+  function setOpenAICompatibleBusy(busy, keepModelPickerEnabled = false) {
     openAICompatibleBusy = busy;
     for (const control of [
       openAICompatiblePresetSelect, openAICompatibleBaseURLInput,
-      openAICompatibleModelSelect,
       openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect,
-      openAICompatibleKeyInput, openAICompatibleSaveButton, openAICompatibleRefreshButton,
-      openAICompatibleRemoveButton
+      openAICompatibleKeyInput
     ]) control.disabled = busy || !LOCAL_BRIDGE;
+    openAICompatibleModelSelect.disabled = (busy && !keepModelPickerEnabled) || !LOCAL_BRIDGE;
     if (!busy && LOCAL_BRIDGE && openAICompatiblePresetSelect.value !== "custom") {
       openAICompatibleBaseURLInput.disabled = true;
     }
@@ -1643,23 +1632,25 @@
     }
     syncOpenAICompatibleInputs();
   }
-  async function refreshOpenAICompatibleStatus() {
+  async function refreshOpenAICompatibleStatus({ fromModelPicker = false } = {}) {
     if (!providerUsesOpenAICompatible(providerSelect.value)) {
       openAICompatibleBox.hidden = true;
       return openAICompatibleStatus;
     }
     openAICompatibleBox.hidden = false;
-    syncOpenAICompatibleInputs();
-    openAICompatibleKeyInput.value = "";
-    openAICompatibleModels = [];
-    populateOpenAICompatibleModelOptions([], openAICompatibleConnection().model);
+    if (!fromModelPicker) {
+      syncOpenAICompatibleInputs();
+      openAICompatibleKeyInput.value = "";
+      openAICompatibleModels = [];
+      populateOpenAICompatibleModelOptions([], openAICompatibleConnection().model);
+    }
     if (!LOCAL_BRIDGE) {
       openAICompatibleStatus = null;
       openAICompatibleStatusElement.textContent = `The local translation helper is not running. Restart the game through ${PRODUCT_NAME}.`;
       setOpenAICompatibleBusy(false);
       return null;
     }
-    setOpenAICompatibleBusy(true);
+    setOpenAICompatibleBusy(true, fromModelPicker);
     try {
       const connection = openAICompatibleConnection();
       openAICompatibleStatus = await requestLocalHelper("/v1/openai-compatible/status", {
@@ -1667,9 +1658,6 @@
       });
       openAICompatibleModels = sortedOpenAICompatibleModels(openAICompatibleStatus.models);
       populateOpenAICompatibleModelOptions(openAICompatibleModels, connection.model);
-      openAICompatibleRemoveButton.hidden = !openAICompatibleStatus.configured;
-      openAICompatibleSaveButton.textContent = openAICompatibleStatus.configured
-        ? "Replace API key" : (openAICompatibleStatus.requiresKey ? "Save API key" : "Save optional key");
       openAICompatibleStatusElement.textContent = openAICompatibleStatus.available
         ? `Connected · ${openAICompatibleStatus.name} · ${openAICompatibleStatus.models.length} models listed`
           + (openAICompatibleStatus.configured ? ` · key in ${openAICompatibleStatus.credentialStorage}` : "")
@@ -1735,6 +1723,9 @@
     });
     await refreshOpenAICompatibleStatus();
   });
+  openAICompatibleModelSelect.addEventListener("pointerdown", () => {
+    if (!openAICompatibleBusy) void refreshOpenAICompatibleStatus({ fromModelPicker: true });
+  });
   openAICompatibleModelSelect.addEventListener("change", () => {
     const connection = openAICompatibleConnection();
     let model = openAICompatibleModelSelect.value;
@@ -1785,17 +1776,6 @@
     });
     setStatus("Default system prompt restored");
   });
-  openAICompatibleRefreshButton.addEventListener("click", async () => {
-    const connection = openAICompatibleConnection();
-    applyOpenAICompatibleSettings({
-      preset: openAICompatiblePresetSelect.value,
-      baseURL: openAICompatibleBaseURLInput.value,
-      model: openAICompatibleModelSelect.value === OPENAI_COMPATIBLE_MANUAL_MODEL_VALUE
-        ? connection.model : (openAICompatibleModelSelect.value || connection.model)
-    });
-    const status = await refreshOpenAICompatibleStatus();
-    setStatus(status && status.available ? "OpenAI-compatible models refreshed" : "Connection could not be verified");
-  });
   async function saveOpenAICompatibleKey() {
     if (openAICompatibleBusy) return;
     const apiKey = openAICompatibleKeyInput.value.trim();
@@ -1820,7 +1800,6 @@
       setOpenAICompatibleBusy(false);
     }
   }
-  openAICompatibleSaveButton.addEventListener("click", saveOpenAICompatibleKey);
   openAICompatibleKeyInput.addEventListener("change", () => {
     if (openAICompatibleKeyInput.value.trim()) saveOpenAICompatibleKey();
   });
@@ -1828,22 +1807,6 @@
     if (event.key !== "Enter") return;
     event.preventDefault();
     saveOpenAICompatibleKey();
-  });
-  openAICompatibleRemoveButton.addEventListener("click", async () => {
-    const connection = openAICompatibleConnection();
-    if (!confirm(`Remove the saved API key for ${OPENAI_COMPATIBLE_PRESETS[connection.preset].name}?`)) return;
-    setOpenAICompatibleBusy(true);
-    try {
-      await requestLocalHelper("/v1/openai-compatible/key/remove", {
-        body: { preset: connection.preset, baseURL: connection.baseURL, accepted: true }
-      });
-      await refreshOpenAICompatibleStatus();
-      setStatus("OpenAI-compatible API key removed");
-    } catch (error) {
-      setStatus(error && error.message ? error.message : "Could not remove the API key");
-    } finally {
-      setOpenAICompatibleBusy(false);
-    }
   });
   shadow.querySelector(".allowAuto").addEventListener("click", () => {
     settings.privacyAccepted = true;
