@@ -13,11 +13,13 @@
 - macOS Keychain получает ключ через stdin, а не аргумент процесса;
 - status не обращается к key-required endpoint до сохранения ключа;
 - `/models` разбирает model ID, а Bearer key находится в header и отсутствует в URL;
+- OpenCode Go и Zen исключают из picker модели, документированные для несовместимых с Chat Completions API;
 - единый model picker показывает бесплатные модели первыми, сортирует группы по алфавиту и не использует аварийный Chromium `datalist`;
 - временные OpenAI-compatible ошибки повторяются с backoff/`Retry-After`, а финальная безопасная причина отображается пользователю;
 - Chat Completions использует системную инструкцию, JSON Schema и ручной model ID;
 - ответ получает `reviewed: false`, а повреждённые контекстные маркеры отклоняются;
 - API/auth/model/network ошибки возвращаются кодами без утечки секрета;
+- provider HTTP 400/401 с причиной `model unavailable/not supported` классифицируется как ошибка модели, не как локальный 502 или отказ ключа;
 - local helper слушает только loopback, требует одноразовый токен и ограничивает размер JSON;
 - provider cache v4 разделяет preset, Base URL, model ID, параметры модели и версию prompt;
 - каталог языков точно совпадает с 30 локалями VN Revival, а чистый первый запуск выбирает английский и `Auto translate: On`;
@@ -55,7 +57,7 @@
 - 22 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
   cache isolation/migration, UTF-8 splitting, context markers and launcher
   lifecycle contracts;
-- 31 Python tests: manifest/launcher contracts и local helper, включая preset,
+- 36 Python tests: manifest/launcher contracts и local helper, включая preset,
   URL policy, credential vault, model discovery, Chat Completions, structured
   response/model-parameter fallback, marker validation и safe errors;
 - source verification: 30 языков из общего каталога сайта;
@@ -102,17 +104,24 @@ browser smoke; открытая до изменения каталога runtime
 
 ## Ручные проверки
 
-Реальный runtime на Windows 11 в Parallels проверен; чистый повторный launcher-
-цикл ожидает безопасного закрытия текущей игры. Реальные внешние API-запросы,
-публикация архивов и проверка на физической Windows, CrossOver или Intel Mac не
-выполнялись. Предыдущие ручные проверки старой provider-архитектуры не выдаются
-за проверку этой версии.
+Реальный runtime на Windows 11 в Parallels проверен. Публичный
+`GET https://opencode.ai/zen/v1/models` вернул смешанный каталог; фильтр оставил
+20 документированных Chat Completions-моделей. Такой же фильтр применяется к
+смешанному каталогу OpenCode Go. Минимальный запрос без ключа к
+опубликованной, но фактически недоступной free-модели воспроизвёл upstream HTTP
+400 и был безопасно классифицирован как `openai_model_unavailable` с локальным
+HTTP 409. Отдельный helper в guest Windows обратился к системному credential
+store без чтения или вывода ключа: текущий сохранённый ключ был отклонён Zen с
+HTTP 401 для выбранной `glm-5.3-flash` и контрольной `deepseek-v4-flash`.
+Успешный платный перевод требует перевыпущенного ключа. Публикация архивов и
+проверка на физической Windows, CrossOver или Intel Mac не выполнялись.
 
 ## Остаётся проверить вручную
 
 - реальный запуск актуальной CoC2 на macOS/CrossOver и физической Windows 10/11;
 - автоматический Steam discovery и системный выбор EXE при отсутствии сохранённого пути;
-- OpenCode Go, OpenCode Zen, OpenRouter и DeepSeek с пользовательскими ключами;
+- успешный OpenCode Zen перевод после перевыпуска отклонённого ключа;
+- OpenCode Go, OpenRouter и DeepSeek с пользовательскими ключами;
 - LM Studio и Custom loopback endpoint без ключа;
 - Custom HTTPS endpoint с отдельным credential scope;
 - сюжет, выборы, tooltip, бой, история и динамически появляющийся текст;

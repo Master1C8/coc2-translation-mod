@@ -125,6 +125,46 @@ class LocalServiceTests(unittest.TestCase):
             self.assertEqual(captured["request"].get_header("Authorization"), "Bearer secret-key-that-is-long-enough")
             self.assertNotIn("secret-key", captured["request"].full_url)
 
+    def test_opencode_zen_lists_only_documented_chat_completion_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            response = FakeHTTPResponse({"data": [
+                {"id": "gpt-5.6-luna"},
+                {"id": "claude-sonnet-5"},
+                {"id": "native-protocol-model"},
+                {"id": "glm-5.3-flash"},
+                {"id": "deepseek-v4-flash"},
+                {"id": "deepseek-v4-flash-free"},
+                {"id": "mimo-v2.5-free"},
+            ]})
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", return_value=response):
+                status = bridge.openai_status("opencode-zen", "ignored")
+
+            self.assertEqual(status["models"], [
+                "mimo-v2.5-free", "deepseek-v4-flash", "glm-5.3-flash",
+            ])
+
+    def test_opencode_go_lists_only_documented_chat_completion_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            response = FakeHTTPResponse({"data": [
+                {"id": "gpt-5.6-luna"},
+                {"id": "qwen3.8-flash"},
+                {"id": "minimax-m3"},
+                {"id": "glm-5.3-flash"},
+                {"id": "deepseek-v4-flash"},
+                {"id": "longcat-2.0"},
+                {"id": "omen-alpha"},
+            ]})
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", return_value=response):
+                status = bridge.openai_status("opencode-go", "ignored")
+
+            self.assertEqual(status["models"], [
+                "deepseek-v4-flash", "glm-5.3-flash", "longcat-2.0", "omen-alpha",
+            ])
+
     def test_translation_uses_chat_completions_and_marks_output_unreviewed(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")
@@ -348,6 +388,47 @@ class LocalServiceTests(unittest.TestCase):
                     )
             self.assertEqual(caught.exception.code, "openai_request_failed")
             self.assertEqual(len(requests), 1)
+
+    def test_translation_classifies_provider_model_unavailable_without_leaking_detail(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            detail = (
+                b'{"error":{"type":"server_error","message":"Error from provider (Console): '
+                b'Upstream request failed: Model is unavailable. secret-key-that-is-long-enough"}}'
+            )
+            error = urllib.error.HTTPError(
+                "https://opencode.ai/zen/v1/chat/completions", 400, "bad request", {},
+                io.BytesIO(detail),
+            )
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=error):
+                with self.assertRaises(local_service.BridgeError) as caught:
+                    bridge.openai_translate(
+                        "ru", "Russian", "Hello", "deepseek-v4-flash",
+                        "opencode-zen", "ignored",
+                    )
+
+            self.assertEqual(caught.exception.code, "openai_model_unavailable")
+            self.assertEqual(caught.exception.status, 409)
+            self.assertEqual(caught.exception.provider_status, 400)
+            self.assertNotIn("secret-key", str(caught.exception))
+
+    def test_model_not_supported_is_not_misreported_as_a_bad_key(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            error = urllib.error.HTTPError(
+                "https://opencode.ai/zen/v1/chat/completions", 401, "denied", {},
+                io.BytesIO(b'{"error":{"message":"Model example is not supported"}}'),
+            )
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=error):
+                with self.assertRaises(local_service.BridgeError) as caught:
+                    bridge.openai_translate(
+                        "ru", "Russian", "Hello", "example", "opencode-zen", "ignored"
+                    )
+
+            self.assertEqual(caught.exception.code, "openai_model_unavailable")
+            self.assertEqual(caught.exception.provider_status, 401)
 
     def test_rate_limit_preserves_provider_status_and_retry_after(self):
         with tempfile.TemporaryDirectory() as directory:
