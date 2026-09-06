@@ -167,6 +167,7 @@
       const removedSettingsButtons = !shadow.querySelector(
         ".cacheActions,.launcherActions,.settingsActions,.save,.reset,.clearLanguage,.export,.import,.changeExecutable"
       );
+      const removedBottomHint = !shadow.querySelector(".hint");
       const collapseButton = shadow.querySelector(".collapseToggle");
       collapseButton.click();
       const collapsedStateSaved = shadow.querySelector(".panel").classList.contains("collapsed")
@@ -265,6 +266,7 @@
         && autosavedSettings.provider === "google"
         && autosavedSettings.autoTranslate === true
         && removedSettingsButtons
+        && removedBottomHint
         && collapsedStateSaved
         && expandedStateSaved
         && contactLinksPresent
@@ -296,6 +298,7 @@
         autoChangeSaved,
         autosavedSettings,
         removedSettingsButtons,
+        removedBottomHint,
         collapsedStateSaved,
         expandedStateSaved,
         contactLinksPresent,
