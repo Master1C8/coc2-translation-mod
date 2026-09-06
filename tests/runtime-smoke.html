@@ -133,6 +133,9 @@
       const host = document.getElementById("vnrevival-translator-coc2");
       const shadow = host.shadowRoot;
       const defaultLanguage = shadow.querySelector(".language").value;
+      const autoCheckbox = shadow.querySelector(".auto");
+      const defaultAutoTranslate = autoCheckbox.checked === true
+        && window.__vnRevivalTranslator.settings().autoTranslate === true;
       const languageOptions = Array.from(shadow.querySelector(".language").options)
         .map((option) => [option.value, option.textContent]);
       const languageIsTopLevel = !!shadow.querySelector(".panel > .quickLanguage > .language")
@@ -158,7 +161,6 @@
       shadow.querySelector(".language").dispatchEvent(new Event("change"));
       shadow.querySelector(".provider").value = "google";
       shadow.querySelector(".provider").dispatchEvent(new Event("change"));
-      const autoCheckbox = shadow.querySelector(".auto");
       const organicAutoToggle = autoCheckbox.closest(".autoToggle")
         && autoCheckbox.getAttribute("aria-label") === "Automatically translate new screens"
         && !!shadow.querySelector(".autoCopy .autoTitle")
@@ -255,6 +257,7 @@
         && shortcutInsideMainButton
         && cancelStateKeepsShortcut
         && defaultLanguage === "en"
+        && defaultAutoTranslate
         && languageIsTopLevel
         && languageOptions.length === 30
         && JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
@@ -295,6 +298,7 @@
         shortcutInsideMainButton,
         cancelStateKeepsShortcut,
         defaultLanguage,
+        defaultAutoTranslate,
         languageIsTopLevel,
         languageOptions,
         providerOptions,
