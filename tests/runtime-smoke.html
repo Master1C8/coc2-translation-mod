@@ -150,6 +150,8 @@
         && !shadow.querySelector(".hotkey");
       const openAIKeyIsPasswordOnly = shadow.querySelector(".openAICompatibleKey").type === "password"
         && !Object.keys(localStorage).some((key) => /api.*key/i.test(key));
+      const openAIKeyBeforeModel = shadow.querySelector(".openAICompatibleKey").nextElementSibling
+        === shadow.querySelector(".openAICompatibleModel");
       shadow.querySelector(".provider").value = "openai-compatible";
       shadow.querySelector(".provider").dispatchEvent(new Event("change"));
       await new Promise((resolve) => setTimeout(resolve, 30));
@@ -300,6 +302,7 @@
         && JSON.stringify(languageOptions.at(-1)) === JSON.stringify(["he", "Hebrew (עברית)"])
         && JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]])
         && openAIKeyIsPasswordOnly
+        && openAIKeyBeforeModel
         && openAISetupVisible
         && openAIHintRemoved
         && googleHintRemoved
@@ -341,6 +344,7 @@
         languageOptions,
         providerOptions,
         openAIKeyIsPasswordOnly,
+        openAIKeyBeforeModel,
         openAISetupVisible,
         openAIHintRemoved,
         googleHintRemoved,

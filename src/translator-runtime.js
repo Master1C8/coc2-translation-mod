@@ -1288,9 +1288,9 @@
             <option value="custom">Custom</option>
           </select>
           <input class="openAICompatibleBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://provider.example/v1">
+          <input class="openAICompatibleKey" type="password" autocomplete="off" spellcheck="false" placeholder="API key (stored securely)">
           <input class="openAICompatibleModel" type="text" list="openAICompatibleModels" autocomplete="off" spellcheck="false" placeholder="Model ID">
           <datalist id="openAICompatibleModels"></datalist>
-          <input class="openAICompatibleKey" type="password" autocomplete="off" spellcheck="false" placeholder="API key (stored securely)">
           <div class="openAICompatibleActions">
             <button class="primary openAICompatibleSave" type="button">Save API key</button>
             <button class="secondary openAICompatibleRefresh" type="button">Refresh models</button>
