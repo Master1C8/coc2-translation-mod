@@ -15,6 +15,7 @@ test("provider registry exposes a stable extension contract", () => {
     assert.equal(typeof provider.translateChunk, "function");
     assert.ok(provider.concurrency > 0);
   }
+  assert.equal(registry.byId.google.hint(), "");
 });
 
 test("online providers own URL construction and response parsing", async () => {

@@ -20,7 +20,7 @@
         return core.splitLongText(text, core.GOOGLE_MAX_CHARS);
       },
       hint() {
-        return "Google translate: May rate-limit. Average quality and average speed. Can be limited by Google but usually work fine. Need Internet for work";
+        return "";
       },
       async translateChunk(context) {
         const target = core.providerLanguageCode("google", context.language);

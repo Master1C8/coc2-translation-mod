@@ -161,6 +161,8 @@
       shadow.querySelector(".language").dispatchEvent(new Event("change"));
       shadow.querySelector(".provider").value = "google";
       shadow.querySelector(".provider").dispatchEvent(new Event("change"));
+      const googleHintRemoved = shadow.querySelector(".providerHint").textContent === ""
+        && getComputedStyle(shadow.querySelector(".providerHint")).display === "none";
       const organicAutoToggle = autoCheckbox.closest(".autoToggle")
         && autoCheckbox.getAttribute("aria-label") === "Automatically translate new screens"
         && !!shadow.querySelector(".autoCopy .autoTitle")
@@ -283,6 +285,7 @@
         && JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]])
         && openAIKeyIsPasswordOnly
         && openAISetupVisible
+        && googleHintRemoved
         && organicAutoToggle
         && autoChangeSaved
         && autosavedSettings.language === "ar"
@@ -321,6 +324,7 @@
         providerOptions,
         openAIKeyIsPasswordOnly,
         openAISetupVisible,
+        googleHintRemoved,
         organicAutoToggle,
         autoChangeSaved,
         autosavedSettings,
