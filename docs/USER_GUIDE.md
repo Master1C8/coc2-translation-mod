@@ -17,9 +17,11 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 - `Translate / Cancel` starts or stops the current screen pass.
 - The `Language` selector remains visible at the top of the panel.
 - `Ctrl+Shift+T`, displayed inside the main button, performs the same translate/cancel action.
-- `...` opens provider and auto-translate settings.
+- Provider, auto-translate, and cache controls are always visible while the panel is expanded.
 - `− / +` collapses or expands the panel.
 - Drag the top bar to move the panel.
+
+The panel has only two states: fully expanded or fully collapsed.
 
 Automatic translation processes only visible, newly visible, or changed blocks. It pauses and cancels an active request when the game window is hidden.
 
@@ -100,9 +102,11 @@ advanced launches can select Parallels with
 - `Translate / Cancel` запускает или отменяет перевод текущего экрана.
 - Список `Language` постоянно виден в верхней части панели.
 - `Ctrl+Shift+T`, указанная внутри основной кнопки, выполняет то же действие перевода/отмены.
-- `...` открывает настройки провайдера и автоперевода.
+- Провайдер, автоперевод и кэш всегда видны в развёрнутой панели.
 - `− / +` сворачивает или разворачивает панель.
 - Верхняя полоса перемещает панель.
+
+У панели только два состояния: полностью развёрнутое и полностью свёрнутое.
 
 Автоперевод обрабатывает только видимые, впервые появившиеся или изменённые блоки. При скрытом окне таймер останавливается, активный запрос отменяется.
 

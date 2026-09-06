@@ -177,14 +177,19 @@
       );
       const removedBottomHint = !shadow.querySelector(".hint");
       const collapseButton = shadow.querySelector(".collapseToggle");
+      const settingsPanel = shadow.querySelector(".settings");
+      const fullyExpandedPanel = !shadow.querySelector(".gear")
+        && getComputedStyle(settingsPanel).display === "block";
       collapseButton.click();
       const collapsedStateSaved = shadow.querySelector(".panel").classList.contains("collapsed")
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === true
-        && collapseButton.textContent === "+";
+        && collapseButton.textContent === "+"
+        && getComputedStyle(settingsPanel).display === "none";
       collapseButton.click();
       const expandedStateSaved = !shadow.querySelector(".panel").classList.contains("collapsed")
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === false
-        && collapseButton.textContent === "−";
+        && collapseButton.textContent === "−"
+        && getComputedStyle(settingsPanel).display === "block";
       const contactLinksPresent = shadow.querySelector('.contactIcon.discord')?.href === "https://discord.gg/QgyeWW3Jg"
         && shadow.querySelector('.contactIcon.telegram')?.href === "https://t.me/VnRevival"
         && shadow.querySelector('.contactIcon.email')?.getAttribute("href") === "mailto:master1c8@proton.me";
@@ -295,6 +300,7 @@
         && autosavedSettings.autoTranslate === true
         && removedSettingsButtons
         && removedBottomHint
+        && fullyExpandedPanel
         && collapsedStateSaved
         && expandedStateSaved
         && contactLinksPresent
@@ -332,6 +338,7 @@
         autosavedSettings,
         removedSettingsButtons,
         removedBottomHint,
+        fullyExpandedPanel,
         collapsedStateSaved,
         expandedStateSaved,
         contactLinksPresent,
