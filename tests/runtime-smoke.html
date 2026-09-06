@@ -151,8 +151,11 @@
       shadow.querySelector(".provider").value = "google";
       shadow.querySelector(".provider").dispatchEvent(new Event("change"));
       const autoCheckbox = shadow.querySelector(".auto");
-      autoCheckbox.checked = false;
-      autoCheckbox.dispatchEvent(new Event("change"));
+      const organicAutoToggle = autoCheckbox.closest(".autoToggle")
+        && autoCheckbox.getAttribute("aria-label") === "Automatically translate new screens"
+        && !!shadow.querySelector(".autoCopy .autoTitle")
+        && !!shadow.querySelector(".autoTrack .autoThumb");
+      autoCheckbox.closest(".autoToggle").click();
       const savedAfterAutoChange = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null");
       const autoChangeSaved = savedAfterAutoChange && savedAfterAutoChange.autoTranslate === false;
       shadow.querySelector(".allowAuto").click();
@@ -246,6 +249,7 @@
         && JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]])
         && openAIKeyIsPasswordOnly
         && openAISetupVisible
+        && organicAutoToggle
         && autoChangeSaved
         && autosavedSettings.language === "ar"
         && autosavedSettings.provider === "google"
@@ -276,6 +280,7 @@
         providerOptions,
         openAIKeyIsPasswordOnly,
         openAISetupVisible,
+        organicAutoToggle,
         autoChangeSaved,
         autosavedSettings,
         removedSettingsButtons,
