@@ -45,7 +45,7 @@ At first network use, select `Allow auto-translate` or `Manual only`. The choice
 3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and the model list refreshes automatically; `Save API key` performs the same action explicitly.
 4. Use `Refresh models` to retry loading the list when needed.
 5. Choose a model from the single list. Free models are pinned first, and both the free and paid groups are alphabetical. OpenCode Go and Zen show only models documented for Chat Completions because their full catalogs also contain models for other incompatible APIs. Use `Enter model ID manually…` when the endpoint does not list the required ID.
-6. Optionally set reasoning effort, output verbosity, and maximum output tokens. `Provider default` or an empty field omits that optional parameter; `Auto` calculates the token limit from the source length.
+6. Optionally set reasoning effort and output verbosity. `Provider default` omits that optional parameter.
 7. Edit `System prompt` if needed. `{targetName}` and `{target}` are replaced with the selected language name and code. Use `Restore default` to recover the built-in instruction.
 
 Preset Base URLs:
@@ -62,7 +62,7 @@ The key field is cleared after saving. Keys are stored separately per Base URL i
 
 LM Studio is part of this same provider. Start its local server and load a model first; no key is required by the preset. If `/models` is unavailable but Chat Completions works, enter the model ID manually.
 
-The helper validates response structure and context markers before applying text. If an endpoint explicitly rejects an optional model parameter, the helper retries without it; `max_tokens` falls back to `max_completion_tokens` first. Provider HTTP 400/401 responses that identify an unavailable or unsupported model are reported as a model problem without exposing the raw upstream message. Temporary failures and rate limits are retried with a delay and `Retry-After`; the panel shows the safe final error, and an exhausted rate limit stops the remaining queue. This is not editorial review, and the result is not an approved localization.
+The helper validates response structure and context markers before applying text. If an endpoint explicitly rejects an optional model parameter, the helper retries without it. Provider HTTP 400/401 responses that identify an unavailable or unsupported model are reported as a model problem without exposing the raw upstream message. Temporary failures and rate limits are retried with a delay and `Retry-After`; the panel shows the safe final error, and an exhausted rate limit stops the remaining queue. This is not editorial review, and the result is not an approved localization.
 
 ### Cache and layout
 
@@ -132,7 +132,7 @@ advanced launches can select Parallels with
 3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Enter` или покиньте поле. Ключ сохранится, а список моделей обновится автоматически; кнопка `Save API key` выполняет то же действие явно.
 4. При необходимости повторите загрузку списка кнопкой `Refresh models`.
 5. Выберите модель в единственном списке. Бесплатные модели закреплены сверху, а бесплатная и платная группы отсортированы по алфавиту. Для OpenCode Go и Zen показываются только модели, документированные для Chat Completions: полные каталоги этих провайдеров также содержат модели для других несовместимых API. Для отсутствующего в каталоге ID используйте `Enter model ID manually…`.
-6. При необходимости задайте reasoning effort, verbosity и максимальное число output tokens. `Provider default` или пустое поле не отправляет optional-параметр; `Auto` вычисляет token limit по длине исходника.
+6. При необходимости задайте reasoning effort и verbosity. `Provider default` не отправляет соответствующий optional-параметр.
 7. При необходимости измените `System prompt`. Вместо `{targetName}` и `{target}` helper подставляет название и код выбранного языка. Кнопка `Restore default` возвращает встроенную инструкцию.
 
 Base URL preset:
@@ -149,7 +149,7 @@ Base URL preset:
 
 LM Studio входит в этот же провайдер. Сначала запустите local server и загрузите модель; preset не требует ключа. Если `/models` недоступен, но Chat Completions работает, введите model ID вручную.
 
-Helper проверяет структуру ответа и контекстные маркеры перед применением. Если endpoint явно отклоняет optional model-параметр, helper повторяет запрос без него; для `max_tokens` сначала используется fallback `max_completion_tokens`. HTTP 400/401, в котором provider сообщает о недоступной или неподдерживаемой модели, показывается как проблема модели без вывода сырого upstream message. Временные ошибки и rate limit автоматически повторяются с задержкой и `Retry-After`; панель показывает безопасную итоговую причину, а исчерпанный лимит останавливает оставшуюся очередь. Эта проверка не является редактурой, а результат не становится одобренной локализацией.
+Helper проверяет структуру ответа и контекстные маркеры перед применением. Если endpoint явно отклоняет optional model-параметр, helper повторяет запрос без него. HTTP 400/401, в котором provider сообщает о недоступной или неподдерживаемой модели, показывается как проблема модели без вывода сырого upstream message. Временные ошибки и rate limit автоматически повторяются с задержкой и `Retry-After`; панель показывает безопасную итоговую причину, а исчерпанный лимит останавливает оставшуюся очередь. Эта проверка не является редактурой, а результат не становится одобренной локализацией.
 
 ### Кэш и оформление
 

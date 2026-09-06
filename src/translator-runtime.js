@@ -79,7 +79,6 @@
     openAICompatibleModel: "",
     openAICompatibleSystemPrompt: OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT,
     openAICompatibleReasoningEffort: "",
-    openAICompatibleMaxTokens: null,
     openAICompatibleVerbosity: "",
     collapsed: false,
     x: null,
@@ -90,15 +89,6 @@
   function normalizedOpenAICompatibleChoice(value, allowed, fallback) {
     const selected = typeof value === "string" ? value : "";
     return allowed.includes(selected) ? selected : fallback;
-  }
-
-  function normalizedOpenAICompatibleNumber(value, minimum, maximum, integer, fallback) {
-    if (value === null || value === "" || typeof value === "undefined") return null;
-    const number = typeof value === "number" ? value : Number(value);
-    if (!Number.isFinite(number) || number < minimum || number > maximum || (integer && !Number.isInteger(number))) {
-      return fallback;
-    }
-    return number;
   }
 
   if (!Array.isArray(LANGUAGES) || LANGUAGES.length !== 30) throw new Error("VN Revival language catalog is missing");
@@ -226,9 +216,6 @@
         OPENAI_COMPATIBLE_REASONING_EFFORTS,
         defaults.openAICompatibleReasoningEffort
       ),
-      openAICompatibleMaxTokens: normalizedOpenAICompatibleNumber(
-        source.openAICompatibleMaxTokens, 64, 32768, true, defaults.openAICompatibleMaxTokens
-      ),
       openAICompatibleVerbosity: normalizedOpenAICompatibleChoice(
         source.openAICompatibleVerbosity,
         OPENAI_COMPATIBLE_VERBOSITIES,
@@ -281,9 +268,6 @@
           settings.openAICompatibleReasoningEffort,
           OPENAI_COMPATIBLE_REASONING_EFFORTS,
           defaults.openAICompatibleReasoningEffort
-        ),
-        maxTokens: normalizedOpenAICompatibleNumber(
-          settings.openAICompatibleMaxTokens, 64, 32768, true, defaults.openAICompatibleMaxTokens
         ),
         verbosity: normalizedOpenAICompatibleChoice(
           settings.openAICompatibleVerbosity,
@@ -1432,7 +1416,6 @@
           <div class="openAICompatibleParameters">
             <label><span>Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort"><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
             <label><span>Verbosity</span><select class="openAICompatibleVerbosity" aria-label="Output verbosity"><option value="">Provider default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
-            <label><span>Max output tokens</span><input class="openAICompatibleMaxTokens" type="number" min="64" max="32768" step="1" inputmode="numeric" placeholder="Auto" aria-label="Maximum output tokens"></label>
           </div>
           <div class="openAICompatibleParametersHint">Unsupported optional parameters are removed and retried automatically.</div>
           <div class="openAICompatiblePromptLabel"><label for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button">Restore default</button></div>
@@ -1488,7 +1471,6 @@
   const openAICompatibleModelSelect = shadow.querySelector(".openAICompatibleModel");
   const openAICompatibleReasoningEffortSelect = shadow.querySelector(".openAICompatibleReasoningEffort");
   const openAICompatibleVerbositySelect = shadow.querySelector(".openAICompatibleVerbosity");
-  const openAICompatibleMaxTokensInput = shadow.querySelector(".openAICompatibleMaxTokens");
   const openAICompatiblePromptInput = shadow.querySelector(".openAICompatiblePrompt");
   const openAICompatiblePromptResetButton = shadow.querySelector(".openAICompatiblePromptReset");
   const openAICompatibleKeyInput = shadow.querySelector(".openAICompatibleKey");
@@ -1570,7 +1552,6 @@
       openAICompatiblePresetSelect, openAICompatibleBaseURLInput,
       openAICompatibleModelSelect,
       openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect,
-      openAICompatibleMaxTokensInput,
       openAICompatibleKeyInput, openAICompatibleSaveButton, openAICompatibleRefreshButton,
       openAICompatibleRemoveButton
     ]) control.disabled = busy || !LOCAL_BRIDGE;
@@ -1588,8 +1569,6 @@
     populateOpenAICompatibleModelOptions(openAICompatibleModels, connection.model);
     openAICompatibleReasoningEffortSelect.value = connection.modelParameters.reasoningEffort;
     openAICompatibleVerbositySelect.value = connection.modelParameters.verbosity;
-    openAICompatibleMaxTokensInput.value = connection.modelParameters.maxTokens === null
-      ? "" : String(connection.modelParameters.maxTokens);
     openAICompatiblePromptInput.value = connection.systemPrompt;
   }
   function populateOpenAICompatibleModelOptions(models, selectedModel) {
@@ -1654,15 +1633,10 @@
       OPENAI_COMPATIBLE_VERBOSITIES,
       settings.openAICompatibleVerbosity
     );
-    const maxTokens = normalizedOpenAICompatibleNumber(
-      next.maxTokens, 64, 32768, true, settings.openAICompatibleMaxTokens
-    );
     const changed = settings.openAICompatibleReasoningEffort !== reasoningEffort
-      || settings.openAICompatibleVerbosity !== verbosity
-      || settings.openAICompatibleMaxTokens !== maxTokens;
+      || settings.openAICompatibleVerbosity !== verbosity;
     settings.openAICompatibleReasoningEffort = reasoningEffort;
     settings.openAICompatibleVerbosity = verbosity;
-    settings.openAICompatibleMaxTokens = maxTokens;
     if (changed) {
       invalidateAppliedTranslations();
       saveSettings();
@@ -1791,14 +1765,12 @@
     setStatus("OpenAI-compatible system prompt saved");
   });
   for (const control of [
-    openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect,
-    openAICompatibleMaxTokensInput
+    openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect
   ]) {
     control.addEventListener("change", () => {
       applyOpenAICompatibleModelParameters({
         reasoningEffort: openAICompatibleReasoningEffortSelect.value,
-        verbosity: openAICompatibleVerbositySelect.value,
-        maxTokens: openAICompatibleMaxTokensInput.value
+        verbosity: openAICompatibleVerbositySelect.value
       });
       setStatus("OpenAI-compatible model parameters saved");
     });

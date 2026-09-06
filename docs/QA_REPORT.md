@@ -34,7 +34,7 @@
 - модели выбираются в единственном обычном `select` без Chromium `datalist`;
   пункт `Enter model ID manually…` поддерживает отсутствующие в каталоге ID;
 - введённый API-ключ автоматически сохраняется при `Enter` или уходе из поля, после чего обновляется список моделей;
-- OpenAI-compatible передаёт проверенные reasoning effort, verbosity и output token limit,
+- OpenAI-compatible передаёт только явно выбранные reasoning effort и verbosity,
   а явно неподдерживаемые optional-параметры удаляет ограниченным повтором запроса;
 - прежняя v1/v2 → v3 миграция Google-кэша остаётся доступной;
 - DOM runtime сохраняет контекстную группировку, пофрагментный fallback, формы/слоты/имена, `Ctrl+Shift+T`, RTL, шрифты и переносы;
@@ -57,7 +57,7 @@
 - 22 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
   cache isolation/migration, UTF-8 splitting, context markers and launcher
   lifecycle contracts;
-- 36 Python tests: manifest/launcher contracts и local helper, включая preset,
+- 34 Python tests: manifest/launcher contracts и local helper, включая preset,
   URL policy, credential vault, model discovery, Chat Completions, structured
   response/model-parameter fallback, marker validation и safe errors;
 - source verification: 30 языков из общего каталога сайта;

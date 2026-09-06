@@ -49,7 +49,7 @@ runtime
 - `google` — публичный endpoint без API-ключа;
 - `openai-compatible` — последовательные запросы через локальный helper.
 
-OpenAI-compatible включает preset OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom. Runtime сохраняет preset, Base URL, model ID, редактируемый шаблон системного prompt и параметры модели: reasoning effort, verbosity и максимальный output token budget. Шаблон поддерживает `{targetName}` и `{target}`; helper подставляет выбранный язык перед запросом. `Refresh models` вызывает `GET /models`; единый безопасный select закрепляет бесплатные модели сверху, сортирует обе группы по алфавиту и оставляет отдельный пункт для ручного ID. Поскольку каталоги OpenCode Go и Zen смешивают модели для нескольких wire protocol, helper пропускает в select только модели, документированные для Chat Completions. Перевод использует `POST /chat/completions`; временные отказы повторяются с exponential backoff и `Retry-After`, а исчерпанный rate limit останавливает оставшуюся очередь вместо серии бесполезных запросов.
+OpenAI-compatible включает preset OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom. Runtime сохраняет preset, Base URL, model ID, редактируемый шаблон системного prompt и параметры модели: reasoning effort и verbosity. Шаблон поддерживает `{targetName}` и `{target}`; helper подставляет выбранный язык перед запросом. `Refresh models` вызывает `GET /models`; единый безопасный select закрепляет бесплатные модели сверху, сортирует обе группы по алфавиту и оставляет отдельный пункт для ручного ID. Поскольку каталоги OpenCode Go и Zen смешивают модели для нескольких wire protocol, helper пропускает в select только модели, документированные для Chat Completions. Перевод использует `POST /chat/completions`; временные отказы повторяются с exponential backoff и `Retry-After`, а исчерпанный rate limit останавливает оставшуюся очередь вместо серии бесполезных запросов.
 
 Helper сначала просит JSON Schema. При явном отказе endpoint от этого формата он
 переходит на `json_object`, а при ещё одном явном отказе — на запрос без
@@ -59,8 +59,7 @@ plain text, но затем обязательно проверяет конте
 результат не является редакторски проверенной или одобренной локализацией.
 Optional model-параметры отправляются только при выбранном значении. Если HTTP
 400 явно называет один из них неподдерживаемым, helper удаляет его и повторяет
-тот же запрос; несовместимый `max_tokens` сначала заменяется на
-`max_completion_tokens`. Другие ошибки не запускают этот fallback.
+тот же запрос. Другие ошибки не запускают этот fallback.
 Известные безопасные причины upstream-отказа классифицируются без возврата
 сырого provider message: в частности, gateway HTTP 400/401 с недоступной или
 неподдерживаемой моделью становится `openai_model_unavailable`, а не локальным

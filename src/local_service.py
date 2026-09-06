@@ -22,7 +22,6 @@ from typing import Any
 
 
 OPENAI_COMPATIBLE_PROMPT_VERSION = "vnrevival-openai-compatible-v2"
-OPENAI_COMPATIBLE_MIN_COMPLETION_TOKENS = 2048
 OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS = 12_000
 OPENAI_COMPATIBLE_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
 OPENAI_COMPATIBLE_VERBOSITIES = {"low", "medium", "high"}
@@ -362,9 +361,7 @@ class LocalServiceBridge:
         if status != 400:
             return None
         normalized = detail.lower().replace("-", "_").replace(" ", "_")
-        for parameter in (
-            "reasoning_effort", "verbosity", "max_tokens", "max_completion_tokens"
-        ):
+        for parameter in ("reasoning_effort", "verbosity"):
             if parameter in request_body and parameter in normalized:
                 return parameter
         return None
@@ -439,11 +436,11 @@ class LocalServiceBridge:
         return None
 
     @staticmethod
-    def _model_parameters(value: Any, text: str) -> dict[str, Any]:
+    def _model_parameters(value: Any) -> dict[str, Any]:
         if value is None:
             value = {}
         if not isinstance(value, dict) or any(key not in {
-            "reasoningEffort", "maxTokens", "verbosity"
+            "reasoningEffort", "verbosity"
         } for key in value):
             raise BridgeError("openai_model_parameters_invalid", "The model parameters are invalid", 400)
 
@@ -459,13 +456,7 @@ class LocalServiceBridge:
         elif not isinstance(verbosity, str) or verbosity not in OPENAI_COMPATIBLE_VERBOSITIES:
             raise BridgeError("openai_model_parameters_invalid", "The output verbosity is invalid", 400)
 
-        max_tokens = value.get("maxTokens")
-        if max_tokens in (None, ""):
-            max_tokens = min(8192, max(OPENAI_COMPATIBLE_MIN_COMPLETION_TOKENS, len(text) * 3))
-        elif isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or not 64 <= max_tokens <= 32768:
-            raise BridgeError("openai_model_parameters_invalid", "The maximum output tokens value is invalid", 400)
-
-        result: dict[str, Any] = {"max_tokens": max_tokens}
+        result: dict[str, Any] = {}
         if reasoning_effort is not None:
             result["reasoning_effort"] = reasoning_effort
         if verbosity is not None:
@@ -673,7 +664,7 @@ class LocalServiceBridge:
         system_instruction = system_prompt.strip().replace(
             "{targetName}", target_name.strip()
         ).replace("{target}", target)
-        request_model_parameters = self._model_parameters(model_parameters, text)
+        request_model_parameters = self._model_parameters(model_parameters)
         body = {
             "model": model.strip(),
             "messages": [
@@ -718,8 +709,6 @@ class LocalServiceBridge:
                     if unsupported_parameter:
                         body.pop(unsupported_parameter, None)
                         ignored_model_parameters.append(unsupported_parameter)
-                        if unsupported_parameter == "max_tokens":
-                            body["max_completion_tokens"] = request_model_parameters["max_tokens"]
                         continue
                     if response_format_index < len(response_formats) - 1 \
                             and self._response_format_rejected(error.code, detail):

@@ -186,22 +186,20 @@
         ?.openAICompatibleSystemPrompt === openAIPromptInput.value;
       const reasoningEffortInput = shadow.querySelector(".openAICompatibleReasoningEffort");
       const verbosityInput = shadow.querySelector(".openAICompatibleVerbosity");
-      const maxTokensInput = shadow.querySelector(".openAICompatibleMaxTokens");
       const openAIModelParametersVisible = reasoningEffortInput.options.length === 8
         && reasoningEffortInput.value === ""
         && verbosityInput.options.length === 4
         && verbosityInput.value === ""
         && !shadow.querySelector(".openAICompatibleTemperature")
-        && maxTokensInput.value === "";
+        && !shadow.querySelector(".openAICompatibleMaxTokens");
       reasoningEffortInput.value = "high";
       verbosityInput.value = "low";
-      maxTokensInput.value = "4096";
       reasoningEffortInput.dispatchEvent(new Event("change"));
       const savedModelParameters = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null");
       const openAIModelParametersSaved = savedModelParameters?.openAICompatibleReasoningEffort === "high"
         && savedModelParameters?.openAICompatibleVerbosity === "low"
         && !("openAICompatibleTemperature" in savedModelParameters)
-        && savedModelParameters?.openAICompatibleMaxTokens === 4096;
+        && !("openAICompatibleMaxTokens" in savedModelParameters);
       const openAIHintRemoved = shadow.querySelector(".providerHint").textContent === ""
         && getComputedStyle(shadow.querySelector(".providerHint")).display === "none";
       const openAIKeyInput = shadow.querySelector(".openAICompatibleKey");

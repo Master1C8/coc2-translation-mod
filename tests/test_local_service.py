@@ -227,7 +227,6 @@ class LocalServiceTests(unittest.TestCase):
 
             parameters = {
                 "reasoningEffort": "high",
-                "maxTokens": 4096,
                 "verbosity": "low",
             }
             with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
@@ -235,7 +234,8 @@ class LocalServiceTests(unittest.TestCase):
                     "ru", "Russian", "Hello", "model", "openrouter", "ignored", None, parameters
                 )
             self.assertEqual(captured["body"]["reasoning_effort"], "high")
-            self.assertEqual(captured["body"]["max_tokens"], 4096)
+            self.assertNotIn("max_tokens", captured["body"])
+            self.assertNotIn("max_completion_tokens", captured["body"])
             self.assertEqual(captured["body"]["verbosity"], "low")
 
     def test_translation_omits_provider_default_optional_parameters(self):
@@ -252,11 +252,12 @@ class LocalServiceTests(unittest.TestCase):
             with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
                 bridge.openai_translate(
                     "ru", "Russian", "Hello", "model", "openrouter", "ignored", None,
-                    {"reasoningEffort": "", "maxTokens": None, "verbosity": ""},
+                    {"reasoningEffort": "", "verbosity": ""},
                 )
             self.assertNotIn("reasoning_effort", captured["body"])
             self.assertNotIn("verbosity", captured["body"])
-            self.assertEqual(captured["body"]["max_tokens"], 2048)
+            self.assertNotIn("max_tokens", captured["body"])
+            self.assertNotIn("max_completion_tokens", captured["body"])
 
     def test_translation_retries_without_an_explicitly_unsupported_parameter(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -308,65 +309,6 @@ class LocalServiceTests(unittest.TestCase):
             self.assertEqual(request_bodies[0]["reasoning_effort"], "high")
             self.assertNotIn("reasoning_effort", request_bodies[1])
             self.assertEqual(result["ignoredModelParameters"], ["reasoning_effort"])
-
-    def test_translation_switches_to_max_completion_tokens_when_required(self):
-        with tempfile.TemporaryDirectory() as directory:
-            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
-            request_bodies = []
-
-            def fake_open(request, timeout):
-                request_bodies.append(json.loads(request.data.decode("utf-8")))
-                if len(request_bodies) == 1:
-                    raise urllib.error.HTTPError(
-                        request.full_url, 400, "unsupported", {},
-                        io.BytesIO(b'{"error":{"message":"max_tokens is not supported; use max_completion_tokens"}}'),
-                    )
-                return FakeHTTPResponse({
-                    "choices": [{"message": {"content": '{"translation":"Привет"}'}}]
-                })
-
-            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
-                bridge.openai_translate(
-                    "ru", "Russian", "Hello", "model", "openrouter", "ignored", None,
-                    {"maxTokens": 4096},
-                )
-            self.assertEqual(request_bodies[0]["max_tokens"], 4096)
-            self.assertNotIn("max_tokens", request_bodies[1])
-            self.assertEqual(request_bodies[1]["max_completion_tokens"], 4096)
-
-    def test_translation_omits_completion_limit_when_both_token_parameters_are_unsupported(self):
-        with tempfile.TemporaryDirectory() as directory:
-            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
-            request_bodies = []
-
-            def fake_open(request, timeout):
-                request_bodies.append(json.loads(request.data.decode("utf-8")))
-                if len(request_bodies) == 1:
-                    detail = b'{"error":{"message":"Unsupported parameter: max_tokens"}}'
-                    raise urllib.error.HTTPError(
-                        request.full_url, 400, "unsupported", {}, io.BytesIO(detail)
-                    )
-                if len(request_bodies) == 2:
-                    detail = b'{"error":{"message":"Unsupported parameter: max_completion_tokens"}}'
-                    raise urllib.error.HTTPError(
-                        request.full_url, 400, "unsupported", {}, io.BytesIO(detail)
-                    )
-                return FakeHTTPResponse({
-                    "choices": [{"message": {"content": '{"translation":"Привет"}'}}]
-                })
-
-            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
-                result = bridge.openai_translate(
-                    "ru", "Russian", "Hello", "model", "openrouter", "ignored", None,
-                    {"maxTokens": 4096},
-                )
-            self.assertEqual(request_bodies[0]["max_tokens"], 4096)
-            self.assertEqual(request_bodies[1]["max_completion_tokens"], 4096)
-            self.assertNotIn("max_tokens", request_bodies[2])
-            self.assertNotIn("max_completion_tokens", request_bodies[2])
-            self.assertEqual(
-                result["ignoredModelParameters"], ["max_tokens", "max_completion_tokens"]
-            )
 
     def test_translation_does_not_retry_an_unrelated_bad_request(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -451,7 +393,7 @@ class LocalServiceTests(unittest.TestCase):
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")
             for parameters in (
                 {"reasoningEffort": "extreme"},
-                {"maxTokens": 10},
+                {"maxTokens": 4096},
                 {"verbosity": "huge"},
                 {"unknown": True},
             ):
