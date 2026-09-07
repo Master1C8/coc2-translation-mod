@@ -157,7 +157,8 @@
       shadow.querySelector(".provider").dispatchEvent(new Event("change"));
       await new Promise((resolve) => setTimeout(resolve, 30));
       const openAISetupVisible = !shadow.querySelector(".openAICompatibleBox").hidden
-        && shadow.querySelector(".openAICompatibleStatus").textContent.includes("OpenCode Go")
+        && !shadow.querySelector(".openAICompatibleStatus")
+        && !shadow.querySelector(".openAICompatibleParametersHint")
         && shadow.querySelector(".openAICompatiblePreset").options.length === 6;
       const streamlinedOpenAIControls = !shadow.querySelector(
         ".openAICompatibleSave,.openAICompatibleRefresh,.openAICompatibleRemove,"
