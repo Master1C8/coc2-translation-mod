@@ -140,7 +140,8 @@
     ".openAICompatibleModel", ".openAICompatibleReasoningEffort",
     ".openAICompatibleConcurrency", ".openAICompatibleAdvancedToggle",
     ".openAICompatiblePromptToggle", ".openAICompatiblePromptReset",
-    ".openAICompatibleGlossaryToggle", ".openAICompatibleGlossary", ".autoToggle", ".cacheDelete"
+    ".openAICompatibleGlossaryToggle", ".openAICompatibleSiteGlossary",
+    ".openAICompatibleGlossary", ".autoToggle", ".cacheDelete"
   ].every((selector) => (shadow.querySelector(selector)?.title || "").length >= 20);
   const openAIAdvancedToggle = shadow.querySelector(".openAICompatibleAdvancedToggle");
   const openAIAdvanced = shadow.querySelector(".openAICompatibleAdvanced");
@@ -186,18 +187,22 @@
     && openAIPromptToggle.getAttribute("aria-expanded") === "false";
   const openAIGlossaryToggle = shadow.querySelector(".openAICompatibleGlossaryToggle");
   const openAIGlossaryEditor = shadow.querySelector(".openAICompatibleGlossaryEditor");
+  const openAISiteGlossaryInput = shadow.querySelector(".openAICompatibleSiteGlossary");
   const openAIGlossaryInput = shadow.querySelector(".openAICompatibleGlossary");
   const openAIGlossaryInitiallyCollapsed = openAIGlossaryEditor.hidden
     && getComputedStyle(openAIGlossaryEditor).display === "none"
-    && openAIGlossaryToggle.textContent === "Additional glossary"
+    && openAIGlossaryToggle.textContent === "Glossary"
     && openAIGlossaryToggle.getAttribute("aria-expanded") === "false"
+    && openAISiteGlossaryInput.readOnly
+    && openAISiteGlossaryInput.value === ""
+    && shadow.querySelector(".siteGlossaryStatus").textContent === "Not needed for English"
     && openAIGlossaryInput.value === ""
     && openAIGlossaryInput.maxLength === 8000
     && openAIGlossaryInput.placeholder.includes("source = translation");
   openAIGlossaryToggle.click();
   const openAIGlossaryOpenedByButton = !openAIGlossaryEditor.hidden
     && getComputedStyle(openAIGlossaryEditor).display !== "none"
-    && openAIGlossaryToggle.textContent === "Hide additional glossary"
+    && openAIGlossaryToggle.textContent === "Hide glossary"
     && openAIGlossaryToggle.getAttribute("aria-expanded") === "true";
   openAIGlossaryInput.value = "Minstrel = Менестрель";
   openAIGlossaryInput.dispatchEvent(new Event("change"));
@@ -206,7 +211,7 @@
   openAIGlossaryToggle.click();
   const openAIGlossaryClosedByButton = openAIGlossaryEditor.hidden
     && getComputedStyle(openAIGlossaryEditor).display === "none"
-    && openAIGlossaryToggle.textContent === "Additional glossary"
+    && openAIGlossaryToggle.textContent === "Glossary"
     && openAIGlossaryToggle.getAttribute("aria-expanded") === "false";
   openAIAdvancedToggle.click();
   const openAIAdvancedClosedByButton = openAIAdvanced.hidden
@@ -375,9 +380,13 @@
   captureProvider.value = "openai-compatible";
   captureProvider.dispatchEvent(new Event("change"));
   for (let attempt = 0; attempt < 50
-      && !window.localHelperCalls.includes("/v1/vnrevival/translation-config"); attempt += 1) {
+      && !openAISiteGlossaryInput.value.includes("Capture = التقاط من الموقع"); attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
+  const siteGlossaryShown = openAISiteGlossaryInput.readOnly
+    && openAISiteGlossaryInput.value === "Capture = التقاط من الموقع\nMinstrel = شاعر الموقع"
+    && shadow.querySelector(".siteGlossaryStatus").textContent === "2 terms loaded"
+    && shadow.querySelector(".localGlossaryLabel").textContent === "Local overrides";
   shadow.querySelector(".openAICompatiblePromptReset").click();
   captureProvider.value = "google";
   captureProvider.dispatchEvent(new Event("change"));
@@ -644,6 +653,7 @@
     openAIGlossaryOpenedByButton,
     openAIGlossarySaved,
     openAIGlossaryClosedByButton,
+    siteGlossaryShown,
     openAIModelParametersVisible,
     openAIModelParametersSaved,
     openAIHintRemoved,

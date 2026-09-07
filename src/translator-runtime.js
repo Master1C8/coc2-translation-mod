@@ -651,9 +651,9 @@
         });
         siteTranslationConfigs.set(language, config);
         siteTranslationConfigFailures.delete(language);
-        if (language === settings.language && providerUsesOpenAICompatible(settings.provider)
-            && previousVariant !== translationVariant()) {
-          invalidateAppliedTranslations();
+        if (language === settings.language) {
+          if (providerUsesOpenAICompatible(settings.provider)
+              && previousVariant !== translationVariant()) invalidateAppliedTranslations();
           syncOpenAICompatibleInputs();
         }
         return config;
@@ -662,9 +662,11 @@
         return null;
       } finally {
         siteTranslationConfigPromises.delete(language);
+        if (language === settings.language) syncSiteGlossaryDisplay();
       }
     })();
     siteTranslationConfigPromises.set(language, pending);
+    if (language === settings.language) syncSiteGlossaryDisplay();
     return pending;
   }
 
@@ -1772,6 +1774,10 @@
   const openAICompatiblePromptResetButton = shadow.querySelector(".openAICompatiblePromptReset");
   const openAICompatibleGlossaryToggleButton = shadow.querySelector(".openAICompatibleGlossaryToggle");
   const openAICompatibleGlossaryEditor = shadow.querySelector(".openAICompatibleGlossaryEditor");
+  const openAICompatibleSiteGlossaryInput = shadow.querySelector(".openAICompatibleSiteGlossary");
+  const siteGlossaryLabel = shadow.querySelector(".siteGlossaryLabel");
+  const siteGlossaryStatus = shadow.querySelector(".siteGlossaryStatus");
+  const localGlossaryLabel = shadow.querySelector(".localGlossaryLabel");
   const openAICompatibleGlossaryInput = shadow.querySelector(".openAICompatibleGlossary");
   const openAICompatibleKeyInput = shadow.querySelector(".openAICompatibleKey");
   const keyState = shadow.querySelector(".keyState");
@@ -1849,7 +1855,10 @@
     shadow.querySelector(".systemPromptLabel").textContent = text.systemPrompt;
     openAICompatiblePromptResetButton.textContent = text.restoreDefault;
     openAICompatibleGlossaryToggleButton.textContent = openAICompatibleGlossaryEditor.hidden ? text.glossary : text.hideGlossary;
+    siteGlossaryLabel.textContent = text.siteGlossary;
+    localGlossaryLabel.textContent = text.localGlossary;
     openAICompatibleGlossaryInput.placeholder = text.glossaryPlaceholder;
+    syncSiteGlossaryDisplay(text);
     shadow.querySelector(".autoTitle").textContent = text.autoTranslate;
     const autoState = shadow.querySelector(".autoState");
     autoState.dataset.on = text.on;
@@ -1868,6 +1877,7 @@
     openAICompatiblePromptResetButton.title = text.resetTitle;
     openAICompatiblePromptInput.title = text.promptInputTitle;
     openAICompatibleGlossaryToggleButton.title = text.glossaryTitle;
+    openAICompatibleSiteGlossaryInput.title = text.siteGlossaryTitle;
     openAICompatibleGlossaryInput.title = text.glossaryInputTitle;
     shadow.querySelector(".autoToggle").title = text.autoTitle;
     cacheCopyButton.title = text.copyLogTitle;
@@ -1997,6 +2007,18 @@
       saveSettings();
     }
   }
+  function syncSiteGlossaryDisplay(text = interfacePreset()) {
+    const language = settings.language;
+    const config = siteTranslationConfig(language);
+    openAICompatibleSiteGlossaryInput.value = config?.glossary || "";
+    const loading = siteTranslationConfigPromises.has(language);
+    openAICompatibleSiteGlossaryInput.setAttribute("aria-busy", String(loading));
+    if (language === SOURCE_LANGUAGE) siteGlossaryStatus.textContent = text.siteGlossarySourceLanguage;
+    else if (config) siteGlossaryStatus.textContent = formatMessage(text.siteGlossaryLoaded, { count: config.entries });
+    else if (loading) siteGlossaryStatus.textContent = text.siteGlossaryLoading;
+    else if (siteTranslationConfigFailures.has(language)) siteGlossaryStatus.textContent = text.siteGlossaryUnavailable;
+    else siteGlossaryStatus.textContent = text.siteGlossaryNotLoaded;
+  }
   function syncOpenAICompatibleInputs() {
     const connection = openAICompatibleConnection();
     openAICompatiblePresetSelect.value = connection.preset;
@@ -2012,6 +2034,7 @@
     syncReasoningEffortOptions(connection);
     openAICompatibleConcurrencySelect.value = String(connection.concurrency);
     openAICompatiblePromptInput.value = connection.systemPrompt;
+    syncSiteGlossaryDisplay();
     openAICompatibleGlossaryInput.value = connection.userGlossary;
   }
   function populateOpenAICompatibleModelOptions(models, selectedModel) {

@@ -23,3 +23,11 @@ test("malformed theme values cannot inject HTML or CSS", () => {
     assert.doesNotMatch(html, /bad\(\)|unexpected-token|--injected/);
   }
 });
+
+test("glossary editor exposes site entries separately from local overrides", () => {
+  const html = render();
+  assert.match(html, /class="openAICompatibleSiteGlossary" readonly/);
+  assert.match(html, /class="siteGlossaryStatus">Not loaded</);
+  assert.match(html, /class="localGlossaryLabel"[^>]*>Local overrides</);
+  assert.match(html, /class="openAICompatibleGlossary" maxlength="8000"/);
+});

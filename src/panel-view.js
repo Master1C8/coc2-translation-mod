@@ -85,9 +85,11 @@
         .openAICompatibleParameters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
         .openAICompatibleParameters label{min-width:0;color:var(--muted);font-size:11px}
         .openAICompatibleParameters label span{display:block;margin-bottom:4px}
-        .openAICompatiblePromptLabel{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:5px 0;color:var(--muted);font-size:11px}
+        .openAICompatiblePromptLabel,.openAICompatibleGlossaryLabel{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:5px 0;color:var(--muted);font-size:11px}
+        .localGlossaryLabel{display:block;margin:8px 0 4px;color:var(--muted);font-size:11px}
         .openAICompatiblePromptReset{font-size:10px}
         .openAICompatiblePrompt,.openAICompatibleGlossary{min-height:100px;resize:vertical;font-size:12px}
+        .openAICompatibleSiteGlossary{min-height:140px;resize:vertical;font-size:12px;color:var(--muted);background:var(--background)}
         .openAICompatibleAdvancedNotice{margin:8px 0;color:var(--muted);font-size:11px}
         .cacheBox,.captureBox{display:grid;grid-template-columns:auto auto;justify-content:space-between;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
         .captureBox{margin-top:8px}
@@ -147,8 +149,11 @@
                 <div class="openAICompatiblePromptLabel"><label class="systemPromptLabel" for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button" title="Replace the custom prompt with the current VN Revival default.">Restore default</button></div>
                 <textarea id="openAICompatiblePrompt" class="openAICompatiblePrompt" maxlength="${maxSystemPromptChars}" spellcheck="false" aria-label="OpenAI-compatible system prompt" title="Instructions sent to the AI before each text fragment."></textarea>
               </div>
-              <button class="secondary openAICompatibleGlossaryToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleGlossaryEditor" title="Add overrides to the VN Revival glossary loaded for the selected language.">Additional glossary</button>
+              <button class="secondary openAICompatibleGlossaryToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleGlossaryEditor" title="Show the VN Revival glossary and optional local overrides.">Glossary</button>
               <div id="openAICompatibleGlossaryEditor" class="openAICompatibleGlossaryEditor" hidden>
+                <div class="openAICompatibleGlossaryLabel"><label class="siteGlossaryLabel" for="openAICompatibleSiteGlossary">VN Revival glossary</label><span class="siteGlossaryStatus">Not loaded</span></div>
+                <textarea id="openAICompatibleSiteGlossary" class="openAICompatibleSiteGlossary" readonly spellcheck="false" aria-label="VN Revival translation glossary" title="Exact glossary entries loaded from VN Revival for the selected language."></textarea>
+                <label class="localGlossaryLabel" for="openAICompatibleGlossary">Local overrides</label>
                 <textarea class="openAICompatibleGlossary" maxlength="${maxGlossaryChars}" spellcheck="false" aria-label="Additional translation glossary" placeholder="Optional overrides: source = translation" title="Add optional source-to-translation overrides; the site glossary loads automatically."></textarea>
               </div>
             </div>
