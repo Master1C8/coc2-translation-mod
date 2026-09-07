@@ -91,12 +91,14 @@
         .cacheBox{display:grid;grid-template-columns:auto auto;justify-content:space-between;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
         .cacheStats{grid-column:1/-1}
         .cacheCopy,.cacheDelete{padding:4px 0;font-size:10px;background:transparent}
-        .site{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0}
-        .site a{color:var(--muted);text-decoration:none;font-size:11px}
+        .site{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+        .site a{color:var(--text);text-decoration:none;font-size:14px}
+        .siteLabel a{display:flex;align-items:baseline;justify-content:center;flex-wrap:wrap;gap:4px 8px;text-align:center}
+        .siteName{font-size:16px;font-weight:600;color:var(--accent)}
         .site a:hover{color:var(--accent)}
-        .contacts{display:flex;gap:10px}
-        .contactIcon{display:flex;align-items:center;justify-content:center;width:22px;height:22px}
-        .contactIcon svg{width:15px;height:15px;fill:currentColor}
+        .contacts{display:flex;gap:18px}
+        .contactIcon{display:flex;align-items:center;justify-content:center;width:34px;height:34px}
+        .contactIcon svg{width:24px;height:24px;fill:currentColor}
       </style>
       <div class="panel" style="${themeStyle(options.theme)}">
         <div class="bar quickLanguage"><span class="quickLanguageLabel">Language</span><select class="language" aria-label="Translation language"></select><button class="collapseToggle" type="button" title="Collapse translator" aria-label="Collapse translator">−</button></div>
@@ -150,7 +152,7 @@
         </div>
         </div>
         <div class="site">
-          <span class="siteLabel"><a href="${siteURL}" target="_blank" rel="noopener noreferrer">${siteName}</a></span>
+          <span class="siteLabel"><a href="${siteURL}" target="_blank" rel="noopener noreferrer"><span class="siteName">${siteName}</span><span>more games here</span></a></span>
           <span class="contacts" aria-label="VN Revival contacts">
             <a class="contactIcon discord" href="https://discord.gg/QgyeWW3Jg" target="_blank" rel="noopener noreferrer" title="Discord" aria-label="VN Revival on Discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.1 6.2A15 15 0 0 1 10 5.3l.4.8a10 10 0 0 1 3.2 0l.4-.8a15 15 0 0 1 2.9.9c1.8 2.5 2.3 4.9 2 7.2a12 12 0 0 1-3.6 1.8l-.9-1.2c.7-.3 1.3-.6 1.8-1.1-3.4 1.6-7.2 1.6-10.5 0 .5.5 1.1.8 1.8 1.1l-.9 1.2A12 12 0 0 1 3 13.4c-.3-2.3.2-4.7 2-7.2.7-.3 1.4-.6 2.1-.8v.8Zm2.1 6.1c.8 0 1.4-.8 1.4-1.8S10 8.7 9.2 8.7s-1.4.8-1.4 1.8.6 1.8 1.4 1.8Zm5.6 0c.8 0 1.4-.8 1.4-1.8s-.6-1.8-1.4-1.8-1.4.8-1.4 1.8.6 1.8 1.4 1.8Z"/></svg></a>
             <a class="contactIcon telegram" href="https://t.me/VnRevival" target="_blank" rel="noopener noreferrer" title="Telegram" aria-label="VN Revival on Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 3.4 18.3 19c-.2 1.1-.9 1.4-1.8.9l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5 9.1-8.2c.4-.4-.1-.6-.6-.2L5.8 12.8.9 11.3c-1.1-.3-1.1-1 .2-1.5L20 2.5c.9-.3 1.7.2 1.5.9Z"/></svg></a>
