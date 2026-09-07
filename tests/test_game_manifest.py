@@ -26,6 +26,22 @@ class GameManifestTests(unittest.TestCase):
     def test_current_manifest_is_valid(self):
         self.assertEqual(MODULE.load_manifest(self.manifest_path)["id"], "coc2")
 
+    def test_game_theme_is_optional_and_rejects_non_color_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            value = copy.deepcopy(self.valid)
+            value.pop("theme")
+            self.assertNotIn("theme", MODULE.load_manifest(self.write_manifest(directory, value)))
+            value["theme"] = {"accent": "#123ABC"}
+            path = self.write_manifest(directory, value)
+            self.assertEqual(MODULE.load_manifest(path)["theme"], value["theme"])
+            output = Path(directory) / "game-config.js"
+            subprocess.run(["python3", str(ROOT / "scripts/generate-game-config.py"), str(path), str(output)], check=True)
+            self.assertIn('"theme":{"accent":"#123ABC"}', output.read_text())
+            for invalid in [None, [], {"unknown": "#123456"}, {"accent": "red;display:none"}, {"text": "</style>"}, {"text": 123}]:
+                value["theme"] = invalid
+                with self.subTest(theme=invalid), self.assertRaises(ValueError):
+                    MODULE.load_manifest(self.write_manifest(directory, value))
+
     def test_executable_filename_is_allowed_but_paths_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             value = copy.deepcopy(self.valid)

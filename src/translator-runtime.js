@@ -117,6 +117,7 @@
   let cacheMetadataSaveTimer = 0;
   let localLogBytes = null;
   let openAICompatibleStatus = null;
+  let editingOpenAIKey = false;
   let openAICompatibleBusy = false;
   let openAICompatibleModels = [];
   const applied = new WeakMap();
@@ -1225,6 +1226,7 @@
   host.style.cssText = "position:fixed;z-index:2147483647;top:14px;right:14px;pointer-events:auto";
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = panelView.render({
+    theme: game.theme,
     siteURL: SITE_URL,
     siteName: SITE_NAME,
     maxSystemPromptChars: OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS,
@@ -1236,7 +1238,6 @@
   const collapseButton = shadow.querySelector(".collapseToggle");
   const mainButton = shadow.querySelector(".translate");
   const mainButtonAction = shadow.querySelector(".translateAction");
-  const autoTranslateHint = shadow.querySelector(".autoTranslateHint");
   const retryButton = shadow.querySelector(".retry");
   const statusElement = shadow.querySelector(".status");
   const languageSelect = shadow.querySelector(".language");
@@ -1259,6 +1260,9 @@
   const openAICompatibleGlossaryEditor = shadow.querySelector(".openAICompatibleGlossaryEditor");
   const openAICompatibleGlossaryInput = shadow.querySelector(".openAICompatibleGlossary");
   const openAICompatibleKeyInput = shadow.querySelector(".openAICompatibleKey");
+  const keyState = shadow.querySelector(".keyState");
+  const keyEditButton = shadow.querySelector(".keyEdit");
+  const endpointField = shadow.querySelector(".endpointField");
   const autoCheckbox = shadow.querySelector(".auto");
   const cacheStatsElement = shadow.querySelector(".cacheStats");
   const cacheCopyButton = shadow.querySelector(".cacheCopy");
@@ -1281,7 +1285,7 @@
   updateCollapsedState();
 
   if (Number.isFinite(settings.x) && Number.isFinite(settings.y)) {
-    host.style.left = Math.max(0, Math.min(innerWidth - 306, settings.x)) + "px";
+    host.style.left = Math.max(0, Math.min(innerWidth - panel.getBoundingClientRect().width, settings.x)) + "px";
     host.style.top = Math.max(0, Math.min(innerHeight - 44, settings.y)) + "px";
     host.style.right = "auto";
   }
@@ -1299,7 +1303,11 @@
     shadow.querySelector(".quickLanguageLabel").textContent = text.language;
     interfaceTranslationCheckbox.title = text.interfaceToggleTitle;
     setMainButton(running ? "Cancel" : "Translate");
-    autoTranslateHint.textContent = text.autoHint;
+    shadow.querySelector(".interfaceTranslationLabel").textContent = text.interfaceLabel;
+    shadow.querySelector(".endpointLabel").textContent = text.endpoint;
+    openAICompatibleKeyInput.placeholder = text.keyPlaceholder;
+    keyEditButton.textContent = text.changeKey;
+    syncKeyState();
     retryButton.textContent = text.retryFailed;
     shadow.querySelector(".privacyText").textContent = text.privacyText;
     shadow.querySelector(".allowAuto").textContent = text.allowAuto;
@@ -1328,7 +1336,6 @@
     autoState.dataset.off = text.off;
     cacheCopyButton.textContent = text.copyLog;
     cacheDeleteButton.textContent = text.delete;
-    shadow.querySelector(".siteLabelText").textContent = text.projectWebsite;
     openAICompatiblePresetSelect.title = text.presetTitle;
     openAICompatibleBaseURLInput.title = text.baseURLTitle;
     openAICompatibleKeyInput.title = text.keyTitle;
@@ -1356,7 +1363,7 @@
   }
   function syncTranslateTrigger() {
     mainButton.hidden = autoCheckbox.checked;
-    autoTranslateHint.hidden = !autoCheckbox.checked;
+    mainButton.parentElement.hidden = autoCheckbox.checked;
   }
   function updateCollapsedState() {
     panel.classList.toggle("collapsed", settings.collapsed);
@@ -1413,12 +1420,29 @@
     if (!busy && LOCAL_BRIDGE && openAICompatiblePresetSelect.value !== "custom") {
       openAICompatibleBaseURLInput.disabled = true;
     }
+    syncKeyState();
     languageSelect.disabled = busy || !languageSelect.options.length;
     providerSelect.disabled = busy;
+  }
+  function syncKeyState() {
+    const text = interfacePreset();
+    const configured = !!(openAICompatibleStatus && openAICompatibleStatus.configured);
+    keyState.textContent = openAICompatibleBusy ? text.keyChecking : configured ? text.keySaved
+      : openAICompatibleStatus ? (openAICompatibleStatus.requiresKey ? text.keyMissing : text.keyOptional)
+      : text.keyUnknown;
+    keyEditButton.hidden = !configured || editingOpenAIKey;
+    keyEditButton.disabled = openAICompatibleBusy || !LOCAL_BRIDGE;
+    openAICompatibleKeyInput.hidden = configured && !editingOpenAIKey;
   }
   function syncOpenAICompatibleInputs() {
     const connection = openAICompatibleConnection();
     openAICompatiblePresetSelect.value = connection.preset;
+    if (connection.preset === "custom") {
+      openAICompatibleBox.insertBefore(endpointField, openAICompatibleModelSelect);
+    } else {
+      openAICompatibleAdvanced.insertBefore(endpointField, openAICompatibleAdvanced.firstChild);
+    }
+    syncKeyState();
     openAICompatibleBaseURLInput.value = connection.baseURL;
     openAICompatibleBaseURLInput.disabled = openAICompatibleBusy || !LOCAL_BRIDGE || connection.preset !== "custom";
     populateOpenAICompatibleModelOptions(openAICompatibleModels, connection.model);
@@ -1464,16 +1488,20 @@
     const systemPrompt = hasOwn(next, "systemPrompt")
       ? String(next.systemPrompt || "").trim().slice(0, OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS)
       : settings.openAICompatibleSystemPrompt;
-    const endpointChanged = settings.openAICompatiblePreset !== preset
-      || settings.openAICompatibleBaseURL !== baseURL
-      || settings.openAICompatibleModel !== model;
+    const connectionChanged = settings.openAICompatiblePreset !== preset
+      || settings.openAICompatibleBaseURL !== baseURL;
+    const endpointChanged = connectionChanged || settings.openAICompatibleModel !== model;
     const promptChanged = settings.openAICompatibleSystemPrompt !== systemPrompt;
     settings.openAICompatiblePreset = preset;
     settings.openAICompatibleBaseURL = baseURL;
     settings.openAICompatibleModel = model;
     settings.openAICompatibleSystemPrompt = systemPrompt || defaults.openAICompatibleSystemPrompt;
     if (endpointChanged || promptChanged) {
-      if (endpointChanged) openAICompatibleStatus = null;
+      if (connectionChanged) {
+        openAICompatibleStatus = null;
+        editingOpenAIKey = false;
+        openAICompatibleKeyInput.value = "";
+      }
       invalidateAppliedTranslations();
       saveSettings();
     }
@@ -1698,6 +1726,7 @@
         body: { preset: connection.preset, baseURL: connection.baseURL, apiKey }
       });
       openAICompatibleKeyInput.value = "";
+      editingOpenAIKey = false;
       await refreshOpenAICompatibleStatus();
       setStatus(`${OPENAI_COMPATIBLE_PRESETS[connection.preset].name} API key saved securely`);
     } catch (error) {
@@ -1707,6 +1736,11 @@
       setOpenAICompatibleBusy(false);
     }
   }
+  keyEditButton.addEventListener("click", () => {
+    editingOpenAIKey = true;
+    syncKeyState();
+    openAICompatibleKeyInput.focus();
+  });
   openAICompatibleKeyInput.addEventListener("change", () => {
     if (openAICompatibleKeyInput.value.trim()) saveOpenAICompatibleKey();
   });
@@ -1736,7 +1770,7 @@
   let drag = null;
   const bar = shadow.querySelector(".bar");
   bar.addEventListener("pointerdown", (event) => {
-    if (event.target === collapseButton) return;
+    if (event.target.closest("button, select, input, label")) return;
     const rect = host.getBoundingClientRect();
     drag = { dx: event.clientX - rect.left, dy: event.clientY - rect.top };
     bar.setPointerCapture(event.pointerId);

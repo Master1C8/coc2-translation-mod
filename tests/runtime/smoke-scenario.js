@@ -8,23 +8,22 @@
   const defaultAutoTranslate = autoCheckbox.checked === true
     && window.__vnRevivalTranslator.settings().autoTranslate === true;
   const mainButton = shadow.querySelector(".translate");
-  const autoTranslateHint = shadow.querySelector(".autoTranslateHint");
   const autoModeHidesTranslate = mainButton.hidden
-    && !autoTranslateHint.hidden
-    && getComputedStyle(mainButton).display === "none"
-    && getComputedStyle(autoTranslateHint).display !== "none"
-    && autoTranslateHint.textContent === "If translation glitches, turn off Auto translate below.";
+    && mainButton.parentElement.hidden
+    && !shadow.querySelector(".autoTranslateHint");
   const languageOptions = Array.from(shadow.querySelector(".language").options)
     .map((option) => [option.value, option.textContent]);
-  const languageIsTopLevel = !!shadow.querySelector(".panel > .quickLanguage > .language")
+  const languageIsTopLevel = !!shadow.querySelector(".panel > .bar > .language")
     && !shadow.querySelector(".settings .language")
-    && shadow.querySelector(".quickLanguage").nextElementSibling?.classList.contains("row")
+    && !!shadow.querySelector(".bar > .collapseToggle")
     && getComputedStyle(shadow.querySelector(".quickLanguage")).display !== "none";
   const interfaceTranslationCheckbox = shadow.querySelector(".interfaceTranslation");
-  const interfaceToggleIsRightOfLanguage = interfaceTranslationCheckbox.checked === false
-    && interfaceTranslationCheckbox.closest(".interfaceTranslationToggle")
-      === shadow.querySelector(".language").nextElementSibling
-    && interfaceTranslationCheckbox.closest(".quickLanguage") === shadow.querySelector(".quickLanguage");
+  const interfaceToggleIsClearlyLabelled = interfaceTranslationCheckbox.checked === false
+    && shadow.querySelector(".interfaceTranslationLabel").textContent === "Translate panel interface"
+    && shadow.querySelector(".interfaceTranslationToggle").nextElementSibling.classList.contains("autoToggle");
+  const compactGooglePanel = shadow.querySelector(".openAICompatibleBox").hidden
+    && host.getBoundingClientRect().height < 400;
+  const gameThemeApplied = getComputedStyle(shadow.querySelector(".panel")).backgroundColor === "rgb(32, 19, 28)";
   const requestsBeforeInterfacePreset = window.fetchCalls.length + window.localHelperCalls.length;
   shadow.querySelector(".language").value = "ru";
   shadow.querySelector(".language").dispatchEvent(new Event("change"));
@@ -54,8 +53,7 @@
     && !shadow.querySelector(".hotkey");
   const openAIKeyIsPasswordOnly = shadow.querySelector(".openAICompatibleKey").type === "password"
     && !Object.keys(localStorage).some((key) => /api.*key/i.test(key));
-  const openAIKeyBeforeModel = shadow.querySelector(".openAICompatibleKey").nextElementSibling
-    === shadow.querySelector(".openAICompatibleModel");
+  const modelBeforeKey = shadow.querySelector(".openAICompatibleModel").nextElementSibling.classList.contains("keyRow");
   shadow.querySelector(".provider").value = "openai-compatible";
   shadow.querySelector(".provider").dispatchEvent(new Event("change"));
   await new Promise((resolve) => setTimeout(resolve, 30));
@@ -104,7 +102,9 @@
     && openAIAdvancedToggle.textContent === "Advanced"
     && openAIAdvancedToggle.getAttribute("aria-expanded") === "false"
     && openAIAdvanced.contains(shadow.querySelector(".openAICompatiblePromptToggle"))
-    && openAIAdvanced.contains(shadow.querySelector(".openAICompatibleGlossaryToggle"));
+    && openAIAdvanced.contains(shadow.querySelector(".openAICompatibleGlossaryToggle"))
+    && openAIAdvanced.contains(shadow.querySelector(".endpointField"))
+    && openAIAdvanced.contains(shadow.querySelector(".openAICompatibleParameters"));
   openAIAdvancedToggle.click();
   const openAIAdvancedOpenedByButton = !openAIAdvanced.hidden
     && getComputedStyle(openAIAdvanced).display !== "none"
@@ -166,6 +166,7 @@
     && getComputedStyle(openAIAdvanced).display === "none"
     && openAIAdvancedToggle.textContent === "Advanced"
     && openAIAdvancedToggle.getAttribute("aria-expanded") === "false";
+  openAIAdvancedToggle.click();
   const reasoningEffortInput = shadow.querySelector(".openAICompatibleReasoningEffort");
   const concurrencyInput = shadow.querySelector(".openAICompatibleConcurrency");
   const openAIModelParametersVisible = reasoningEffortInput.options.length === 8
@@ -190,11 +191,23 @@
   const openAIKeyInput = shadow.querySelector(".openAICompatibleKey");
   openAIKeyInput.value = "smoke-test-api-key";
   openAIKeyInput.dispatchEvent(new Event("change"));
-  for (let attempt = 0; attempt < 50 && openAIKeyInput.value; attempt += 1) {
+  for (let attempt = 0; attempt < 50 && shadow.querySelector(".keyState").textContent !== "Key saved"; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   const openAIKeyAutoSaved = window.localHelperCalls.includes("/v1/openai-compatible/key")
-    && openAIKeyInput.value === "";
+    && openAIKeyInput.value === ""
+    && openAIKeyInput.hidden
+    && shadow.querySelector(".keyState").textContent === "Key saved";
+  shadow.querySelector(".keyEdit").click();
+  const keyEditDoesNotRevealSecret = !openAIKeyInput.hidden && openAIKeyInput.value === "";
+  shadow.querySelector(".openAICompatiblePreset").value = "custom";
+  shadow.querySelector(".openAICompatiblePreset").dispatchEvent(new Event("change"));
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const customEndpointVisible = shadow.querySelector(".endpointField").parentElement === shadow.querySelector(".openAICompatibleBox")
+    && !shadow.querySelector(".openAICompatibleBaseURL").disabled;
+  shadow.querySelector(".openAICompatiblePreset").value = "opencode-go";
+  shadow.querySelector(".openAICompatiblePreset").dispatchEvent(new Event("change"));
+  await new Promise((resolve) => setTimeout(resolve, 30));
   shadow.querySelector(".language").value = "ar";
   shadow.querySelector(".language").dispatchEvent(new Event("change"));
   shadow.querySelector(".provider").value = "google";
@@ -208,9 +221,8 @@
   autoCheckbox.closest(".autoToggle").click();
   const savedAfterAutoChange = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null");
   const autoChangeSaved = savedAfterAutoChange && savedAfterAutoChange.autoTranslate === false;
-  const manualModeShowsTranslate = !mainButton.hidden && autoTranslateHint.hidden
-    && getComputedStyle(mainButton).display === "flex"
-    && getComputedStyle(autoTranslateHint).display === "none";
+  const manualModeShowsTranslate = !mainButton.hidden && !mainButton.parentElement.hidden
+    && getComputedStyle(mainButton).display === "flex";
   shadow.querySelector(".allowAuto").click();
   for (let attempt = 0; attempt < 100
       && document.getElementById("prefetched-tooltip").textContent.trim() !== "ترجمة"; attempt += 1) {
@@ -221,9 +233,7 @@
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   await new Promise((resolve) => setTimeout(resolve, 300));
-  const restoredAutoModeHidesTranslate = mainButton.hidden && !autoTranslateHint.hidden
-    && getComputedStyle(mainButton).display === "none"
-    && getComputedStyle(autoTranslateHint).display !== "none";
+  const restoredAutoModeHidesTranslate = mainButton.hidden && mainButton.parentElement.hidden;
   const autosavedSettings = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null");
   const removedSettingsButtons = !shadow.querySelector(
     ".cacheActions,.launcherActions,.settingsActions,.save,.reset,.clearLanguage,.export,.import,.changeExecutable"
@@ -241,12 +251,12 @@
     && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === true
     && collapseButton.textContent === "+"
     && compactCollapsedHeader
-    && getComputedStyle(settingsPanel).display === "none";
+    && getComputedStyle(shadow.querySelector(".panelBody")).display === "none";
   collapseButton.click();
   const expandedStateSaved = !panel.classList.contains("collapsed")
     && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === false
     && collapseButton.textContent === "−"
-    && getComputedStyle(panel).width === "306px"
+    && getComputedStyle(panel).width === "330px"
     && getComputedStyle(settingsPanel).display === "block";
   const contactLinksPresent = shadow.querySelector('.contactIcon.discord')?.href === "https://discord.gg/QgyeWW3Jg"
     && shadow.querySelector('.contactIcon.telegram')?.href === "https://t.me/VnRevival"
@@ -308,7 +318,7 @@
     && cacheBox.children.length === 3
     && /^Cache: \d+(?:\.\d+)? (?:B|KB|MB) · Log: 2\.0 KB$/.test(shadow.querySelector(".cacheStats").textContent)
     && cacheCopyButton.textContent === "Copy log"
-    && cacheDeleteButton.textContent === "Delete";
+    && cacheDeleteButton.textContent === "Clear cache and log";
   cacheCopyButton.click();
   for (let attempt = 0; attempt < 50 && window.smokeClipboard !== "smoke log\n"; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -367,7 +377,9 @@
     defaultAutoTranslate,
     autoModeHidesTranslate,
     languageIsTopLevel,
-    interfaceToggleIsRightOfLanguage,
+    interfaceToggleIsClearlyLabelled,
+    compactGooglePanel,
+    gameThemeApplied,
     russianInterfacePresetApplied,
     englishInterfaceRestored,
     languageOptionsLength: languageOptions.length === 30,
@@ -378,7 +390,7 @@
     languageOrderEnd: JSON.stringify(languageOptions.at(-1)) === JSON.stringify(["he", "Hebrew (עברית)"]),
     providerOrder: JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]]),
     openAIKeyIsPasswordOnly,
-    openAIKeyBeforeModel,
+    modelBeforeKey,
     openAISetupVisible,
     streamlinedOpenAIControls,
     safeOpenAIModelPicker,
@@ -402,6 +414,8 @@
     openAIModelParametersSaved,
     openAIHintRemoved,
     openAIKeyAutoSaved,
+    keyEditDoesNotRevealSecret,
+    customEndpointVisible,
     googleHintRemoved,
     organicAutoToggle,
     autoChangeSaved,

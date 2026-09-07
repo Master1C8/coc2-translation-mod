@@ -5,14 +5,18 @@
   "shortTitle": "CoC2",
   "translatorName": "CoC2 Translator",
   "sourceLanguage": "en",
-  "supportedVersions": ["0.9.3"],
+  "supportedVersions": [
+    "0.9.3"
+  ],
   "launchStrategy": "electron-cdp",
   "debugTargetTitleContains": "CoC2",
   "debugTargetUrlContains": "resources/app/index.html",
   "storageNamespace": "coc2-translator",
   "cacheDatabase": "coc2-translator-cache",
   "legacyCompatibility": {
-    "cacheFormats": ["coc2-translator-cache"],
+    "cacheFormats": [
+      "coc2-translator-cache"
+    ],
     "coreGlobal": "CoC2TranslationCore",
     "languagesGlobal": "CoC2TranslatorLanguages",
     "translatorGlobal": "__coc2Translator"
@@ -26,5 +30,17 @@
   "iconPng": "assets/icon-1024.png",
   "iconIcns": "assets/AppIcon.icns",
   "archivePrefix": "CoC2-Translator",
-  "windowsDistributionName": "CoC2 Translator Windows"
+  "windowsDistributionName": "CoC2 Translator Windows",
+  "theme": {
+    "background": "#20131c",
+    "surface": "#2c1b26",
+    "field": "#241722",
+    "text": "#f4e8df",
+    "muted": "#c6b3bd",
+    "border": "#604553",
+    "accent": "#d1aa66",
+    "onAccent": "#20131c",
+    "danger": "#f0a3aa",
+    "warning": "#f0cf93"
+  }
 }

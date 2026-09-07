@@ -14,16 +14,16 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 
 ### Controls
 
-- With auto-translate off, `Translate / Cancel` starts or stops the current screen pass. With auto-translate on, a short troubleshooting hint replaces the button.
+- With auto-translate off, `Translate / Cancel` starts or stops the current screen pass. With auto-translate on, the manual button is hidden; errors appear only when they occur.
 - The `Language` selector remains visible at the top of the panel.
-- The `UI` checkbox to its right localizes the translator panel with a bundled preset for the selected language. It never sends panel text to Google or AI; unsupported presets fall back to English. English and Russian presets are currently bundled.
+- The `Translate panel interface` checkbox below the language selector localizes the translator panel with a bundled preset for the selected language. It never sends panel text to Google or AI; unsupported presets fall back to English. English and Russian presets are currently bundled.
 - `Ctrl+Shift+T`, displayed inside the main button, performs the same translate/cancel action.
 - Provider, auto-translate, and cache controls are always visible while the panel is expanded.
 - Hold the pointer over a complex setting to see its short explanation.
 - `− / +` collapses the panel to a single `+` button or expands it completely.
-- Drag the top bar to move the panel.
+- Drag the space around the language controls in the top row to move the panel.
 
-The panel has only two states: fully expanded or fully collapsed.
+The panel has only two states: expanded or collapsed. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel.
 
 Automatic translation processes visible, newly visible, or changed blocks and pre-translates tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
@@ -47,7 +47,7 @@ At first network use, select `Allow auto-translate` or `Manual only`. The choice
 3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and replaces the previously stored key for this Base URL.
 4. Open the model list to refresh it from the provider.
 5. Choose a model from the single list. Free models are pinned first, and both the free and paid groups are alphabetical. OpenCode Go and Zen show only models documented for Chat Completions because their full catalogs also contain models for other incompatible APIs. Use `Enter model ID manually…` when the endpoint does not list the required ID.
-6. Optionally set reasoning effort; `Provider default` omits that parameter. Output verbosity is automatic: the translator requests `low`, then falls back to the provider default if unsupported. Choose `Parallel requests` from 1 to 8; the default is 4. Reduce it if the provider rate-limits requests.
+6. In `Advanced`, optionally set reasoning effort; `Provider default` omits that parameter. Output verbosity is automatic: the translator requests `low`, then falls back to the provider default if unsupported. Choose `Parallel requests` from 1 to 8; the default is 4. Reduce it if the provider rate-limits requests.
 7. Open the collapsed `Advanced` group, then click `System prompt` to edit it when needed. `{targetName}` and `{target}` are replaced with the selected language name and code. Use `Restore default` to recover the built-in instruction. After editing the prompt or glossary, delete the cache below to retranslate text that was already translated; the group displays the same reminder.
 8. In the same `Advanced` group, click `Glossary` to add one preferred mapping per line, for example `Minstrel = Менестрель`. The saved glossary is appended to every AI system prompt automatically.
 
@@ -61,7 +61,7 @@ Preset Base URLs:
 
 For Custom, enter a Base URL. Remote URLs must use HTTPS. HTTP is accepted only for `localhost` or another loopback address. A custom URL cannot contain credentials, a query, a fragment, or path traversal.
 
-The key field is cleared after saving. Keys are stored separately per Base URL in Windows Credential Manager or macOS Keychain; they are not saved in game settings, the DOM, or the translation cache. Entering another key replaces the stored key for the current endpoint.
+The key field is cleared and hidden after confirmed saving; `Key saved` and `Change` replace it. The preset address and model parameters are inside `Advanced`; Custom shows its address immediately. Keys are stored separately per Base URL in Windows Credential Manager or macOS Keychain; they are not saved in game settings, the DOM, or the translation cache. Entering another key replaces the stored key for the current endpoint.
 
 LM Studio is part of this same provider. Start its local server and load a model first; no key is required by the preset. If `/models` is unavailable but Chat Completions works, enter the model ID manually.
 
@@ -69,7 +69,7 @@ The helper validates response structure and context markers before applying text
 
 ### Cache and layout
 
-Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, model parameters, prompt version, the complete system prompt, and the glossary. Changing the prompt, glossary, or parameters therefore does not reuse results produced with an older configuration. Old Google cache entries are migrated lazily. The maintenance block shows both cache and local-service log sizes. `Copy log` copies the log to the clipboard for diagnostics (the latest 2 MB when it is larger). After confirmation, `Delete` clears both the translation cache and log without resetting other settings.
+Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, model parameters, prompt version, the complete system prompt, and the glossary. Changing the prompt, glossary, or parameters therefore does not reuse results produced with an older configuration. Old Google cache entries are migrated lazily. The maintenance block shows both cache and local-service log sizes. `Copy log` copies the log to the clipboard for diagnostics (the latest 2 MB when it is larger). After confirmation, `Clear cache and log` clears both the translation cache and log without resetting other settings.
 
 RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored before retranslation after a language or configuration change. Existing HTML elements and click handlers remain in place.
 
@@ -104,16 +104,16 @@ advanced launches can select Parallels with
 
 ### Управление
 
-- При выключенном автопереводе `Translate / Cancel` запускает или отменяет перевод текущего экрана. При включённом автопереводе вместо кнопки показывается короткая подсказка об отключении автоматического режима при сбоях.
+- При выключенном автопереводе `Translate / Cancel` запускает или отменяет перевод текущего экрана. При включённом автопереводе ручная кнопка скрыта; сообщения об ошибках появляются по мере возникновения.
 - Список `Language` постоянно виден в верхней части панели.
-- Галочка `UI` справа переводит панель встроенным пресетом выбранного языка. Текст панели никогда не отправляется Google или ИИ; при отсутствии пресета используется английский. Сейчас встроены английский и русский пресеты.
+- Галочка `Переводить интерфейс панели` под языком переводит панель встроенным пресетом выбранного языка. Текст панели никогда не отправляется Google или ИИ; при отсутствии пресета используется английский. Сейчас встроены английский и русский пресеты.
 - `Ctrl+Shift+T`, указанная внутри основной кнопки, выполняет то же действие перевода/отмены.
 - Провайдер, автоперевод и кэш всегда видны в развёрнутой панели.
 - Задержите курсор над сложной настройкой, чтобы увидеть её краткое пояснение.
 - `− / +` сворачивает панель до одной кнопки `+` или полностью разворачивает её.
-- Верхняя полоса перемещает панель.
+- Свободное место в верхней строке с языком позволяет перемещать панель.
 
-У панели только два состояния: полностью развёрнутое и полностью свёрнутое.
+У панели два состояния: развёрнутое и свёрнутое. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели.
 
 Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки и заранее переводит уже присутствующие в DOM tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
@@ -151,7 +151,7 @@ Base URL preset:
 
 Для Custom введите Base URL. Удалённый адрес обязан использовать HTTPS. HTTP допустим только для `localhost` или другого loopback-адреса. В custom URL запрещены credentials, query, fragment и переход по пути `..`.
 
-После сохранения поле ключа очищается. Ключи хранятся отдельно по Base URL в Windows Credential Manager или macOS Keychain и не попадают в игровые настройки, DOM или кэш. Ввод нового ключа заменяет сохранённый ключ текущего endpoint.
+После подтверждённого сохранения поле ключа очищается и скрывается; вместо него показаны «Ключ сохранён» и «Изменить». Адрес готового профиля и параметры модели находятся в «Дополнительно»; для Custom адрес виден сразу. Ключи хранятся отдельно по Base URL в Windows Credential Manager или macOS Keychain и не попадают в игровые настройки, DOM или кэш. Ввод нового ключа заменяет сохранённый ключ текущего endpoint.
 
 LM Studio входит в этот же провайдер. Сначала запустите local server и загрузите модель; preset не требует ключа. Если `/models` недоступен, но Chat Completions работает, введите model ID вручную.
 
@@ -159,7 +159,7 @@ Helper проверяет структуру ответа и контекстн�
 
 ### Кэш и оформление
 
-Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, параметрам модели, версии, полному тексту системной инструкции и словарю. Поэтому после изменения prompt, словаря или параметров не используются ответы, созданные с прежней конфигурацией. Старые Google-записи мигрируют лениво. В блоке обслуживания показываются размеры кэша и лога локального сервиса. `Copy log` копирует лог в буфер обмена для диагностики (последние 2 МБ, если он больше). После подтверждения `Delete` очищает и кэш переводов, и лог, не сбрасывая остальные настройки.
+Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, параметрам модели, версии, полному тексту системной инструкции и словарю. Поэтому после изменения prompt, словаря или параметров не используются ответы, созданные с прежней конфигурацией. Старые Google-записи мигрируют лениво. В блоке обслуживания показываются размеры кэша и лога локального сервиса. `Copy log` копирует лог в буфер обмена для диагностики (последние 2 МБ, если он больше). После подтверждения `Clear cache and log` очищает и кэш переводов, и лог, не сбрасывая остальные настройки.
 
 RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются перед повторным переводом при смене языка или конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 

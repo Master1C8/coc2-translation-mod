@@ -19,7 +19,7 @@ runtime
 ## Слои
 
 - `src/translation-core.js`, сгенерированный из `src/languages.json` каталог, `src/providers.js`, `src/interface-presets.js`, `src/panel-view.js` и `src/translator-runtime.js` — общее браузерное ядро;
-- `src/games/coc2/game.json` — единый источник идентичности, запуска, путей и namespace;
+- `src/games/coc2/game.json` — единый источник идентичности, запуска, путей, namespace и палитры `theme`;
 - `src/games/coc2/adapter.js` — только DOM-правила CoC2;
 - `src/openai-compatible.json` — единая конфигурация prompt, preset и совместимых OpenCode Chat Completions моделей;
 - `src/local_service.py` — аутентифицированный loopback helper для credential vault и OpenAI-compatible HTTP;

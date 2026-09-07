@@ -87,6 +87,13 @@ def load_manifest(path: Path) -> dict:
         raise ValueError("translatorName must not contain path separators")
     if not value["debugTargetTitleContains"] and not value["debugTargetUrlContains"]:
         raise ValueError("at least one debugging target matcher is required")
+    if "theme" in value:
+        theme = value["theme"]
+        fields = {"background", "surface", "field", "text", "muted", "border", "accent", "onAccent", "danger", "warning"}
+        if not isinstance(theme, dict) or not set(theme).issubset(fields):
+            raise ValueError("theme must contain only supported color tokens")
+        if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in theme.values()):
+            raise ValueError("theme colors must be six-digit hex colors")
     compatibility = value.get("legacyCompatibility")
     if compatibility is not None:
         if not isinstance(compatibility, dict) or set(compatibility) != set(LEGACY_COMPATIBILITY_FIELDS):

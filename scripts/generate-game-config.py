@@ -32,6 +32,8 @@ def main() -> int:
             "supportedVersions", "storageNamespace", "cacheDatabase",
         )
     }
+    if "theme" in manifest:
+        runtime_fields["theme"] = manifest["theme"]
     if "legacyCompatibility" in manifest:
         runtime_fields["legacyCompatibility"] = manifest["legacyCompatibility"]
     payload = json.dumps(runtime_fields, ensure_ascii=True, separators=(",", ":"))

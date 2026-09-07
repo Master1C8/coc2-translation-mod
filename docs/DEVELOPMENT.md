@@ -49,7 +49,7 @@ then expand to shared setup and callers as needed. Anchors avoid stale line numb
 | Provider settings/models | runtime `openAICompatibleConnection`, `providerCacheVariant`, `populateOpenAICompatibleModelOptions`, `refreshOpenAICompatibleStatus`; helper `_connection`, `_models`, `openai_status` | helper `test_status_`, `test_opencode_`; smoke `safeOpenAIModelPicker`, `modelListRefreshesOnOpen` |
 | Request errors/parameters | runtime `requestChunk`, `applyOpenAICompatibleModelParameters`; helper `_unsupported_model_parameter`, `_classified_provider_error`, `_model_parameters`, `openai_translate` | helper `test_translation_`; smoke `openAIModelParametersSaved` |
 | DOM/formatting | runtime `classifyNode`, `registerTranslationContainers`, `applyLanguageFormatting`, `buildJobs`, `runJobs` | smoke `translated`, `restored`, `hiddenTooltipPrefetched` |
-| Panel text/layout | panel CSS selector/markup; presets key; runtime `applyInterfacePreset` and control binding | smoke matching control name; User Guide `Controls` and `Управление` |
+| Panel text/layout | game manifest `theme`; panel CSS selector/markup; presets key; runtime `applyInterfacePreset` and control binding | smoke matching control name; User Guide `Controls` and `Управление` |
 
 Here runtime means `src/translator-runtime.js`, helper means
 `src/local_service.py`, and helper tests means `tests/test_local_service.py`.

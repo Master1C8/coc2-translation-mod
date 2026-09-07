@@ -87,7 +87,7 @@ window.fetch = async function (input) {
     window.localHelperCalls.push(url.pathname);
     if (url.pathname === "/v1/openai-compatible/status") {
       return { ok: true, json: async () => ({
-        ok: true, configured: false, available: false, requiresKey: true,
+        ok: true, configured: window.localHelperCalls.includes("/v1/openai-compatible/key"), available: false, requiresKey: true,
         preset: "opencode-go", name: "OpenCode Go",
         baseURL: "https://opencode.ai/zen/go/v1",
         models: ["model-b", "mimo-v2.5-free", "model-a", "big-pickle"],
