@@ -524,6 +524,10 @@
     });
   }
 
+  function throwIfAborted(signal) {
+    if (signal && signal.aborted) throw new DOMException("Aborted", "AbortError");
+  }
+
   function decodeHtmlEntities(value) {
     const textarea = document.createElement("textarea");
     textarea.innerHTML = String(value || "");
@@ -585,7 +589,7 @@
     const retries = Math.max(1, Number(selectedProvider.retries) || 1);
     for (let attempt = 0; attempt < retries; attempt += 1) {
       try {
-        signal.throwIfAborted();
+        throwIfAborted(signal);
         if (context.variant && context.variant !== translationVariant()) throw new DOMException("Configuration changed", "AbortError");
         if (context.metrics) {
           context.metrics.helper_requests += 1;
@@ -1031,7 +1035,7 @@
   async function applyBatchTranslation(job, language, provider, signal, onRetry, context) {
     const missing = [];
     for (const part of job.batchParts) {
-      signal.throwIfAborted();
+      throwIfAborted(signal);
       const key = translationCacheKey(part.source, language, provider, context.connection);
       const cached = await cacheGet(key);
       if (cached && (!part.contextual || core.parseContextTranslation(cached, part.parts.length))) {

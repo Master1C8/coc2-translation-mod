@@ -546,6 +546,7 @@
   // Keep each expectation once; the reporter lists failed names only.
   window.smokeReport({
     randomUUIDFallback: window.smokeRandomUUIDUnavailable === true,
+    abortSignalFallback: window.smokeThrowIfAbortedUnavailable === true,
     translatedText: translated.text === "ترى امرأة جميلة بالقرب من الباب.",
     translatedDirection: translated.direction === "rtl",
     translatedLanguage: translated.language === "ar",
