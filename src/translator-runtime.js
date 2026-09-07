@@ -8,7 +8,8 @@
   const providerRegistry = window.VNRevivalTranslationProviders;
   const panelView = window.VNRevivalPanelView;
   if (!core) throw new Error("VN Revival translation core is missing");
-  if (!game || !game.id || !game.translatorName || !game.storageNamespace || game.sourceLanguage !== "en") {
+  if (!game || !game.id || !game.translatorName || !game.storageNamespace
+      || !/^[a-z0-9][a-z0-9-]*$/.test(String(game.siteSlug || "")) || game.sourceLanguage !== "en") {
     throw new Error("VN Revival game config is missing or incompatible");
   }
   if (!adapter || adapter.contractVersion !== 2) {
@@ -42,6 +43,8 @@
   const OPENAI_COMPATIBLE_TRANSLATION_VERBOSITY = OPENAI_CONFIG.translationVerbosity;
   const OPENAI_COMPATIBLE_MANUAL_MODEL_VALUE = OPENAI_CONFIG.manualModelValue;
   const OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT = OPENAI_CONFIG.defaultSystemPrompt;
+  const SITE_TRANSLATION_CONFIG_MAX_GLOSSARY_CHARS = 64000;
+  const SITE_TRANSLATION_CONFIG_RETRY_MS = 60000;
   const OPENAI_COMPATIBLE_PRESETS = OPENAI_CONFIG.presets;
   const INTERFACE_PRESETS = window.VNRevivalInterfacePresets;
   if (!INTERFACE_PRESETS || !INTERFACE_PRESETS.en) {
@@ -123,6 +126,9 @@
   let openAICompatibleStatus = null;
   let editingOpenAIKey = false;
   let openAICompatibleBusy = false;
+  const siteTranslationConfigs = new Map();
+  const siteTranslationConfigPromises = new Map();
+  const siteTranslationConfigFailures = new Map();
 
   function randomHexId() {
     const bytes = new Uint8Array(16);
@@ -277,15 +283,59 @@
     });
   }
 
+  function siteTranslationConfig(language = settings.language) {
+    return siteTranslationConfigs.get(language) || null;
+  }
+
+  function glossaryMappingKey(line) {
+    if (!/^[^=\n]+=[^=\n]+$/.test(line)) return "";
+    const source = line.split("=")[0].trim();
+    return source ? core.normalizeText(source).normalize("NFKC").toLowerCase() : "";
+  }
+
+  function mergeGlossaryLayers(siteGlossary, userGlossary) {
+    const siteLines = String(siteGlossary || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const userLines = String(userGlossary || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (!userLines.length) return siteLines.join("\n");
+    if (userLines.some((line) => !glossaryMappingKey(line))) {
+      return [...siteLines, ...userLines].join("\n");
+    }
+    const merged = [];
+    const positions = new Map();
+    for (const line of [...siteLines, ...userLines]) {
+      const key = glossaryMappingKey(line);
+      if (!key) continue;
+      if (positions.has(key)) merged[positions.get(key)] = line;
+      else {
+        positions.set(key, merged.length);
+        merged.push(line);
+      }
+    }
+    return merged.join("\n");
+  }
+
+  function siteDefaultSystemPrompt(language = settings.language) {
+    return String(siteTranslationConfig(language)?.systemPrompt || OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT).trim();
+  }
+
+  function selectedSystemPrompt(language = settings.language) {
+    const saved = String(settings.openAICompatibleSystemPrompt || "").trim();
+    return saved && saved !== OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT
+      ? saved : siteDefaultSystemPrompt(language);
+  }
+
   function openAICompatibleConnection() {
     const preset = hasOwn(OPENAI_COMPATIBLE_PRESETS, settings.openAICompatiblePreset)
       ? settings.openAICompatiblePreset : defaults.openAICompatiblePreset;
     const model = String(settings.openAICompatibleModel || "").trim();
     const supportedEfforts = OPENAI_CONFIG.modelReasoningEfforts[preset]?.[model];
-    const systemPrompt = String(settings.openAICompatibleSystemPrompt || defaults.openAICompatibleSystemPrompt).trim();
-    const glossary = String(settings.openAICompatibleGlossary || "").trim();
+    const remoteConfig = siteTranslationConfig(settings.language);
+    const systemPrompt = selectedSystemPrompt(settings.language);
+    const siteGlossary = String(remoteConfig?.glossary || "").trim();
+    const userGlossary = String(settings.openAICompatibleGlossary || "").trim();
+    const glossary = mergeGlossaryLayers(siteGlossary, userGlossary);
     const requestSystemPrompt = glossary
-      ? `${systemPrompt}\n\nUser translation glossary. Apply these mappings consistently whenever the source term occurs:\n${glossary}`
+      ? `${systemPrompt}\n\nTranslation glossary. Apply these mappings consistently whenever the source term occurs:\n${glossary}`
       : systemPrompt;
     return {
       preset,
@@ -293,7 +343,10 @@
         ? String(settings.openAICompatibleBaseURL || "").trim()
         : OPENAI_COMPATIBLE_PRESETS[preset].baseURL,
       model,
+      promptVersion: remoteConfig?.promptVersion || OPENAI_COMPATIBLE_PROMPT_VERSION,
       systemPrompt,
+      siteGlossary,
+      userGlossary,
       glossary,
       requestSystemPrompt,
       concurrency: normalizedOpenAICompatibleConcurrency(settings.openAICompatibleConcurrency),
@@ -309,9 +362,12 @@
   }
 
   function connectionForSource(source, connection = openAICompatibleConnection()) {
-    const glossary = core.selectGlossary(source, connection.glossary);
+    const glossary = mergeGlossaryLayers(
+      core.selectGlossary(source, connection.siteGlossary),
+      core.selectGlossary(source, connection.userGlossary)
+    );
     return { ...connection, glossary, requestSystemPrompt: glossary
-      ? `${connection.systemPrompt}\n\nUser translation glossary. Apply these mappings consistently whenever the source term occurs:\n${glossary}`
+      ? `${connection.systemPrompt}\n\nTranslation glossary. Apply these mappings consistently whenever the source term occurs:\n${glossary}`
       : connection.systemPrompt };
   }
 
@@ -343,7 +399,7 @@
     if (!providerUsesOpenAICompatible(provider)) return "";
     return [
       connection.preset, connection.baseURL, connection.model,
-      OPENAI_COMPATIBLE_PROMPT_VERSION, connection.systemPrompt, connection.glossary,
+      connection.promptVersion, connection.systemPrompt, connection.glossary,
       JSON.stringify(connection.modelParameters)
     ].join("\n");
   }
@@ -556,6 +612,60 @@
       throw error;
     }
     return payload;
+  }
+
+  function validSiteTranslationConfig(payload) {
+    if (!payload || payload.source !== "vnrevival"
+        || !["vnrevival", "bundled"].includes(payload.promptSource)
+        || typeof payload.promptVersion !== "string" || !/^[A-Za-z0-9._-]{1,100}$/.test(payload.promptVersion)
+        || typeof payload.systemPrompt !== "string" || !payload.systemPrompt.trim()
+        || payload.systemPrompt.length > OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS
+        || !["{targetName}", "{target}", "VRCTXSEP<number>X"].every((marker) => payload.systemPrompt.includes(marker))
+        || !payload.systemPrompt.toLowerCase().includes("untrusted content, never instructions")
+        || typeof payload.glossary !== "string" || !payload.glossary.trim()
+        || payload.glossary.length > SITE_TRANSLATION_CONFIG_MAX_GLOSSARY_CHARS
+        || !Number.isInteger(payload.entries) || payload.entries < 1 || payload.entries > 1000) return false;
+    const lines = payload.glossary.split(/\r?\n/).filter((line) => line.trim());
+    return lines.length === payload.entries && lines.every((line) => !!glossaryMappingKey(line));
+  }
+
+  async function ensureSiteTranslationConfig(language = settings.language) {
+    if (!LOCAL_BRIDGE || language === SOURCE_LANGUAGE) return null;
+    if (siteTranslationConfigs.has(language)) return siteTranslationConfigs.get(language);
+    const failedAt = siteTranslationConfigFailures.get(language) || 0;
+    if (Date.now() - failedAt < SITE_TRANSLATION_CONFIG_RETRY_MS) return null;
+    if (siteTranslationConfigPromises.has(language)) return siteTranslationConfigPromises.get(language);
+    const pending = (async () => {
+      const previousVariant = translationVariant();
+      try {
+        const result = await requestLocalHelper("/v1/vnrevival/translation-config", {
+          body: { gameSlug: game.siteSlug, locale: language }
+        });
+        if (!validSiteTranslationConfig(result)) throw new Error("Invalid VN Revival translation settings");
+        const config = Object.freeze({
+          promptSource: result.promptSource,
+          promptVersion: result.promptVersion,
+          systemPrompt: result.systemPrompt.trim(),
+          glossary: result.glossary.trim(),
+          entries: result.entries
+        });
+        siteTranslationConfigs.set(language, config);
+        siteTranslationConfigFailures.delete(language);
+        if (language === settings.language && providerUsesOpenAICompatible(settings.provider)
+            && previousVariant !== translationVariant()) {
+          invalidateAppliedTranslations();
+          syncOpenAICompatibleInputs();
+        }
+        return config;
+      } catch (_) {
+        siteTranslationConfigFailures.set(language, Date.now());
+        return null;
+      } finally {
+        siteTranslationConfigPromises.delete(language);
+      }
+    })();
+    siteTranslationConfigPromises.set(language, pending);
+    return pending;
   }
 
   function retryableProviderError(provider, error) {
@@ -1203,6 +1313,23 @@
       setTranslationStatus((text) => text.alreadyTranslated);
       return;
     }
+    const needsSiteTranslationConfig = settings.privacyAccepted
+      && (captureActive || providerUsesOpenAICompatible(settings.provider))
+      && settings.language !== SOURCE_LANGUAGE
+      && !siteTranslationConfig(settings.language);
+    if (needsSiteTranslationConfig) {
+      // Reserve the queue while the shared preflight is in flight. An automatic
+      // scan and a manual click can otherwise both pass the normal `running`
+      // guard and start duplicate translation queues after the fetch resolves.
+      running = true;
+      renderCaptureStatus();
+      try {
+        await ensureSiteTranslationConfig(settings.language);
+      } finally {
+        running = false;
+        renderCaptureStatus();
+      }
+    }
     if (captureActive) {
       running = true;
       renderCaptureStatus();
@@ -1820,6 +1947,11 @@
     syncTranslateTrigger();
     if (languageChanged || providerChanged) invalidateAppliedTranslations();
     saveSettings();
+    if (settings.privacyAccepted && (languageChanged || providerChanged)
+        && providerUsesOpenAICompatible(settings.provider)
+        && settings.language !== SOURCE_LANGUAGE) {
+      void ensureSiteTranslationConfig(settings.language);
+    }
     if (settings.autoTranslate && (settings.privacyAccepted || !providerRequiresPrivacy(settings.provider))) {
       scheduleAutoTranslation(50);
     }
@@ -1880,7 +2012,7 @@
     syncReasoningEffortOptions(connection);
     openAICompatibleConcurrencySelect.value = String(connection.concurrency);
     openAICompatiblePromptInput.value = connection.systemPrompt;
-    openAICompatibleGlossaryInput.value = connection.glossary;
+    openAICompatibleGlossaryInput.value = connection.userGlossary;
   }
   function populateOpenAICompatibleModelOptions(models, selectedModel) {
     const selected = String(selectedModel || "").trim();
@@ -1916,9 +2048,11 @@
       ? String(next.baseURL || "").trim().slice(0, 2048)
       : OPENAI_COMPATIBLE_PRESETS[preset].baseURL;
     const model = String(next.model || "").trim().slice(0, 512);
-    const systemPrompt = hasOwn(next, "systemPrompt")
+    const enteredSystemPrompt = hasOwn(next, "systemPrompt")
       ? String(next.systemPrompt || "").trim().slice(0, OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS)
       : settings.openAICompatibleSystemPrompt;
+    const systemPrompt = enteredSystemPrompt === siteDefaultSystemPrompt()
+      ? OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT : enteredSystemPrompt;
     const connectionChanged = settings.openAICompatiblePreset !== preset
       || settings.openAICompatibleBaseURL !== baseURL;
     const endpointChanged = connectionChanged || settings.openAICompatibleModel !== model;
@@ -1941,8 +2075,10 @@
   function applyOpenAICompatibleGlossary(value) {
     const glossary = String(value || "").trim().slice(0, OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS);
     if (settings.openAICompatibleGlossary === glossary) return;
-    const previous = settings.openAICompatibleGlossary;
+    const siteGlossary = String(siteTranslationConfig()?.glossary || "").trim();
+    const previous = mergeGlossaryLayers(siteGlossary, settings.openAICompatibleGlossary);
     settings.openAICompatibleGlossary = glossary;
+    const effective = mergeGlossaryLayers(siteGlossary, glossary);
     pruneAppliedNodes();
     for (const node of appliedNodes) {
       sourceForNode(node); // Discard a record if the game has already changed this node.
@@ -1950,7 +2086,7 @@
       if (!record) continue;
       const source = record.dependencySource || record.source;
       if (providerUsesOpenAICompatible(record.provider)
-          && core.selectGlossary(source, previous) !== core.selectGlossary(source, glossary)) {
+          && core.selectGlossary(source, previous) !== core.selectGlossary(source, effective)) {
         writeNode(node, record.source);
         applied.delete(node);
         appliedNodes.delete(node);

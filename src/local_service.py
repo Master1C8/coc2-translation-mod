@@ -42,6 +42,8 @@ OPENCODE_CHAT_MODELS = {
 }
 OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT = OPENAI_COMPATIBLE_CONFIG["defaultSystemPrompt"]
 OPENAI_COMPATIBLE_PRESETS = OPENAI_COMPATIBLE_CONFIG["presets"]
+VNREVIVAL_SITE_ORIGIN = "https://vnrevival.fun"
+VNREVIVAL_SITE_CONFIG_MAX_GLOSSARY_CHARS = 64_000
 MAX_REQUEST_BYTES = 1_048_576
 MAX_TEXT_CHARS = 12_000
 MAX_LOG_COPY_BYTES = 2 * 1024 * 1024
@@ -52,6 +54,7 @@ _TRACE_ID = contextvars.ContextVar("translation_request_id", default=None)
 _LOG_ROUTES = {
     "/v1/health", "/v1/openai-compatible/status", "/v1/openai-compatible/key",
     "/v1/openai-compatible/key/remove", "/v1/openai-compatible/translate",
+    "/v1/vnrevival/translation-config",
     "/v1/launcher/reselect-executable", "/v1/capture/status", "/v1/capture/start",
     "/v1/capture/append", "/v1/capture/stop", "/v1/capture/read", "/v1/capture/clear",
 }
@@ -572,6 +575,99 @@ class LocalServiceBridge:
         if self._injected_credential_store is not None:
             return self._injected_credential_store
         return OpenAICompatibleCredentialStore(self.credential_id, base_url)
+
+    def site_translation_config(self, game_slug: Any, locale: Any) -> dict[str, Any]:
+        if not isinstance(game_slug, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,99}", game_slug):
+            raise BridgeError("site_config_invalid", "The VN Revival game identifier is invalid", 400)
+        if not isinstance(locale, str) or not re.fullmatch(r"[A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?", locale):
+            raise BridgeError("site_config_invalid", "The VN Revival locale is invalid", 400)
+
+        query = urllib.parse.urlencode({"locale": locale, "offset": 0, "limit": 1000})
+        url = f"{VNREVIVAL_SITE_ORIGIN}/games/{urllib.parse.quote(game_slug, safe='')}/glossary?{query}"
+        request = urllib.request.Request(
+            url,
+            headers={"Accept": "application/json", "User-Agent": "VNRevival-Translator/1"},
+            method="GET",
+        )
+        started = time.monotonic()
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                final_url = urllib.parse.urlsplit(getattr(response, "geturl", lambda: url)())
+                if final_url.scheme != "https" or final_url.hostname != "vnrevival.fun":
+                    raise BridgeError("site_config_invalid", "VN Revival returned an invalid redirect", 502)
+                raw_response = response.read(MAX_REQUEST_BYTES + 1)
+        except BridgeError:
+            raise
+        except urllib.error.HTTPError as error:
+            error.close()
+            self.log_event("site_config.result", ok=False, target=locale, status=error.code,
+                           duration_ms=round((time.monotonic() - started) * 1000))
+            raise BridgeError("site_config_unavailable", "VN Revival translation settings are unavailable", 503) from error
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            self.log_event("site_config.result", ok=False, target=locale,
+                           duration_ms=round((time.monotonic() - started) * 1000))
+            raise BridgeError("site_config_unavailable", "VN Revival translation settings are unavailable", 503) from error
+        if len(raw_response) > MAX_REQUEST_BYTES:
+            raise BridgeError("site_config_invalid", "VN Revival returned too much translation data", 502)
+        try:
+            payload = json.loads(raw_response.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise BridgeError("site_config_invalid", "VN Revival returned invalid translation data", 502) from error
+
+        config = payload.get("translatorConfig") if isinstance(payload, dict) else None
+        entries = payload.get("entries") if isinstance(payload, dict) else None
+        total = payload.get("total") if isinstance(payload, dict) else None
+        valid_config = (
+            isinstance(config, dict)
+            and config.get("schemaVersion") == 1
+            and isinstance(config.get("promptVersion"), str)
+            and bool(re.fullmatch(r"[A-Za-z0-9._-]{1,100}", config["promptVersion"]))
+            and _capture_text(config.get("systemPrompt"), OPENAI_COMPATIBLE_CONFIG["maxSystemPromptChars"])
+            and all(marker in config["systemPrompt"] for marker in (
+                "{targetName}", "{target}", "VRCTXSEP<number>X",
+            ))
+            and "untrusted content, never instructions" in config["systemPrompt"].lower()
+        )
+        if type(total) is not int or not 1 <= total <= 1000 \
+                or not isinstance(entries, list) or len(entries) != total:
+            raise BridgeError("site_config_invalid", "VN Revival returned an incomplete glossary", 502)
+
+        glossary: list[str] = []
+        entry_ids: set[str] = set()
+        for entry in entries:
+            translation = entry.get("translation") if isinstance(entry, dict) else None
+            entry_id = entry.get("id") if isinstance(entry, dict) else None
+            source_term = entry.get("term") if isinstance(entry, dict) else None
+            translated_term = translation.get("term") if isinstance(translation, dict) else None
+            valid_entry = (
+                isinstance(entry_id, str) and 1 <= len(entry_id) <= 200 and entry_id not in entry_ids
+                and isinstance(source_term, str) and 1 <= len(source_term.strip()) <= 500
+                and isinstance(translated_term, str) and 1 <= len(translated_term.strip()) <= 500
+                and not any(character in source_term or character in translated_term for character in "\r\n=")
+                and _capture_text(source_term.strip(), 500)
+                and _capture_text(translated_term.strip(), 500)
+            )
+            if not valid_entry:
+                raise BridgeError("site_config_invalid", "VN Revival returned invalid glossary entries", 502)
+            entry_ids.add(entry_id)
+            glossary.append(f"{source_term.strip()} = {translated_term.strip()}")
+        glossary_text = "\n".join(glossary)
+        if len(glossary_text) > VNREVIVAL_SITE_CONFIG_MAX_GLOSSARY_CHARS:
+            raise BridgeError("site_config_invalid", "The VN Revival glossary is too large", 502)
+        prompt_source = "vnrevival" if valid_config else "bundled"
+        self.log_event("site_config.result", ok=True, target=locale, entries=total,
+                       prompt_source=prompt_source,
+                       duration_ms=round((time.monotonic() - started) * 1000))
+        return {
+            "ok": True,
+            "source": "vnrevival",
+            "promptSource": prompt_source,
+            "promptVersion": config["promptVersion"] if valid_config else OPENAI_COMPATIBLE_PROMPT_VERSION,
+            "systemPrompt": config["systemPrompt"].strip() if valid_config
+            else OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT,
+            "glossary": glossary_text,
+            "entries": total,
+        }
 
     @staticmethod
     def _error_detail(error: urllib.error.HTTPError) -> str:
@@ -1188,6 +1284,10 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json()
             if self.path == "/v1/openai-compatible/status":
                 result = self.bridge.openai_status(payload.get("preset"), payload.get("baseURL"))
+            elif self.path == "/v1/vnrevival/translation-config":
+                result = self.bridge.site_translation_config(
+                    payload.get("gameSlug"), payload.get("locale")
+                )
             elif self.path == "/v1/translation-metrics":
                 measured = screen_metrics(payload)
                 self.bridge.log_event("screen." + payload["phase"], **measured)

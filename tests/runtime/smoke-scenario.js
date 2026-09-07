@@ -189,7 +189,7 @@
   const openAIGlossaryInput = shadow.querySelector(".openAICompatibleGlossary");
   const openAIGlossaryInitiallyCollapsed = openAIGlossaryEditor.hidden
     && getComputedStyle(openAIGlossaryEditor).display === "none"
-    && openAIGlossaryToggle.textContent === "Glossary"
+    && openAIGlossaryToggle.textContent === "Additional glossary"
     && openAIGlossaryToggle.getAttribute("aria-expanded") === "false"
     && openAIGlossaryInput.value === ""
     && openAIGlossaryInput.maxLength === 8000
@@ -197,7 +197,7 @@
   openAIGlossaryToggle.click();
   const openAIGlossaryOpenedByButton = !openAIGlossaryEditor.hidden
     && getComputedStyle(openAIGlossaryEditor).display !== "none"
-    && openAIGlossaryToggle.textContent === "Hide glossary"
+    && openAIGlossaryToggle.textContent === "Hide additional glossary"
     && openAIGlossaryToggle.getAttribute("aria-expanded") === "true";
   openAIGlossaryInput.value = "Minstrel = Менестрель";
   openAIGlossaryInput.dispatchEvent(new Event("change"));
@@ -206,7 +206,7 @@
   openAIGlossaryToggle.click();
   const openAIGlossaryClosedByButton = openAIGlossaryEditor.hidden
     && getComputedStyle(openAIGlossaryEditor).display === "none"
-    && openAIGlossaryToggle.textContent === "Glossary"
+    && openAIGlossaryToggle.textContent === "Additional glossary"
     && openAIGlossaryToggle.getAttribute("aria-expanded") === "false";
   openAIAdvancedToggle.click();
   const openAIAdvancedClosedByButton = openAIAdvanced.hidden
@@ -371,6 +371,16 @@
   const captureClearButton = shadow.querySelector(".captureClear");
   const providerRequestsBeforeCapture = window.localHelperCalls
     .filter((path) => path === "/v1/openai-compatible/translate").length;
+  const captureProvider = shadow.querySelector(".provider");
+  captureProvider.value = "openai-compatible";
+  captureProvider.dispatchEvent(new Event("change"));
+  for (let attempt = 0; attempt < 50
+      && !window.localHelperCalls.includes("/v1/vnrevival/translation-config"); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  shadow.querySelector(".openAICompatiblePromptReset").click();
+  captureProvider.value = "google";
+  captureProvider.dispatchEvent(new Event("change"));
   captureToggleButton.click();
   for (let attempt = 0; attempt < 50 && !window.smokeCapture.active; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -408,8 +418,12 @@
     && capturedRequest?.system_prompt
     && !capturedRequest.system_prompt.includes("{targetName}")
     && !capturedRequest.system_prompt.includes("{target}")
+    && capturedRequest.system_prompt.includes("REMOTE SITE PROMPT")
+    && capturedRequest.system_prompt.includes("Capture = التقاط من الموقع")
     && capturedRequest.system_prompt.includes("Minstrel = Менестрель")
-    && capturedRequest.glossary === "Minstrel = Менестрель"
+    && capturedRequest.glossary === "Capture = التقاط من الموقع\nMinstrel = Менестрель"
+    && !capturedRequest.glossary.includes("شاعر الموقع")
+    && window.localHelperCalls.includes("/v1/vnrevival/translation-config")
     && window.localHelperCalls.filter((path) => path === "/v1/openai-compatible/translate").length
       === providerRequestsBeforeCapture
     && !window.smokeCapture.active

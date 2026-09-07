@@ -14,6 +14,7 @@ REQUIRED = {
     "id": str,
     "title": str,
     "shortTitle": str,
+    "siteSlug": str,
     "translatorName": str,
     "sourceLanguage": str,
     "supportedVersions": list,
@@ -54,6 +55,8 @@ def load_manifest(path: Path) -> dict:
         raise ValueError("unsupported schemaVersion")
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", value["id"]):
         raise ValueError("id must use lowercase ASCII letters, digits, and hyphens")
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", value["siteSlug"]):
+        raise ValueError("siteSlug must use lowercase ASCII letters, digits, and hyphens")
     if value["sourceLanguage"] != "en":
         raise ValueError("sourceLanguage must be en in contract version 1")
     if value["launchStrategy"] != "electron-cdp":

@@ -144,12 +144,12 @@
               <div class="openAICompatibleAdvancedNotice">After making changes, delete the cache below to retranslate text that was already translated.</div>
               <button class="secondary openAICompatiblePromptToggle" type="button" aria-expanded="false" aria-controls="openAICompatiblePromptEditor" title="Edit the instructions sent to the AI before each text fragment.">System prompt</button>
               <div id="openAICompatiblePromptEditor" class="openAICompatiblePromptEditor" hidden>
-                <div class="openAICompatiblePromptLabel"><label class="systemPromptLabel" for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button" title="Replace the custom prompt with the built-in default.">Restore default</button></div>
+                <div class="openAICompatiblePromptLabel"><label class="systemPromptLabel" for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button" title="Replace the custom prompt with the current VN Revival default.">Restore default</button></div>
                 <textarea id="openAICompatiblePrompt" class="openAICompatiblePrompt" maxlength="${maxSystemPromptChars}" spellcheck="false" aria-label="OpenAI-compatible system prompt" title="Instructions sent to the AI before each text fragment."></textarea>
               </div>
-              <button class="secondary openAICompatibleGlossaryToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleGlossaryEditor" title="Set preferred translations that are appended to the system prompt.">Glossary</button>
+              <button class="secondary openAICompatibleGlossaryToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleGlossaryEditor" title="Add overrides to the VN Revival glossary loaded for the selected language.">Additional glossary</button>
               <div id="openAICompatibleGlossaryEditor" class="openAICompatibleGlossaryEditor" hidden>
-                <textarea class="openAICompatibleGlossary" maxlength="${maxGlossaryChars}" spellcheck="false" aria-label="Translation glossary" placeholder="One entry per line: source = translation" title="Add one source-to-translation mapping per line."></textarea>
+                <textarea class="openAICompatibleGlossary" maxlength="${maxGlossaryChars}" spellcheck="false" aria-label="Additional translation glossary" placeholder="Optional overrides: source = translation" title="Add optional source-to-translation overrides; the site glossary loads automatically."></textarea>
               </div>
             </div>
           </div>

@@ -24,7 +24,20 @@ class GameManifestTests(unittest.TestCase):
         return path
 
     def test_current_manifest_is_valid(self):
-        self.assertEqual(MODULE.load_manifest(self.manifest_path)["id"], "coc2")
+        manifest = MODULE.load_manifest(self.manifest_path)
+        self.assertEqual(manifest["id"], "coc2")
+        self.assertEqual(manifest["siteSlug"], "corruption-of-champions-ii")
+
+    def test_site_slug_is_required_and_safe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for invalid in (None, "", "../coc2", "Corruption-of-Champions-II"):
+                value = copy.deepcopy(self.valid)
+                if invalid is None:
+                    value.pop("siteSlug")
+                else:
+                    value["siteSlug"] = invalid
+                with self.subTest(site_slug=invalid), self.assertRaises(ValueError):
+                    MODULE.load_manifest(self.write_manifest(directory, value))
 
     def test_game_theme_is_optional_and_rejects_non_color_content(self):
         with tempfile.TemporaryDirectory() as directory:
