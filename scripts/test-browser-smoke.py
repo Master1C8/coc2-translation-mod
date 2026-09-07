@@ -43,7 +43,7 @@ def main() -> int:
         print("Browser smoke: SKIP (Chrome/Chromium not found)")
         return 0
     fixture = ROOT / "tests/runtime-smoke.html"
-    if not (ROOT / ".build/languages.js").is_file() or not (ROOT / ".build/game-config.js").is_file():
+    if not (ROOT / ".build/languages.js").is_file() or not (ROOT / ".build/game-config.js").is_file() or not (ROOT / ".build/openai-config.js").is_file():
         print("Browser smoke: generated configs are missing", file=sys.stderr)
         return 1
     port = free_port()
@@ -84,8 +84,8 @@ def main() -> int:
                                 if last_title == "PASS":
                                     print("Browser smoke: PASS")
                                     return 0
-                                if last_title == "FAIL":
-                                    print("Browser smoke: FAIL", file=sys.stderr)
+                                if last_title == "FAIL" or last_title.startswith("FAIL: "):
+                                    print(f"Browser smoke: {last_title[:600]}", file=sys.stderr)
                                     return 1
                     except (OSError, ValueError, urllib.error.URLError):
                         pass

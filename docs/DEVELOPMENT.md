@@ -2,6 +2,9 @@
 
 Use the smallest relevant context first. Expand to architecture and full tests
 only when a change crosses a boundary.
+Search symbols with `rg -n`, then read bounded ranges around the matches and
+their callers. Reuse earlier reads; read a fresh diff after edits. Do not load
+generated `.build/` bundles or all documentation for ordinary source changes.
 
 | Task | Read first | Focused verification |
 |---|---|---|
@@ -19,8 +22,9 @@ only when a change crosses a boundary.
 
 ```text
 ./scripts/test-runtime.sh
+./scripts/test-runtime.sh --unit-only --quiet
 ./scripts/test-service.sh
-./scripts/test-adapter.sh
+./scripts/test-adapter.sh --quiet
 ./scripts/test-browser-smoke.sh
 ./scripts/test-coc2.sh --quiet
 ./scripts/test-coc2.sh
@@ -29,6 +33,31 @@ only when a change crosses a boundary.
 Focused commands are iteration checks, not the final integration gate. The
 quiet full suite prints compact progress on success and retains normal command
 failures. Re-run the verbose suite when a failure needs diagnosis.
+Runtime and adapter checks accept `--quiet`; runtime `--unit-only` skips the
+browser for isolated core/provider iterations. DOM, panel and runtime changes
+still need browser smoke; every integration still needs the full suite.
+
+## Symbol routes
+
+Locate these anchors, read their surrounding functions and matching assertions,
+then expand to shared setup and callers as needed. Anchors avoid stale line numbers.
+
+| Area | Source anchors | Test anchors |
+|---|---|---|
+| Cache | runtime `emptyCacheMetadata`, `openDb` through `clearAllCache` | smoke scenario `repairedMetadata`, `legacyMigrated`, `cacheDeleted` |
+| Logs | runtime `refreshCacheStats`, `copyLocalLog`, `deleteTranslationCache`; helper `log_status` through `clear_log`, `do_GET`, `do_POST` | helper tests `test_log_status_read_and_clear`, `test_log_copy_is_bounded`; smoke `compactCacheRow` through `cacheDeleted` |
+| Provider settings/models | runtime `openAICompatibleConnection`, `providerCacheVariant`, `populateOpenAICompatibleModelOptions`, `refreshOpenAICompatibleStatus`; helper `_connection`, `_models`, `openai_status` | helper `test_status_`, `test_opencode_`; smoke `safeOpenAIModelPicker`, `modelListRefreshesOnOpen` |
+| Request errors/parameters | runtime `requestChunk`, `applyOpenAICompatibleModelParameters`; helper `_unsupported_model_parameter`, `_classified_provider_error`, `_model_parameters`, `openai_translate` | helper `test_translation_`; smoke `openAIModelParametersSaved` |
+| DOM/formatting | runtime `classifyNode`, `registerTranslationContainers`, `applyLanguageFormatting`, `buildJobs`, `runJobs` | smoke `translated`, `restored`, `hiddenTooltipPrefetched` |
+| Panel text/layout | panel CSS selector/markup; presets key; runtime `applyInterfacePreset` and control binding | smoke matching control name; User Guide `Controls` and `Управление` |
+
+Here runtime means `src/translator-runtime.js`, helper means
+`src/local_service.py`, and helper tests means `tests/test_local_service.py`.
+Smoke assertions live in `tests/runtime/smoke-scenario.js`; mocks are in
+`smoke-setup.js`. `smoke-report.js` reports failed check names or a safe exception
+type through the page title, which the runner prints. It deliberately omits
+settings, request bodies and exception messages. Inspect only the named group
+first; a timeout may require the fixture load order and setup.
 
 ## Boundaries
 

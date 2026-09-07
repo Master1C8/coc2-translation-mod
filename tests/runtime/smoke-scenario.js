@@ -340,115 +340,43 @@
     buttonWrap: button.style.getPropertyValue("white-space")
   };
 
-  const passed = translated.text === "ترى امرأة جميلة بالقرب من الباب."
-    && translated.direction === "rtl"
-    && translated.language === "ar"
-    && translated.bidi === "plaintext"
-    && translated.lineHeight === "1.35"
-    && translated.fontFamily.includes("Noto Sans Arabic")
-    && translated.buttonHeight === "auto"
-    && translated.buttonWrap === "normal"
-    && scrolledTranslation === "ترجمة"
-    && repairedMetadata.records === 5
-    && compactCacheRow
-    && logCopied
-    && cacheDeleted
-    && originalButtonRemoved
-    && metadataDirty === null
-    && legacyMigrated
-    && hiddenTooltipPrefetched
-    && legacyGlobalsScopedToCoC2
-    && shortcutInsideMainButton
-    && cancelStateKeepsShortcut
-    && routineSuccessStatusHidden
-    && defaultLanguage === "en"
-    && defaultAutoTranslate
-    && autoModeHidesTranslate
-    && languageIsTopLevel
-    && interfaceToggleIsRightOfLanguage
-    && russianInterfacePresetApplied
-    && englishInterfaceRestored
-    && languageOptions.length === 30
-    && JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
-      ["zh", "Chinese (Simplified) (中文（简体）)"],
-      ["en", "English"]
-    ])
-    && JSON.stringify(languageOptions.at(-1)) === JSON.stringify(["he", "Hebrew (עברית)"])
-    && JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]])
-    && openAIKeyIsPasswordOnly
-    && openAIKeyBeforeModel
-    && openAISetupVisible
-    && streamlinedOpenAIControls
-    && safeOpenAIModelPicker
-    && modelListRefreshesOnOpen
-    && openAIModelSelectionSaved
-    && complexControlTooltips
-    && openAIAdvancedInitiallyCollapsed
-    && openAIAdvancedOpenedByButton
-    && openAIAdvancedCacheNotice
-    && openAIAdvancedClosedByButton
-    && openAIPromptInitiallyCollapsed
-    && openAIPromptOpenedByButton
-    && openAIPromptEditable
-    && openAIPromptSaved
-    && openAIPromptClosedByButton
-    && openAIGlossaryInitiallyCollapsed
-    && openAIGlossaryOpenedByButton
-    && openAIGlossarySaved
-    && openAIGlossaryClosedByButton
-    && openAIModelParametersVisible
-    && openAIModelParametersSaved
-    && openAIHintRemoved
-    && openAIKeyAutoSaved
-    && googleHintRemoved
-    && organicAutoToggle
-    && autoChangeSaved
-    && manualModeShowsTranslate
-    && restoredAutoModeHidesTranslate
-    && autosavedSettings.language === "ar"
-    && autosavedSettings.provider === "google"
-    && autosavedSettings.autoTranslate === true
-    && removedSettingsButtons
-    && removedBottomHint
-    && fullyExpandedPanel
-    && collapsedStateSaved
-    && expandedStateSaved
-    && contactLinksPresent
-    && restored.text === "You see a beautiful woman near the door."
-    && restored.direction === false
-    && restored.language === false
-    && restored.textAlign === ""
-    && restored.fontFamily === ""
-    && restored.buttonHeight === ""
-    && restored.buttonWrap === "";
-  document.getElementById("result").textContent = JSON.stringify({
-    passed,
-    outcome,
-    settings: window.__vnRevivalTranslator.settings(),
-    fetchCalls: window.fetchCalls,
-    scrolledTranslation,
-    repairedMetadata,
+  // Keep each expectation once; the reporter lists failed names only.
+  window.smokeReport({
+    translatedText: translated.text === "ترى امرأة جميلة بالقرب من الباب.",
+    translatedDirection: translated.direction === "rtl",
+    translatedLanguage: translated.language === "ar",
+    translatedBidi: translated.bidi === "plaintext",
+    translatedLineHeight: translated.lineHeight === "1.35",
+    translatedFontFamilyIncludes: translated.fontFamily.includes("Noto Sans Arabic"),
+    translatedButtonHeight: translated.buttonHeight === "auto",
+    translatedButtonWrap: translated.buttonWrap === "normal",
+    scrolledTranslation: scrolledTranslation === "ترجمة",
+    repairedMetadataRecords: repairedMetadata.records === 5,
     compactCacheRow,
     logCopied,
     cacheDeleted,
-    metadataDirty,
+    originalButtonRemoved,
+    metadataDirty: metadataDirty === null,
     legacyMigrated,
     hiddenTooltipPrefetched,
     legacyGlobalsScopedToCoC2,
     shortcutInsideMainButton,
     cancelStateKeepsShortcut,
     routineSuccessStatusHidden,
-    defaultLanguage,
+    defaultLanguage: defaultLanguage === "en",
     defaultAutoTranslate,
     autoModeHidesTranslate,
     languageIsTopLevel,
     interfaceToggleIsRightOfLanguage,
     russianInterfacePresetApplied,
-    russianInterfacePresetTextApplied,
-    interfacePresetMadeNoRequests,
     englishInterfaceRestored,
-    languageOptions,
-    providerOptions,
+    languageOptionsLength: languageOptions.length === 30,
+    languageOrderStart: JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
+      ["zh", "Chinese (Simplified) (中文（简体）)"],
+      ["en", "English"]
+    ]),
+    languageOrderEnd: JSON.stringify(languageOptions.at(-1)) === JSON.stringify(["he", "Hebrew (עברית)"]),
+    providerOrder: JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]]),
     openAIKeyIsPasswordOnly,
     openAIKeyBeforeModel,
     openAISetupVisible,
@@ -479,16 +407,21 @@
     autoChangeSaved,
     manualModeShowsTranslate,
     restoredAutoModeHidesTranslate,
-    autosavedSettings,
+    autosavedSettingsLanguage: autosavedSettings.language === "ar",
+    autosavedSettingsProvider: autosavedSettings.provider === "google",
+    autosavedSettingsAutoTranslate: autosavedSettings.autoTranslate === true,
     removedSettingsButtons,
     removedBottomHint,
     fullyExpandedPanel,
-    compactCollapsedHeader,
     collapsedStateSaved,
     expandedStateSaved,
     contactLinksPresent,
-    translated,
-    restored
+    restoredText: restored.text === "You see a beautiful woman near the door.",
+    restoredDirection: restored.direction === false,
+    restoredLanguage: restored.language === false,
+    restoredTextAlign: restored.textAlign === "",
+    restoredFontFamily: restored.fontFamily === "",
+    restoredButtonHeight: restored.buttonHeight === "",
+    restoredButtonWrap: restored.buttonWrap === "",
   });
-  document.title = passed ? "PASS" : "FAIL";
 })();

@@ -21,7 +21,7 @@ DATA_DIRECTORY_WINDOWS=$(python3 -c 'import sys; print(sys.argv[1].replace("/", 
 DEBUG_TARGET_TITLE=$(manifest_value debugTargetTitleContains)
 DEBUG_TARGET_URL=$(manifest_value debugTargetUrlContains)
 
-NODE_TESTS=(tests/translation-core.test.js tests/providers.test.js tests/languages.test.js tests/game-adapter.test.js)
+NODE_TESTS=(tests/smoke-report.test.js tests/translation-core.test.js tests/providers.test.js tests/languages.test.js tests/game-adapter.test.js)
 GAME_TESTS=("$GAME_DIR"/tests/*.test.js(N))
 (( ${#GAME_TESTS} > 0 )) || { echo "No game-specific tests found for $GAME_ID" >&2; exit 1; }
 NODE_TESTS+=("${GAME_TESTS[@]}")
@@ -39,6 +39,7 @@ node --check src/interface-presets.js
 node --check src/panel-view.js
 node --check "src/games/$GAME_ID/adapter.js"
 node --check src/translator-runtime.js
+node --check tests/runtime/smoke-report.js
 node --check tests/runtime/smoke-setup.js
 node --check tests/runtime/smoke-scenario.js
 [[ -s "$ROOT/$ICON_PNG" && -s "$ROOT/$ICON_ICNS" ]]
