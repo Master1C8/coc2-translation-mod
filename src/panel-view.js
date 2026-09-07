@@ -89,9 +89,10 @@
         .openAICompatiblePromptReset{font-size:10px}
         .openAICompatiblePrompt,.openAICompatibleGlossary{min-height:100px;resize:vertical;font-size:12px}
         .openAICompatibleAdvancedNotice{margin:8px 0;color:var(--muted);font-size:11px}
-        .cacheBox{display:grid;grid-template-columns:auto auto;justify-content:space-between;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
-        .cacheStats{grid-column:1/-1}
-        .cacheCopy,.cacheDelete{padding:4px 0;font-size:10px;background:transparent}
+        .cacheBox,.captureBox{display:grid;grid-template-columns:auto auto;justify-content:space-between;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
+        .captureBox{margin-top:8px}
+        .cacheStats,.captureStats{grid-column:1/-1;color:var(--muted);font-size:11px}
+        .cacheCopy,.cacheDelete,.captureToggle,.captureCopy{padding:4px 0;font-size:10px;background:transparent}
         .site{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
         .site a{color:var(--text);text-decoration:none;font-size:14px}
         .siteLabel a{display:flex;align-items:baseline;justify-content:center;flex-wrap:wrap;gap:4px 8px;text-align:center}
@@ -152,6 +153,7 @@
             </div>
           </div>
           <div class="cacheBox"><div class="cacheStats">Cache: … · Log: …</div><button class="secondary cacheCopy" type="button" title="Copy the local service log to the clipboard." disabled>Copy log</button><button class="danger cacheDelete" type="button" title="Delete all cached translations and the local service log. Other settings stay unchanged.">Clear cache and log</button></div>
+          <div class="captureBox"><div class="captureStats">Translation capture: Off · Screens: 0</div><button class="secondary captureToggle" type="button" title="Start a new local capture of original and translated game text.">Start capture</button><button class="secondary captureCopy" type="button" title="Copy the captured original and translated text as JSON." disabled>Copy capture</button></div>
         </div>
         </div>
         <div class="site">

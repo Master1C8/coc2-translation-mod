@@ -43,12 +43,15 @@ OPENAI_COMPATIBLE_PRESETS = OPENAI_COMPATIBLE_CONFIG["presets"]
 MAX_REQUEST_BYTES = 1_048_576
 MAX_TEXT_CHARS = 12_000
 MAX_LOG_COPY_BYTES = 2 * 1024 * 1024
+MAX_CAPTURE_BYTES = 8 * 1024 * 1024
 _LOG_LOCK = threading.Lock()
+_CAPTURE_LOCK = threading.Lock()
 _TRACE_ID = contextvars.ContextVar("translation_request_id", default=None)
 _LOG_ROUTES = {
     "/v1/health", "/v1/openai-compatible/status", "/v1/openai-compatible/key",
     "/v1/openai-compatible/key/remove", "/v1/openai-compatible/translate",
-    "/v1/launcher/reselect-executable",
+    "/v1/launcher/reselect-executable", "/v1/capture/status", "/v1/capture/start",
+    "/v1/capture/append", "/v1/capture/stop", "/v1/capture/read",
 }
 
 
@@ -107,6 +110,44 @@ def token_usage(payload: dict[str, Any]) -> dict[str, Any]:
             result[target] = value
             result["usage_available"] = True
     return result
+
+
+def _capture_text(value: Any, limit: int) -> bool:
+    return isinstance(value, str) and 1 <= len(value) <= limit \
+        and not any(ord(character) < 32 and character not in "\r\n\t" or ord(character) == 127 for character in value)
+
+
+def capture_screen(value: Any) -> dict[str, Any]:
+    fields = {
+        "screen_id", "game_id", "game_version", "translator_version", "language",
+        "provider", "preset", "model", "reasoning_effort", "mode", "outcome", "items",
+    }
+    if not isinstance(value, dict) or set(value) != fields:
+        raise BridgeError("capture_invalid", "Invalid translation capture", 400)
+    valid = (
+        isinstance(value["screen_id"], str) and re.fullmatch(r"[0-9a-f]{32}", value["screen_id"])
+        and isinstance(value["game_id"], str) and re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", value["game_id"])
+        and _capture_text(value["game_version"], 100)
+        and _capture_text(value["translator_version"], 100)
+        and isinstance(value["language"], str) and re.fullmatch(r"[A-Za-z0-9-]{2,24}", value["language"])
+        and value["provider"] in ("google", "openai-compatible")
+        and isinstance(value["preset"], str) and len(value["preset"]) <= 100
+        and isinstance(value["model"], str) and len(value["model"]) <= 512
+        and value["reasoning_effort"] in ({""} | OPENAI_COMPATIBLE_REASONING_EFFORTS)
+        and value["mode"] in ("manual", "auto")
+        and value["outcome"] in ("complete", "failed", "cancelled", "superseded")
+        and isinstance(value["items"], list) and 1 <= len(value["items"]) <= 500
+    )
+    if not valid:
+        raise BridgeError("capture_invalid", "Invalid translation capture", 400)
+    for item in value["items"]:
+        if not isinstance(item, dict) or set(item) != {"kind", "source", "translation", "occurrences"} \
+                or item["kind"] not in ("story", "control", "tooltip", "ui") \
+                or not _capture_text(item["source"], MAX_TEXT_CHARS) \
+                or not _capture_text(item["translation"], MAX_TEXT_CHARS * 2) \
+                or type(item["occurrences"]) is not int or not 1 <= item["occurrences"] <= 10_000:
+            raise BridgeError("capture_invalid", "Invalid translation capture", 400)
+    return value
 
 
 class BridgeError(Exception):
@@ -290,6 +331,8 @@ class LocalServiceBridge:
         # One routing session per launcher lifetime, shared by concurrent requests
         # and format fallbacks. This is not an auth token or a user identifier.
         self._opencode_session = uuid.uuid4().hex
+        self._capture_active = False
+        self._capture_id: str | None = None
 
     def log_event(self, event: str, **fields: Any) -> None:
         # Callers supply only fixed categories, numeric metrics and fingerprints.
@@ -339,6 +382,97 @@ class LocalServiceBridge:
         except OSError as error:
             raise BridgeError("log_clear_failed", "Could not delete the log", 500) from error
         return {"ok": True, "bytes": 0}
+
+    @property
+    def capture_path(self) -> Path:
+        return self.data_dir / "translation-capture.json"
+
+    def _read_capture_document(self) -> dict[str, Any] | None:
+        try:
+            value = json.loads(self.capture_path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return None
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise BridgeError("capture_read_failed", "Could not read the translation capture", 500) from error
+        if not isinstance(value, dict) or value.get("schema_version") != 1 \
+                or not isinstance(value.get("capture_id"), str) \
+                or not isinstance(value.get("screens"), list):
+            raise BridgeError("capture_read_failed", "The translation capture is invalid", 500)
+        return value
+
+    def _write_capture_document(self, value: dict[str, Any]) -> int:
+        content = json.dumps(value, ensure_ascii=False, indent=2).encode("utf-8")
+        if len(content) > MAX_CAPTURE_BYTES:
+            raise BridgeError("capture_too_large", "The translation capture is full", 413)
+        temporary = self.capture_path.with_suffix(".json.tmp")
+        try:
+            temporary.write_bytes(content)
+            os.replace(temporary, self.capture_path)
+        except OSError as error:
+            try:
+                temporary.unlink()
+            except OSError:
+                pass
+            raise BridgeError("capture_write_failed", "Could not save the translation capture", 500) from error
+        return len(content)
+
+    def capture_status(self) -> dict[str, Any]:
+        with _CAPTURE_LOCK:
+            document = self._read_capture_document()
+            count = len(document["screens"]) if document else 0
+            try:
+                size = self.capture_path.stat().st_size if document else 0
+            except OSError:
+                size = 0
+            return {"ok": True, "active": self._capture_active, "screens": count, "bytes": size}
+
+    def start_capture(self, accepted: Any) -> dict[str, Any]:
+        if accepted is not True:
+            raise BridgeError("confirmation_required", "Explicit confirmation is required", 400)
+        with _CAPTURE_LOCK:
+            self._capture_id = uuid.uuid4().hex
+            document = {
+                "schema_version": 1,
+                "capture_id": self._capture_id,
+                "started_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                "screens": [],
+            }
+            size = self._write_capture_document(document)
+            self._capture_active = True
+            return {"ok": True, "active": True, "screens": 0, "bytes": size}
+
+    def append_capture(self, value: Any) -> dict[str, Any]:
+        measured = capture_screen(value)
+        with _CAPTURE_LOCK:
+            if not self._capture_active or not self._capture_id:
+                raise BridgeError("capture_inactive", "Translation capture is not active", 409)
+            document = self._read_capture_document()
+            if not document or document.get("capture_id") != self._capture_id:
+                self._capture_active = False
+                self._capture_id = None
+                raise BridgeError("capture_inactive", "Translation capture is not active", 409)
+            document["screens"].append({
+                "number": len(document["screens"]) + 1,
+                "captured_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                **measured,
+            })
+            size = self._write_capture_document(document)
+            return {"ok": True, "active": True, "screens": len(document["screens"]), "bytes": size}
+
+    def stop_capture(self) -> dict[str, Any]:
+        with _CAPTURE_LOCK:
+            self._capture_active = False
+            self._capture_id = None
+        return self.capture_status()
+
+    def read_capture(self) -> dict[str, Any]:
+        with _CAPTURE_LOCK:
+            document = self._read_capture_document()
+            if not document:
+                return {"ok": True, "screens": 0, "bytes": 0, "content": ""}
+            content = json.dumps(document, ensure_ascii=False, indent=2)
+            return {"ok": True, "screens": len(document["screens"]),
+                    "bytes": len(content.encode("utf-8")), "content": content}
 
     @staticmethod
     def _connection(preset: Any, base_url: Any) -> dict[str, Any]:
@@ -1004,6 +1138,16 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 if payload.get("accepted") is not True:
                     raise BridgeError("confirmation_required", "Explicit confirmation is required", 400)
                 result = self.bridge.clear_log()
+            elif self.path == "/v1/capture/status":
+                result = self.bridge.capture_status()
+            elif self.path == "/v1/capture/start":
+                result = self.bridge.start_capture(payload.get("accepted"))
+            elif self.path == "/v1/capture/append":
+                result = self.bridge.append_capture(payload)
+            elif self.path == "/v1/capture/stop":
+                result = self.bridge.stop_capture()
+            elif self.path == "/v1/capture/read":
+                result = self.bridge.read_capture()
             elif self.path == "/v1/openai-compatible/key":
                 result = self.bridge.set_openai_key(
                     payload.get("preset"), payload.get("baseURL"), payload.get("apiKey")

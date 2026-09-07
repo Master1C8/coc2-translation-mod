@@ -355,6 +355,44 @@
   }
   const scrolledTranslation = later.textContent.trim();
 
+  for (let attempt = 0; attempt < 100 && shadow.querySelector(".translateAction").textContent === "Cancel"; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  const autoBeforeCapture = autoCheckbox.checked;
+  autoCheckbox.checked = false;
+  autoCheckbox.dispatchEvent(new Event("change"));
+  const captureToggleButton = shadow.querySelector(".captureToggle");
+  const captureCopyButton = shadow.querySelector(".captureCopy");
+  captureToggleButton.click();
+  for (let attempt = 0; attempt < 50 && !window.smokeCapture.active; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  const captureSource = document.createElement("p");
+  captureSource.style.cssText = "position:fixed;top:40px;left:0;width:200px;height:30px";
+  captureSource.textContent = "Capture this source sentence.";
+  document.body.append(captureSource);
+  await window.__vnRevivalTranslator.translateScreen();
+  for (let attempt = 0; attempt < 50 && window.smokeCapture.screens.length === 0; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  captureToggleButton.click();
+  for (let attempt = 0; attempt < 50 && window.smokeCapture.active; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  captureCopyButton.click();
+  for (let attempt = 0; attempt < 50 && !window.smokeClipboard.includes("Capture this source sentence."); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  const translationCaptureWorks = window.smokeCapture.screens.length === 1
+    && window.smokeCapture.screens[0].items.some((item) => item.source === "Capture this source sentence."
+      && item.translation === "ترجمة")
+    && !window.smokeCapture.active
+    && shadow.querySelector(".captureStats").textContent === "Translation capture: Off · Screens: 1"
+    && window.smokeClipboard.includes("Capture this source sentence.");
+  captureSource.remove();
+  autoCheckbox.checked = autoBeforeCapture;
+  autoCheckbox.dispatchEvent(new Event("change"));
+
   await new Promise((resolve) => setTimeout(resolve, 700));
   const repairedMetadata = JSON.parse(localStorage.getItem("coc2-translator.cache-meta.v1") || "null");
   const metadataDirty = localStorage.getItem("coc2-translator.cache-meta-dirty.v1");
@@ -507,10 +545,11 @@
     translatedButtonHeight: translated.buttonHeight === "auto",
     translatedButtonWrap: translated.buttonWrap === "normal",
     scrolledTranslation: scrolledTranslation === "ترجمة",
-    repairedMetadataRecords: repairedMetadata.records === 5,
+    repairedMetadataRecords: repairedMetadata.records === 6,
     compactCacheRow,
     logCopied,
     cacheDeleted,
+    translationCaptureWorks,
     originalButtonRemoved,
     metadataDirty: metadataDirty === null,
     legacyMigrated,

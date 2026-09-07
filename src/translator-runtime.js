@@ -118,6 +118,8 @@
   let cacheMetadataVerified = false;
   let cacheMetadataSaveTimer = 0;
   let localLogBytes = null;
+  let captureActive = false;
+  let captureScreens = 0;
   let openAICompatibleStatus = null;
   let editingOpenAIKey = false;
   let openAICompatibleBusy = false;
@@ -1141,6 +1143,7 @@
     const originalJobCount = jobs.length;
     if (providerUsesOpenAICompatible(settings.provider)) jobs = core.batchScreenJobs(jobs, PROVIDERS[settings.provider].contextLimit);
     running = true;
+    renderCaptureStatus();
     autoBlockedVariant = null;
     const runVariant = translationVariant();
     let queueStopped = false;
@@ -1234,7 +1237,9 @@
       if (runVariant !== translationVariant()) outcome = "superseded";
       report("result", { outcome, duration_ms: Math.round(performance.now() - started),
         failed_jobs: lastFailedJobs.reduce((count, job) => count + (job.batchParts?.length || 1), 0) });
+      await appendTranslationCapture(metrics, outcome, provider, language, context.connection);
       running = false;
+      renderCaptureStatus();
       abortController = null;
       setMainButton("Translate");
       retryButton.disabled = !lastFailedJobs.length;
@@ -1380,6 +1385,139 @@
     }
   }
 
+  function renderCaptureStatus() {
+    const text = interfacePreset();
+    captureStatsElement.textContent = formatMessage(text.captureStatus, {
+      state: captureActive ? text.on : text.off,
+      count: captureScreens
+    });
+    captureToggleButton.textContent = captureActive ? text.captureStop : text.captureStart;
+    captureToggleButton.title = captureActive ? text.captureStopTitle : text.captureStartTitle;
+    captureToggleButton.disabled = !LOCAL_BRIDGE || running;
+    captureCopyButton.textContent = text.copyCapture;
+    captureCopyButton.title = text.captureCopyTitle;
+    captureCopyButton.disabled = !LOCAL_BRIDGE || captureScreens === 0;
+  }
+
+  async function refreshCaptureStatus() {
+    if (!LOCAL_BRIDGE) {
+      captureActive = false;
+      captureScreens = 0;
+      renderCaptureStatus();
+      return;
+    }
+    try {
+      const result = await requestLocalHelper("/v1/capture/status", { body: {} });
+      captureActive = result.active === true;
+      captureScreens = Number.isInteger(result.screens) ? Math.max(0, result.screens) : 0;
+    } catch (_) {
+      captureActive = false;
+      captureScreens = 0;
+    }
+    renderCaptureStatus();
+  }
+
+  async function toggleTranslationCapture() {
+    if (!LOCAL_BRIDGE) return;
+    const text = interfacePreset();
+    captureToggleButton.disabled = true;
+    try {
+      if (captureActive) {
+        const result = await requestLocalHelper("/v1/capture/stop", { body: {} });
+        captureActive = false;
+        captureScreens = Number.isInteger(result.screens) ? result.screens : captureScreens;
+        setStatus(text.captureStopped);
+      } else {
+        if (captureScreens > 0 && !confirm(text.captureReplaceConfirm)) return;
+        const result = await requestLocalHelper("/v1/capture/start", { body: { accepted: true } });
+        captureActive = result.active === true;
+        captureScreens = 0;
+        setStatus(text.captureStarted);
+      }
+    } catch (_) {
+      setStatus(text.captureFailed);
+    } finally {
+      renderCaptureStatus();
+    }
+  }
+
+  async function copyTranslationCapture() {
+    if (!LOCAL_BRIDGE || captureScreens === 0) return;
+    const text = interfacePreset();
+    captureCopyButton.disabled = true;
+    try {
+      const result = await requestLocalHelper("/v1/capture/read", { body: {} });
+      const copied = await copyTextToClipboard(String(result.content || ""));
+      setStatus(copied ? text.captureCopied : text.captureFailed);
+    } catch (_) {
+      setStatus(text.captureFailed);
+    } finally {
+      renderCaptureStatus();
+    }
+  }
+
+  function capturedTranslationItems() {
+    const visible = collectVisibleTextNodes({ includeCompleted: true });
+    const items = [];
+    for (const job of buildJobs(visible)) {
+      if (job.contextual) {
+        const records = job.parts.map((part) => applied.get(part.node));
+        if (!records.every((record, index) => record && record.language === settings.language
+            && record.provider === settings.provider && record.source === job.parts[index].source
+            && record.translation)) continue;
+        items.push({
+          kind: job.kind,
+          source: job.source,
+          translation: core.buildContextSource(records.map((record) => record.translation)),
+          occurrences: 1
+        });
+        continue;
+      }
+      const records = job.nodes.map((node) => applied.get(node)).filter((record) => record
+        && record.language === settings.language && record.provider === settings.provider
+        && record.source === job.source && record.translation);
+      if (!records.length) continue;
+      items.push({
+        kind: job.kind,
+        source: job.source,
+        translation: records[0].translation,
+        occurrences: records.length
+      });
+    }
+    return items;
+  }
+
+  async function appendTranslationCapture(metrics, outcome, provider, language, connection) {
+    if (!captureActive || outcome !== "complete" || !LOCAL_BRIDGE) return;
+    const items = capturedTranslationItems();
+    if (!items.length) return;
+    const gameVersion = typeof adapter.getGameVersion === "function"
+      ? String(adapter.getGameVersion(window) || "unknown") : "unknown";
+    try {
+      const result = await requestLocalHelper("/v1/capture/append", { body: {
+        screen_id: metrics.screen_id,
+        game_id: game.id,
+        game_version: gameVersion,
+        translator_version: VERSION,
+        language,
+        provider,
+        preset: providerUsesOpenAICompatible(provider) ? String(connection.preset || "") : "",
+        model: providerUsesOpenAICompatible(provider) ? String(connection.model || "") : "",
+        reasoning_effort: providerUsesOpenAICompatible(provider)
+          ? String(connection.modelParameters?.reasoningEffort || "") : "",
+        mode: metrics.mode,
+        outcome,
+        items
+      } });
+      captureScreens = Number.isInteger(result.screens) ? result.screens : captureScreens + 1;
+      renderCaptureStatus();
+    } catch (_) {
+      captureActive = false;
+      renderCaptureStatus();
+      setStatus(interfacePreset().captureFailed);
+    }
+  }
+
   async function deleteTranslationCache() {
     const text = interfacePreset();
     if (!confirm(text.deleteConfirm)) return;
@@ -1451,6 +1589,9 @@
   const cacheStatsElement = shadow.querySelector(".cacheStats");
   const cacheCopyButton = shadow.querySelector(".cacheCopy");
   const cacheDeleteButton = shadow.querySelector(".cacheDelete");
+  const captureStatsElement = shadow.querySelector(".captureStats");
+  const captureToggleButton = shadow.querySelector(".captureToggle");
+  const captureCopyButton = shadow.querySelector(".captureCopy");
   const privacyBox = shadow.querySelector(".privacy");
   const compatibilityBox = shadow.querySelector(".compat");
 
@@ -1522,6 +1663,7 @@
     autoState.dataset.off = text.off;
     cacheCopyButton.textContent = text.copyLog;
     cacheDeleteButton.textContent = text.delete;
+    renderCaptureStatus();
     openAICompatiblePresetSelect.title = text.presetTitle;
     openAICompatibleBaseURLInput.title = text.baseURLTitle;
     openAICompatibleKeyInput.title = text.keyTitle;
@@ -1826,6 +1968,7 @@
   updateProviderHint();
   applyInterfacePreset();
   refreshCacheStats();
+  refreshCaptureStatus();
 
   mainButton.addEventListener("click", () => translateScreen(true));
   retryButton.addEventListener("click", retryFailed);
@@ -1857,6 +2000,8 @@
   });
   cacheCopyButton.addEventListener("click", copyLocalLog);
   cacheDeleteButton.addEventListener("click", deleteTranslationCache);
+  captureToggleButton.addEventListener("click", toggleTranslationCapture);
+  captureCopyButton.addEventListener("click", copyTranslationCapture);
   openAICompatiblePresetSelect.addEventListener("change", async () => {
     const preset = openAICompatiblePresetSelect.value;
     applyOpenAICompatibleSettings({
