@@ -53,7 +53,7 @@ _LOG_ROUTES = {
     "/v1/health", "/v1/openai-compatible/status", "/v1/openai-compatible/key",
     "/v1/openai-compatible/key/remove", "/v1/openai-compatible/translate",
     "/v1/launcher/reselect-executable", "/v1/capture/status", "/v1/capture/start",
-    "/v1/capture/append", "/v1/capture/stop", "/v1/capture/read",
+    "/v1/capture/append", "/v1/capture/stop", "/v1/capture/read", "/v1/capture/clear",
 }
 
 
@@ -472,13 +472,45 @@ class LocalServiceBridge:
                 self._capture_active = False
                 self._capture_id = None
                 raise BridgeError("capture_inactive", "Translation capture is not active", 409)
+            comparable_fields = (
+                "game_id", "game_version", "translator_version", "language", "preset",
+                "model", "reasoning_effort", "requests",
+            )
+            if any(all(existing.get(key) == measured[key] for key in comparable_fields)
+                   for existing in document["request_sets"]):
+                return {"ok": True, "active": True, "sets": len(document["request_sets"]),
+                        "bytes": self.capture_path.stat().st_size, "duplicate": True}
             document["request_sets"].append({
                 "number": len(document["request_sets"]) + 1,
                 "captured_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 **measured,
             })
             size = self._write_capture_document(document)
-            return {"ok": True, "active": True, "sets": len(document["request_sets"]), "bytes": size}
+            return {"ok": True, "active": True, "sets": len(document["request_sets"]),
+                    "bytes": size, "duplicate": False}
+
+    def clear_capture(self, accepted: Any) -> dict[str, Any]:
+        if accepted is not True:
+            raise BridgeError("confirmation_required", "Explicit confirmation is required", 400)
+        with _CAPTURE_LOCK:
+            if self._capture_active:
+                self._capture_id = uuid.uuid4().hex
+                document = {
+                    "schema_version": 2,
+                    "capture_id": self._capture_id,
+                    "started_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                    "request_sets": [],
+                }
+                size = self._write_capture_document(document)
+                return {"ok": True, "active": True, "sets": 0, "bytes": size}
+            self._capture_id = None
+            try:
+                self.capture_path.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as error:
+                raise BridgeError("capture_clear_failed", "Could not clear the translation capture", 500) from error
+            return {"ok": True, "active": False, "sets": 0, "bytes": 0}
 
     def stop_capture(self) -> dict[str, Any]:
         with _CAPTURE_LOCK:
@@ -1178,6 +1210,8 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 result = self.bridge.stop_capture()
             elif self.path == "/v1/capture/read":
                 result = self.bridge.read_capture()
+            elif self.path == "/v1/capture/clear":
+                result = self.bridge.clear_capture(payload.get("accepted"))
             elif self.path == "/v1/openai-compatible/key":
                 result = self.bridge.set_openai_key(
                     payload.get("preset"), payload.get("baseURL"), payload.get("apiKey")

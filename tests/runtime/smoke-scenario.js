@@ -368,12 +368,29 @@
   await new Promise((resolve) => setTimeout(resolve, 260));
   const captureToggleButton = shadow.querySelector(".captureToggle");
   const captureCopyButton = shadow.querySelector(".captureCopy");
+  const captureClearButton = shadow.querySelector(".captureClear");
   const providerRequestsBeforeCapture = window.localHelperCalls
     .filter((path) => path === "/v1/openai-compatible/translate").length;
   captureToggleButton.click();
   for (let attempt = 0; attempt < 50 && !window.smokeCapture.active; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
+  for (let attempt = 0; attempt < 50 && window.smokeCapture.sets.length === 0; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  await window.__vnRevivalTranslator.translateScreen();
+  const captureDeduplicates = window.smokeCapture.sets.length === 1
+    && shadow.querySelector(".status").textContent === "This request set is already saved";
+  captureClearButton.click();
+  for (let attempt = 0; attempt < 50
+      && shadow.querySelector(".status").textContent !== "Request sets cleared"; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  const captureClearWorks = window.smokeCapture.active
+    && window.smokeCapture.sets.length === 0
+    && captureCopyButton.disabled && captureClearButton.disabled
+    && shadow.querySelector(".status").textContent === "Request sets cleared";
+  await window.__vnRevivalTranslator.translateScreen();
   for (let attempt = 0; attempt < 50 && window.smokeCapture.sets.length === 0; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
@@ -561,6 +578,8 @@
     logCopied,
     cacheDeleted,
     translationCaptureWorks,
+    captureDeduplicates,
+    captureClearWorks,
     originalButtonRemoved,
     metadataDirty: metadataDirty === null,
     legacyMigrated,

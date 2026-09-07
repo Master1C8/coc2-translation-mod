@@ -1188,7 +1188,7 @@
     } });
     captureSets = Number.isInteger(result.sets) ? result.sets : captureSets + 1;
     renderCaptureStatus();
-    setStatus(interfacePreset().captureSaved);
+    setStatus(result.duplicate === true ? interfacePreset().captureDuplicate : interfacePreset().captureSaved);
   }
 
   async function runJobs(jobs, options) {
@@ -1503,6 +1503,9 @@
     captureCopyButton.textContent = text.copyCapture;
     captureCopyButton.title = text.captureCopyTitle;
     captureCopyButton.disabled = !LOCAL_BRIDGE || captureSets === 0;
+    captureClearButton.textContent = text.clearCapture;
+    captureClearButton.title = text.captureClearTitle;
+    captureClearButton.disabled = !LOCAL_BRIDGE || running || captureSets === 0;
   }
 
   async function refreshCaptureStatus() {
@@ -1556,6 +1559,23 @@
       const result = await requestLocalHelper("/v1/capture/read", { body: {} });
       const copied = await copyTextToClipboard(String(result.content || ""));
       setStatus(copied ? text.captureCopied : text.captureFailed);
+    } catch (_) {
+      setStatus(text.captureFailed);
+    } finally {
+      renderCaptureStatus();
+    }
+  }
+
+  async function clearTranslationCapture() {
+    if (!LOCAL_BRIDGE || captureSets === 0) return;
+    const text = interfacePreset();
+    if (!confirm(text.captureClearConfirm)) return;
+    captureClearButton.disabled = true;
+    try {
+      const result = await requestLocalHelper("/v1/capture/clear", { body: { accepted: true } });
+      captureActive = result.active === true;
+      captureSets = 0;
+      setStatus(text.captureCleared);
     } catch (_) {
       setStatus(text.captureFailed);
     } finally {
@@ -1637,6 +1657,7 @@
   const captureStatsElement = shadow.querySelector(".captureStats");
   const captureToggleButton = shadow.querySelector(".captureToggle");
   const captureCopyButton = shadow.querySelector(".captureCopy");
+  const captureClearButton = shadow.querySelector(".captureClear");
   const privacyBox = shadow.querySelector(".privacy");
   const compatibilityBox = shadow.querySelector(".compat");
 
@@ -2047,6 +2068,7 @@
   cacheDeleteButton.addEventListener("click", deleteTranslationCache);
   captureToggleButton.addEventListener("click", toggleTranslationCapture);
   captureCopyButton.addEventListener("click", copyTranslationCapture);
+  captureClearButton.addEventListener("click", clearTranslationCapture);
   openAICompatiblePresetSelect.addEventListener("change", async () => {
     const preset = openAICompatiblePresetSelect.value;
     applyOpenAICompatibleSettings({
