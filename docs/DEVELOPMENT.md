@@ -45,7 +45,7 @@ then expand to shared setup and callers as needed. Anchors avoid stale line numb
 | Area | Source anchors | Test anchors |
 |---|---|---|
 | Cache | runtime `emptyCacheMetadata`, `openDb` through `clearAllCache` | smoke scenario `repairedMetadata`, `legacyMigrated`, `cacheDeleted` |
-| Logs | runtime `refreshCacheStats`, `copyLocalLog`, `deleteTranslationCache`; helper `log_status` through `clear_log`, `do_GET`, `do_POST` | helper tests `test_log_status_read_and_clear`, `test_log_copy_is_bounded`; smoke `compactCacheRow` through `cacheDeleted` |
+| Logs | runtime `refreshCacheStats`, `copyLocalLog`, `deleteTranslationCache`; helper `log_event` through `clear_log`, `openai_translate`, `do_GET`, `do_POST` | `tests/test_service_logging.py`; helper tests `test_log_status_read_and_clear`, `test_log_copy_is_bounded`; smoke `compactCacheRow` through `cacheDeleted` |
 | Provider settings/models | runtime `openAICompatibleConnection`, `providerCacheVariant`, `populateOpenAICompatibleModelOptions`, `refreshOpenAICompatibleStatus`; helper `_connection`, `_models`, `openai_status` | helper `test_status_`, `test_opencode_`; smoke `safeOpenAIModelPicker`, `modelListRefreshesOnOpen` |
 | Request errors/parameters | runtime `requestChunk`, `applyOpenAICompatibleModelParameters`; helper `_unsupported_model_parameter`, `_classified_provider_error`, `_model_parameters`, `openai_translate` | helper `test_translation_`; smoke `openAIModelParametersSaved` |
 | DOM/formatting | runtime `classifyNode`, `registerTranslationContainers`, `applyLanguageFormatting`, `buildJobs`, `runJobs` | smoke `translated`, `restored`, `hiddenTooltipPrefetched` |

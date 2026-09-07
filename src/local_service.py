@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextvars
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import hashlib
@@ -13,6 +14,9 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
+import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -39,6 +43,40 @@ OPENAI_COMPATIBLE_PRESETS = OPENAI_COMPATIBLE_CONFIG["presets"]
 MAX_REQUEST_BYTES = 1_048_576
 MAX_TEXT_CHARS = 12_000
 MAX_LOG_COPY_BYTES = 2 * 1024 * 1024
+_LOG_LOCK = threading.Lock()
+_TRACE_ID = contextvars.ContextVar("translation_request_id", default=None)
+_LOG_ROUTES = {
+    "/v1/health", "/v1/openai-compatible/status", "/v1/openai-compatible/key",
+    "/v1/openai-compatible/key/remove", "/v1/openai-compatible/translate",
+    "/v1/launcher/reselect-executable",
+}
+
+
+def safe_exception_kind(error: BaseException) -> str:
+    allowed = (KeyError, ValueError, TypeError, AttributeError, OSError, RuntimeError)
+    return type(error).__name__ if type(error) in allowed else "Exception"
+
+
+def token_usage(payload: dict[str, Any]) -> dict[str, Any]:
+    usage = payload.get("usage")
+    result: dict[str, Any] = {"usage_available": False}
+    if not isinstance(usage, dict):
+        return result
+    for source, target in (("prompt_tokens", "input_tokens"), ("completion_tokens", "output_tokens"), ("total_tokens", "total_tokens")):
+        value = usage.get(source, usage.get(target))
+        if type(value) is int and 0 <= value <= 10**12:
+            result[target] = value
+            result["usage_available"] = True
+    for sources, field, target in (
+        (("prompt_tokens_details", "input_tokens_details"), "cached_tokens", "cached_input_tokens"),
+        (("completion_tokens_details", "output_tokens_details"), "reasoning_tokens", "reasoning_tokens"),
+    ):
+        details = next((usage[key] for key in sources if isinstance(usage.get(key), dict)), {})
+        value = details.get(field)
+        if type(value) is int and 0 <= value <= 10**12:
+            result[target] = value
+            result["usage_available"] = True
+    return result
 
 
 class BridgeError(Exception):
@@ -220,6 +258,20 @@ class LocalServiceBridge:
         self.credential_id = credential_id
         self._injected_credential_store = credential_store
 
+    def log_event(self, event: str, **fields: Any) -> None:
+        # Callers supply only fixed categories, numeric metrics and fingerprints.
+        # Never pass exception messages, provider bodies, headers or user text.
+        record = {"time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                  "event": event, "pid": os.getpid(), **fields}
+        if _TRACE_ID.get() and "request_id" not in record:
+            record["request_id"] = _TRACE_ID.get()
+        try:
+            line = json.dumps(record, ensure_ascii=True, separators=(",", ":")) + "\n"
+            with _LOG_LOCK, self.log_path.open("a", encoding="utf-8") as handle:
+                handle.write(line)
+        except OSError:
+            pass  # A logging failure must not fail an otherwise valid translation.
+
     @property
     def log_path(self) -> Path:
         return self.data_dir / "local-service.log"
@@ -249,7 +301,8 @@ class LocalServiceBridge:
 
     def clear_log(self) -> dict[str, Any]:
         try:
-            self.log_path.write_bytes(b"")
+            with _LOG_LOCK:
+                self.log_path.write_bytes(b"")
         except OSError as error:
             raise BridgeError("log_clear_failed", "Could not delete the log", 500) from error
         return {"ok": True, "bytes": 0}
@@ -454,8 +507,22 @@ class LocalServiceBridge:
             headers=headers,
             method="GET" if body is None else "POST",
         )
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw_response = response.read(MAX_REQUEST_BYTES + 1)
+        started = time.monotonic()
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                raw_response = response.read(MAX_REQUEST_BYTES + 1)
+                provider_status = getattr(response, "status", 200)
+            self.log_event("provider.http", operation="completion" if body is not None else "models",
+                           provider_status=provider_status, duration_ms=round((time.monotonic() - started) * 1000),
+                           response_bytes=len(raw_response))
+        except urllib.error.HTTPError as error:
+            self.log_event("provider.http", operation="completion" if body is not None else "models",
+                           provider_status=error.code, duration_ms=round((time.monotonic() - started) * 1000))
+            raise
+        except (urllib.error.URLError, TimeoutError, OSError):
+            self.log_event("provider.transport_error", operation="completion" if body is not None else "models",
+                           duration_ms=round((time.monotonic() - started) * 1000))
+            raise
         if len(raw_response) > MAX_REQUEST_BYTES:
             raise BridgeError("openai_response_too_large", "The provider returned too much data", 502)
         try:
@@ -598,6 +665,40 @@ class LocalServiceBridge:
         return re.findall(r"VRCTXSEP\d+X", value)
 
     def openai_translate(
+        self, target: Any, target_name: Any, text: Any, model: Any, preset: Any,
+        base_url: Any, system_prompt: Any = None, model_parameters: Any = None,
+        *, request_id: str | None = None,
+    ) -> dict[str, Any]:
+        token = _TRACE_ID.set(request_id or uuid.uuid4().hex)
+        started = time.monotonic()
+        def fingerprint(value: Any) -> str:
+            return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True).encode()).hexdigest()[:24]
+        try:
+            known_models = set().union(*OPENCODE_CHAT_MODELS.values())
+            self.log_event("translation.start",
+                           source_id=fingerprint(text), config_id=fingerprint([target, model, preset, base_url, system_prompt, model_parameters]),
+                           model=model if isinstance(model, str) and model in known_models else "custom",
+                           model_id=fingerprint(model), preset=preset if isinstance(preset, str) and preset in OPENAI_COMPATIBLE_PRESETS else "invalid",
+                           target=target if isinstance(target, str) and re.fullmatch(r"[a-z]{2,3}(?:-[A-Za-z]{2,4})?", target) else "other",
+                           source_chars=len(text) if isinstance(text, str) else 0,
+                           prompt_chars=len(system_prompt) if isinstance(system_prompt, str) else len(OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT))
+            result = self._translate(target, target_name, text, model, preset, base_url, system_prompt, model_parameters)
+            self.log_event("translation.result", ok=True, output_chars=len(result["translatedText"]),
+                           duration_ms=round((time.monotonic() - started) * 1000))
+            return result
+        except BridgeError as error:
+            self.log_event("translation.result", ok=False, error=error.code, helper_status=error.status,
+                           provider_status=error.provider_status, retry_after_ms=error.retry_after_ms,
+                           duration_ms=round((time.monotonic() - started) * 1000))
+            raise
+        except Exception as error:
+            self.log_event("translation.result", ok=False, error="internal_error", error_kind=safe_exception_kind(error), helper_status=500,
+                           duration_ms=round((time.monotonic() - started) * 1000))
+            raise
+        finally:
+            _TRACE_ID.reset(token)
+
+    def _translate(
         self,
         target: Any,
         target_name: Any,
@@ -663,24 +764,44 @@ class LocalServiceBridge:
                 connection["preset"] == "opencode-zen" and self._is_free_model(model.strip())
             ) else [schema, {"type": "json_object"}, None]
             response_format_index = 0
+            attempt = 0
             while response_format_index < len(response_formats):
                 response_format = response_formats[response_format_index]
                 request_body = body if response_format is None else {**body, "response_format": response_format}
+                attempt += 1
+                self.log_event("provider.attempt", attempt=attempt,
+                               response_format=response_format["type"] if response_format else "none",
+                               reasoning_effort=body.get("reasoning_effort", "default"), verbosity=body.get("verbosity", "default"))
                 try:
                     payload = self._request_json(connection, "/chat/completions", request_body, timeout=300)
+                    choices = payload.get("choices")
+                    choice = choices[0] if isinstance(choices, list) and choices else None
+                    finish = choice.get("finish_reason") if isinstance(choice, dict) else None
+                    self.log_event("provider.usage", attempt=attempt, **token_usage(payload),
+                                   finish_reason=finish if finish in ("stop", "length", "content_filter", "tool_calls") else "unknown")
                     break
                 except urllib.error.HTTPError as error:
                     retry_after_ms = self._retry_after_ms(error)
                     detail = self._error_detail(error)
+                    classified = self._classified_provider_error(error.code, detail)
+                    reason = classified.code if classified else "unclassified"
+                    if error.code == 400 and ("x-opencode-session" in detail.lower() or "missingsessionid" in detail.lower()):
+                        reason = "missing_session_id"
+                    self.log_event("provider.rejected", attempt=attempt, provider_status=error.code,
+                                   reason=reason, retry_after_ms=retry_after_ms)
                     unsupported_parameter = self._unsupported_model_parameter(
                         error.code, detail, request_body
                     )
                     if unsupported_parameter:
+                        self.log_event("provider.fallback", attempt=attempt, provider_status=error.code,
+                                       reason="unsupported_parameter", parameter=unsupported_parameter)
                         body.pop(unsupported_parameter, None)
                         ignored_model_parameters.append(unsupported_parameter)
                         continue
                     if response_format_index < len(response_formats) - 1 \
                             and self._response_format_rejected(error.code, detail):
+                        self.log_event("provider.fallback", attempt=attempt, provider_status=error.code,
+                                       reason="unsupported_response_format")
                         response_format_index += 1
                         continue
                     classified_error = self._classified_provider_error(error.code, detail)
@@ -748,10 +869,7 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
         return self.server.bridge
 
     def log_message(self, fmt: str, *args: Any) -> None:
-        if getattr(self, "path", "").startswith("/v1/log/"):
-            return
-        if sys.stderr is not None:
-            super().log_message(fmt, *args)
+        pass  # Structured response events replace BaseHTTPRequestHandler text logs.
 
     def _headers(self, status: int = 200) -> None:
         self.send_response(status)
@@ -764,8 +882,15 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _write_json(self, payload: dict[str, Any], status: int = 200) -> None:
-        self._headers(status)
-        self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+        if not self.path.startswith("/v1/log/"):
+            self.bridge.log_event("http.response", request_id=getattr(self, "request_id", None),
+                                  route=self.path if self.path in _LOG_ROUTES else "other", helper_status=status,
+                                  error=payload.get("error"), provider_status=payload.get("providerStatus"))
+        try:
+            self._headers(status)
+            self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            self.bridge.log_event("client.disconnected", request_id=getattr(self, "request_id", None))
 
     def _require_auth(self) -> None:
         token = self.headers.get("X-VNRevival-Token", "")
@@ -791,6 +916,8 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
         self._headers(204)
 
     def do_GET(self) -> None:
+        self.request_id = uuid.uuid4().hex
+        trace_token = _TRACE_ID.set(self.request_id)
         try:
             self._require_auth()
             if self.path != "/v1/health":
@@ -803,10 +930,15 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
             if error.retry_after_ms is not None:
                 payload["retryAfterMs"] = error.retry_after_ms
             self._write_json(payload, error.status)
-        except Exception:
+        except Exception as error:
+            self.bridge.log_event("http.internal_error", error_kind=safe_exception_kind(error))
             self._write_json({"ok": False, "error": "internal_error", "message": "Internal service error"}, 500)
+        finally:
+            _TRACE_ID.reset(trace_token)
 
     def do_POST(self) -> None:
+        self.request_id = uuid.uuid4().hex
+        trace_token = _TRACE_ID.set(self.request_id)
         try:
             self._require_auth()
             payload = self._read_json()
@@ -833,6 +965,7 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                     payload.get("target"), payload.get("targetName"), payload.get("text"),
                     payload.get("model"), payload.get("preset"), payload.get("baseURL"),
                     payload.get("systemPrompt"), payload.get("modelParameters"),
+                    request_id=self.request_id,
                 )
             elif self.path == "/v1/launcher/reselect-executable":
                 if payload.get("accepted") is not True:
@@ -848,12 +981,18 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
             if error.retry_after_ms is not None:
                 payload["retryAfterMs"] = error.retry_after_ms
             self._write_json(payload, error.status)
-        except Exception:
+        except Exception as error:
+            self.bridge.log_event("http.internal_error", error_kind=safe_exception_kind(error))
             self._write_json({"ok": False, "error": "internal_error", "message": "Internal service error"}, 500)
+        finally:
+            _TRACE_ID.reset(trace_token)
 
 
 class LocalServiceHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
+
+    def handle_error(self, request, client_address) -> None:
+        self.bridge.log_event("http.internal_error", error="unhandled_request_error")
 
     def __init__(self, address, handler, bridge: LocalServiceBridge, auth_token: str):
         super().__init__(address, handler)
@@ -883,7 +1022,7 @@ def main() -> None:
     server = LocalServiceHTTPServer(
         ("127.0.0.1", args.port), LocalServiceRequestHandler, bridge, args.token
     )
-    print(f"VN Revival local service listening on 127.0.0.1:{args.port}", flush=True)
+    bridge.log_event("service.start", log_schema=1)
     server.serve_forever(poll_interval=0.25)
 
 

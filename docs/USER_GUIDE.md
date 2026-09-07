@@ -71,6 +71,8 @@ The helper validates response structure and context markers before applying text
 
 Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, model parameters, prompt version, the complete system prompt, and the glossary. Changing the prompt, glossary, or parameters therefore does not reuse results produced with an older configuration. Old Google cache entries are migrated lazily. The maintenance block shows both cache and local-service log sizes. `Copy log` copies the log to the clipboard for diagnostics (the latest 2 MB when it is larger). After confirmation, `Clear cache and log` clears both the translation cache and log without resetting other settings.
 
+The local service writes structured JSON lines for OpenAI-compatible requests: request IDs, separate provider and helper HTTP statuses, safe error categories, fallback attempts, duration, and token usage when returned by the provider (including cached input and reasoning tokens when available). Missing usage means unknown, not zero; usage is retained even if the translation fails validation. Text and configuration fingerprints help identify repeated requests without recording game text, translations, prompts, glossary contents, endpoint addresses, or keys. Cache hits and Google requests do not pass through this service and are not counted. Restart the translator after updating to enable the new logging; older entries cannot recover missing metrics.
+
 RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored before retranslation after a language or configuration change. Existing HTML elements and click handlers remain in place.
 
 ### Troubleshooting
@@ -160,6 +162,8 @@ Helper проверяет структуру ответа и контекстн�
 ### Кэш и оформление
 
 Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, параметрам модели, версии, полному тексту системной инструкции и словарю. Поэтому после изменения prompt, словаря или параметров не используются ответы, созданные с прежней конфигурацией. Старые Google-записи мигрируют лениво. В блоке обслуживания показываются размеры кэша и лога локального сервиса. `Copy log` копирует лог в буфер обмена для диагностики (последние 2 МБ, если он больше). После подтверждения `Clear cache and log` очищает и кэш переводов, и лог, не сбрасывая остальные настройки.
+
+Локальный сервис записывает запросы OpenAI-compatible строками JSON: идентификаторы запросов, отдельные HTTP-коды провайдера и helper, безопасные категории ошибок, попытки смены формата или параметров, длительность и расход токенов, если провайдер его сообщает. При наличии учитываются кэшированные входные токены и токены рассуждений. Отсутствие расхода означает «неизвестно», а не ноль; полученный расход сохраняется и при ошибке проверки перевода. Хеши текста и настроек позволяют находить повторные запросы без записи текста игры, переводов, инструкций, содержимого словаря, адресов endpoint и ключей. Попадания в кэш и запросы Google через этот сервис не проходят и здесь не учитываются. Для нового журнала перезапустите переводчик после обновления; восстановить недостающие метрики старых записей нельзя.
 
 RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются перед повторным переводом при смене языка или конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 
