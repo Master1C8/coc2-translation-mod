@@ -35,7 +35,7 @@
     {
       id: "openai-compatible",
       label: "OpenAI-compatible",
-      concurrency: 2,
+      concurrency: 4,
       delay: 100,
       retries: 4,
       contextLimit: 6000,

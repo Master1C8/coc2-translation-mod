@@ -27,6 +27,8 @@
   const SITE_URL = "https://vnrevival.fun/";
   const OPENAI_COMPATIBLE_PROMPT_VERSION = "vnrevival-openai-compatible-v2";
   const OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS = 12000;
+  const OPENAI_COMPATIBLE_MIN_CONCURRENCY = 1;
+  const OPENAI_COMPATIBLE_MAX_CONCURRENCY = 8;
   const OPENAI_COMPATIBLE_REASONING_EFFORTS = Object.freeze(["", "none", "minimal", "low", "medium", "high", "xhigh", "max"]);
   const OPENAI_COMPATIBLE_VERBOSITIES = Object.freeze(["", "low", "medium", "high"]);
   const OPENAI_COMPATIBLE_MANUAL_MODEL_VALUE = "__vnrevival_manual_model__";
@@ -80,6 +82,7 @@
     openAICompatibleSystemPrompt: OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT,
     openAICompatibleReasoningEffort: "",
     openAICompatibleVerbosity: "",
+    openAICompatibleConcurrency: 4,
     collapsed: false,
     x: null,
     y: null
@@ -89,6 +92,14 @@
   function normalizedOpenAICompatibleChoice(value, allowed, fallback) {
     const selected = typeof value === "string" ? value : "";
     return allowed.includes(selected) ? selected : fallback;
+  }
+
+  function normalizedOpenAICompatibleConcurrency(value, fallback = defaults.openAICompatibleConcurrency) {
+    const selected = Number(value);
+    return Number.isInteger(selected)
+      && selected >= OPENAI_COMPATIBLE_MIN_CONCURRENCY
+      && selected <= OPENAI_COMPATIBLE_MAX_CONCURRENCY
+      ? selected : fallback;
   }
 
   if (!Array.isArray(LANGUAGES) || LANGUAGES.length !== 30) throw new Error("VN Revival language catalog is missing");
@@ -221,6 +232,7 @@
         OPENAI_COMPATIBLE_VERBOSITIES,
         defaults.openAICompatibleVerbosity
       ),
+      openAICompatibleConcurrency: normalizedOpenAICompatibleConcurrency(source.openAICompatibleConcurrency),
       collapsed: typeof source.collapsed === "boolean" ? source.collapsed : defaults.collapsed,
       x: Number.isFinite(source.x) ? source.x : null,
       y: Number.isFinite(source.y) ? source.y : null
@@ -263,6 +275,7 @@
         : OPENAI_COMPATIBLE_PRESETS[preset].baseURL,
       model: String(settings.openAICompatibleModel || "").trim(),
       systemPrompt: String(settings.openAICompatibleSystemPrompt || defaults.openAICompatibleSystemPrompt).trim(),
+      concurrency: normalizedOpenAICompatibleConcurrency(settings.openAICompatibleConcurrency),
       modelParameters: {
         reasoningEffort: normalizedOpenAICompatibleChoice(
           settings.openAICompatibleReasoningEffort,
@@ -1095,7 +1108,10 @@
     }
 
     try {
-      const count = Math.min(PROVIDERS[provider].concurrency, jobs.length);
+      const concurrency = providerUsesOpenAICompatible(provider)
+        ? openAICompatibleConnection().concurrency
+        : PROVIDERS[provider].concurrency;
+      const count = Math.min(concurrency, jobs.length);
       await Promise.all(Array.from({ length: count }, () => worker()));
       if (lastFailedJobs.length) {
         if (lastErrorCode === "openai_rate_limited") setStatus("Provider rate limit reached · retry later");
@@ -1415,6 +1431,7 @@
           <div class="openAICompatibleParameters">
             <label><span>Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort"><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
             <label><span>Verbosity</span><select class="openAICompatibleVerbosity" aria-label="Output verbosity"><option value="">Provider default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+            <label><span>Parallel requests</span><select class="openAICompatibleConcurrency" aria-label="Parallel requests"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label>
           </div>
           <div class="openAICompatibleParametersHint">Unsupported optional parameters are removed and retried automatically.</div>
           <div class="openAICompatiblePromptLabel"><label for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button">Restore default</button></div>
@@ -1463,6 +1480,7 @@
   const openAICompatibleModelSelect = shadow.querySelector(".openAICompatibleModel");
   const openAICompatibleReasoningEffortSelect = shadow.querySelector(".openAICompatibleReasoningEffort");
   const openAICompatibleVerbositySelect = shadow.querySelector(".openAICompatibleVerbosity");
+  const openAICompatibleConcurrencySelect = shadow.querySelector(".openAICompatibleConcurrency");
   const openAICompatiblePromptInput = shadow.querySelector(".openAICompatiblePrompt");
   const openAICompatiblePromptResetButton = shadow.querySelector(".openAICompatiblePromptReset");
   const openAICompatibleKeyInput = shadow.querySelector(".openAICompatibleKey");
@@ -1540,6 +1558,7 @@
     for (const control of [
       openAICompatiblePresetSelect, openAICompatibleBaseURLInput,
       openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect,
+      openAICompatibleConcurrencySelect,
       openAICompatibleKeyInput
     ]) control.disabled = busy || !LOCAL_BRIDGE;
     openAICompatibleModelSelect.disabled = (busy && !keepModelPickerEnabled) || !LOCAL_BRIDGE;
@@ -1557,6 +1576,7 @@
     populateOpenAICompatibleModelOptions(openAICompatibleModels, connection.model);
     openAICompatibleReasoningEffortSelect.value = connection.modelParameters.reasoningEffort;
     openAICompatibleVerbositySelect.value = connection.modelParameters.verbosity;
+    openAICompatibleConcurrencySelect.value = String(connection.concurrency);
     openAICompatiblePromptInput.value = connection.systemPrompt;
   }
   function populateOpenAICompatibleModelOptions(models, selectedModel) {
@@ -1627,6 +1647,14 @@
     settings.openAICompatibleVerbosity = verbosity;
     if (changed) {
       invalidateAppliedTranslations();
+      saveSettings();
+    }
+    syncOpenAICompatibleInputs();
+  }
+  function applyOpenAICompatibleConcurrency(value) {
+    const concurrency = normalizedOpenAICompatibleConcurrency(value);
+    if (settings.openAICompatibleConcurrency !== concurrency) {
+      settings.openAICompatibleConcurrency = concurrency;
       saveSettings();
     }
     syncOpenAICompatibleInputs();
@@ -1765,6 +1793,10 @@
       setStatus("OpenAI-compatible model parameters saved");
     });
   }
+  openAICompatibleConcurrencySelect.addEventListener("change", () => {
+    applyOpenAICompatibleConcurrency(openAICompatibleConcurrencySelect.value);
+    setStatus("");
+  });
   openAICompatiblePromptResetButton.addEventListener("click", () => {
     const connection = openAICompatibleConnection();
     applyOpenAICompatibleSettings({
