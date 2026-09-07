@@ -241,13 +241,12 @@
       const removedBottomHint = !shadow.querySelector(".hint");
       const collapseButton = shadow.querySelector(".collapseToggle");
       const panel = shadow.querySelector(".panel");
-      const barTitle = shadow.querySelector(".barTitle");
       const settingsPanel = shadow.querySelector(".settings");
       const fullyExpandedPanel = !shadow.querySelector(".gear")
+        && !shadow.querySelector(".barTitle")
         && getComputedStyle(settingsPanel).display === "block";
       collapseButton.click();
-      const compactCollapsedHeader = getComputedStyle(barTitle).display === "none"
-        && getComputedStyle(panel).width === "36px";
+      const compactCollapsedHeader = getComputedStyle(panel).width === "36px";
       const collapsedStateSaved = panel.classList.contains("collapsed")
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === true
         && collapseButton.textContent === "+"
@@ -257,7 +256,6 @@
       const expandedStateSaved = !panel.classList.contains("collapsed")
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null").collapsed === false
         && collapseButton.textContent === "−"
-        && getComputedStyle(barTitle).display !== "none"
         && getComputedStyle(panel).width === "306px"
         && getComputedStyle(settingsPanel).display === "block";
       const contactLinksPresent = shadow.querySelector('.contactIcon.discord')?.href === "https://discord.gg/QgyeWW3Jg"
@@ -272,6 +270,8 @@
         translationPromise.then(() => "completed"),
         new Promise((resolve) => setTimeout(() => resolve("timeout"), 1500))
       ]);
+      const routineSuccessStatusHidden = shadow.querySelector(".status").textContent === ""
+        && getComputedStyle(shadow.querySelector(".status")).display === "none";
 
       const rich = document.getElementById("rich");
       const button = document.getElementById("button");
@@ -350,6 +350,7 @@
         && legacyGlobalsScopedToCoC2
         && shortcutInsideMainButton
         && cancelStateKeepsShortcut
+        && routineSuccessStatusHidden
         && defaultLanguage === "en"
         && defaultAutoTranslate
         && languageIsTopLevel
@@ -406,6 +407,7 @@
         legacyGlobalsScopedToCoC2,
         shortcutInsideMainButton,
         cancelStateKeepsShortcut,
+        routineSuccessStatusHidden,
         defaultLanguage,
         defaultAutoTranslate,
         languageIsTopLevel,

@@ -56,6 +56,6 @@ test("OpenAI-compatible delegates endpoint profile and model without exposing it
     modelParameters: { reasoningEffort: "high", verbosity: "low" }
   });
   assert.equal(registry.byId["openai-compatible"].credentialManager, "openai-compatible");
-  assert.equal(registry.byId["openai-compatible"].concurrency, 1);
+  assert.equal(registry.byId["openai-compatible"].concurrency, 2);
   assert.equal(registry.byId["openai-compatible"].retries, 4);
 });

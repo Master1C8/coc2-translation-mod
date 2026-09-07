@@ -47,7 +47,7 @@ runtime
 Реестр `src/providers.js` содержит ровно два варианта:
 
 - `google` — публичный endpoint без API-ключа;
-- `openai-compatible` — последовательные запросы через локальный helper.
+- `openai-compatible` — до двух параллельных запросов через локальный helper.
 
 OpenAI-compatible включает preset OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom. Runtime сохраняет preset, Base URL, model ID, редактируемый шаблон системного prompt и параметры модели: reasoning effort и verbosity. Шаблон поддерживает `{targetName}` и `{target}`; helper подставляет выбранный язык перед запросом. Открытие model picker вызывает `GET /models`; единый безопасный select закрепляет бесплатные модели сверху, сортирует обе группы по алфавиту и оставляет отдельный пункт для ручного ID. Поскольку каталоги OpenCode Go и Zen смешивают модели для нескольких wire protocol, helper пропускает в select только модели, документированные для Chat Completions. Перевод использует `POST /chat/completions`; временные отказы повторяются с exponential backoff и `Retry-After`, а исчерпанный rate limit останавливает оставшуюся очередь вместо серии бесполезных запросов.
 
