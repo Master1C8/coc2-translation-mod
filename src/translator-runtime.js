@@ -123,6 +123,18 @@
   let openAICompatibleStatus = null;
   let editingOpenAIKey = false;
   let openAICompatibleBusy = false;
+
+  function randomHexId() {
+    const bytes = new Uint8Array(16);
+    if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (let index = 0; index < bytes.length; index += 1) {
+        bytes[index] = Math.floor(Math.random() * 256);
+      }
+    }
+    return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+  }
   let openAICompatibleModels = [];
   const applied = new WeakMap();
   const appliedNodes = new Set();
@@ -1159,7 +1171,7 @@
     const gameVersion = typeof adapter.getGameVersion === "function"
       ? String(adapter.getGameVersion(window) || "unknown") : "unknown";
     const result = await requestLocalHelper("/v1/capture/append", { body: {
-      screen_id: crypto.randomUUID().replace(/-/g, ""),
+      screen_id: randomHexId(),
       game_id: game.id,
       game_version: gameVersion,
       translator_version: VERSION,
@@ -1226,32 +1238,25 @@
     }
     const originalJobCount = jobs.length;
     if (providerUsesOpenAICompatible(settings.provider)) jobs = core.batchScreenJobs(jobs, PROVIDERS[settings.provider].contextLimit);
-    running = true;
-    renderCaptureStatus();
     autoBlockedVariant = null;
     const runVariant = translationVariant();
     let queueStopped = false;
-    abortController = new AbortController();
+    const runAbortController = new AbortController();
     const started = performance.now();
     const metrics = {
-      screen_id: crypto.randomUUID().replace(/-/g, ""), mode: manual ? "manual" : "auto",
+      screen_id: randomHexId(), mode: manual ? "manual" : "auto",
       jobs: originalJobCount, requests_planned: jobs.length, helper_requests: 0,
       batch_requests: 0, batch_fallbacks: 0, cache_hits: 0, max_queue_wait_ms: 0,
       usage_requests: 0, costed_requests: 0, input_tokens: 0, output_tokens: 0,
       total_tokens: 0, cached_input_tokens: 0, reasoning_tokens: 0,
       reported_cost_usd: null, first_apply_ms: null, first_story_ms: null
     };
-    const context = { metrics, started, signal: abortController.signal,
+    const context = { metrics, started, signal: runAbortController.signal,
       connection: openAICompatibleConnection(), variant: runVariant };
     const measureOpenAI = providerUsesOpenAICompatible(settings.provider);
     const report = (phase, extra = {}) => measureOpenAI
       && requestLocalHelper("/v1/translation-metrics", { body: { phase, ...metrics, ...extra } }).catch(() => {});
-    report("start");
     let outcome = "complete";
-    setMainButton("Cancel");
-    retryButton.disabled = true;
-    setTranslationStatus((text) => formatMessage(text.progress, { done: 0, total: jobs.length }));
-    lastFailedJobs = [];
     const language = settings.language;
     const provider = settings.provider;
     let nextIndex = 0;
@@ -1299,7 +1304,15 @@
       }
     }
 
+    abortController = runAbortController;
+    running = true;
     try {
+      renderCaptureStatus();
+      report("start");
+      setMainButton("Cancel");
+      retryButton.disabled = true;
+      setTranslationStatus((text) => formatMessage(text.progress, { done: 0, total: jobs.length }));
+      lastFailedJobs = [];
       const concurrency = providerUsesOpenAICompatible(provider)
         ? context.connection.concurrency
         : PROVIDERS[provider].concurrency;
