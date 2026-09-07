@@ -219,48 +219,48 @@ class ServiceLoggingTests(unittest.TestCase):
         handler._read_json.assert_not_called()
         self.assertEqual(handler._write_json.call_args.args[1], 401)
 
-    def test_translation_capture_is_explicit_separate_and_replaceable(self):
-        screen = {
+    def test_request_capture_is_explicit_separate_and_replaceable(self):
+        request_set = {
             "screen_id": "c" * 32,
             "game_id": "coc2",
             "game_version": "0.9.3",
             "translator_version": "test",
             "language": "ru",
-            "provider": "openai-compatible",
             "preset": "opencode-go",
             "model": "glm-5.3-flash",
             "reasoning_effort": "low",
             "mode": "auto",
-            "outcome": "complete",
-            "items": [{
+            "requests": [{
                 "kind": "story",
-                "source": "PRIVATE-SOURCE",
-                "translation": "PRIVATE-TRANSLATION",
-                "occurrences": 1,
+                "batch_size": 2,
+                "system_prompt": "PRIVATE-PROMPT\nPRIVATE-GLOSSARY",
+                "glossary": "PRIVATE-GLOSSARY",
+                "text": "PRIVATE-SOURCE",
             }],
         }
         with self.assertRaises(local_service.BridgeError):
-            self.bridge.append_capture(screen)
+            self.bridge.append_capture(request_set)
         with self.assertRaises(local_service.BridgeError):
             self.bridge.start_capture(False)
 
         started = self.bridge.start_capture(True)
         self.assertTrue(started["active"])
-        appended = self.bridge.append_capture(screen)
-        self.assertEqual(appended["screens"], 1)
+        appended = self.bridge.append_capture(request_set)
+        self.assertEqual(appended["sets"], 1)
         stopped = self.bridge.stop_capture()
         self.assertFalse(stopped["active"])
         capture = self.bridge.read_capture()
-        self.assertEqual(capture["screens"], 1)
+        self.assertEqual(capture["sets"], 1)
+        self.assertIn("PRIVATE-PROMPT", capture["content"])
+        self.assertIn("PRIVATE-GLOSSARY", capture["content"])
         self.assertIn("PRIVATE-SOURCE", capture["content"])
-        self.assertIn("PRIVATE-TRANSLATION", capture["content"])
         self.assertFalse(self.bridge.log_path.exists())
 
         self.bridge.start_capture(True)
         replaced = json.loads(self.bridge.read_capture()["content"])
-        self.assertEqual(replaced["screens"], [])
+        self.assertEqual(replaced["request_sets"], [])
 
-        for invalid in ({**screen, "secret": "PRIVATE"}, {**screen, "screen_id": "PRIVATE"},
-                        {**screen, "items": [{**screen["items"][0], "occurrences": True}]}):
+        for invalid in ({**request_set, "secret": "PRIVATE"}, {**request_set, "screen_id": "PRIVATE"},
+                        {**request_set, "requests": [{**request_set["requests"][0], "batch_size": True}]}):
             with self.subTest(invalid=invalid), self.assertRaises(local_service.BridgeError):
-                local_service.capture_screen(invalid)
+                local_service.capture_request_set(invalid)

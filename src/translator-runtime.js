@@ -119,7 +119,7 @@
   let cacheMetadataSaveTimer = 0;
   let localLogBytes = null;
   let captureActive = false;
-  let captureScreens = 0;
+  let captureSets = 0;
   let openAICompatibleStatus = null;
   let editingOpenAIKey = false;
   let openAICompatibleBusy = false;
@@ -301,6 +301,30 @@
     return { ...connection, glossary, requestSystemPrompt: glossary
       ? `${connection.systemPrompt}\n\nUser translation glossary. Apply these mappings consistently whenever the source term occurs:\n${glossary}`
       : connection.systemPrompt };
+  }
+
+  function materializedSystemPrompt(connection, language) {
+    const targetName = (LANGUAGES.find(([code]) => code === language) || [null, language])[1];
+    return String(connection.requestSystemPrompt || connection.systemPrompt || "").trim()
+      .split("{targetName}").join(String(targetName || language).trim())
+      .split("{target}").join(language);
+  }
+
+  function batchOpenAIRequest(job, parts, baseConnection) {
+    const fragments = parts.flatMap(core.jobTextParts);
+    const source = core.buildContextSource(fragments);
+    const connection = connectionForSource(source, baseConnection);
+    let offset = 1;
+    const boundaries = parts.map(part => {
+      const start = offset;
+      offset += core.jobTextParts(part).length;
+      return start === offset - 1 ? String(start) : `${start}-${offset - 1}`;
+    }).join("; ");
+    connection.requestSystemPrompt += job.kind === "story"
+      ? `\nTranslate this passage coherently in its original order. Paragraph fragment groups (1-based): ${boundaries}.`
+      : `\nTranslate these interface blocks independently. Block fragment groups (1-based): ${boundaries}.`;
+    connection.requestSystemPrompt += " Preserve every VRCTXSEP marker and its order; do not move text between fragments.";
+    return { source, connection };
   }
 
   function providerCacheVariant(provider, connection = openAICompatibleConnection()) {
@@ -1003,19 +1027,8 @@
     }
     if (!missing.length) return true;
     if (missing.length > 1) {
+      const { source, connection } = batchOpenAIRequest(job, missing, context.connection);
       const fragments = missing.flatMap(core.jobTextParts);
-      const source = core.buildContextSource(fragments);
-      const connection = connectionForSource(source, context.connection);
-      let offset = 1;
-      const boundaries = missing.map(part => {
-        const start = offset;
-        offset += core.jobTextParts(part).length;
-        return start === offset - 1 ? String(start) : `${start}-${offset - 1}`;
-      }).join("; ");
-      connection.requestSystemPrompt += job.kind === "story"
-        ? `\nTranslate this passage coherently in its original order. Paragraph fragment groups (1-based): ${boundaries}.`
-        : `\nTranslate these interface blocks independently. Block fragment groups (1-based): ${boundaries}.`;
-      connection.requestSystemPrompt += " Preserve every VRCTXSEP marker and its order; do not move text between fragments.";
       let parts;
       try {
         const translated = await requestChunk(provider, source, language, signal, onRetry,
@@ -1108,9 +1121,88 @@
     return [settings.provider, settings.language, providerCacheVariant(settings.provider)].join("\n");
   }
 
+  function openAIRequestRecords(jobs, language, baseConnection) {
+    const requests = [];
+    for (const job of core.batchScreenJobs(jobs, PROVIDERS["openai-compatible"].contextLimit)) {
+      if (job.batchParts) {
+        const request = batchOpenAIRequest(job, job.batchParts, baseConnection);
+        requests.push({
+          kind: job.kind,
+          batch_size: job.batchParts.length,
+          system_prompt: materializedSystemPrompt(request.connection, language),
+          glossary: request.connection.glossary,
+          text: request.source
+        });
+        continue;
+      }
+      const connection = connectionForSource(job.source, baseConnection);
+      for (const chunk of PROVIDERS["openai-compatible"].splitText(job.source)) {
+        requests.push({
+          kind: job.kind,
+          batch_size: 1,
+          system_prompt: materializedSystemPrompt(connection, language),
+          glossary: connection.glossary,
+          text: chunk
+        });
+      }
+    }
+    return requests;
+  }
+
+  async function captureOpenAIRequestSet(jobs, manual) {
+    const connection = openAICompatibleConnection();
+    const language = settings.language;
+    const requests = openAIRequestRecords(jobs, language, connection);
+    if (!requests.length) return;
+    const gameVersion = typeof adapter.getGameVersion === "function"
+      ? String(adapter.getGameVersion(window) || "unknown") : "unknown";
+    const result = await requestLocalHelper("/v1/capture/append", { body: {
+      screen_id: crypto.randomUUID().replace(/-/g, ""),
+      game_id: game.id,
+      game_version: gameVersion,
+      translator_version: VERSION,
+      language,
+      preset: String(connection.preset || ""),
+      model: String(connection.model || ""),
+      reasoning_effort: String(connection.modelParameters?.reasoningEffort || ""),
+      mode: manual ? "manual" : "auto",
+      requests
+    } });
+    captureSets = Number.isInteger(result.sets) ? result.sets : captureSets + 1;
+    renderCaptureStatus();
+    setStatus(interfacePreset().captureSaved);
+  }
+
   async function runJobs(jobs, options) {
     const manual = !!(options && options.manual);
-    if (!manual && autoBlockedVariant === translationVariant()) return;
+    if (!manual && !captureActive && autoBlockedVariant === translationVariant()) return;
+    if (running) {
+      if (manual && abortController) abortController.abort();
+      else pendingAutoRun = true;
+      return;
+    }
+    if (!jobs.length) {
+      setTranslationStatus((text) => text.alreadyTranslated);
+      return;
+    }
+    if (captureActive) {
+      running = true;
+      renderCaptureStatus();
+      try {
+        await captureOpenAIRequestSet(jobs, manual);
+      } catch (_) {
+        captureActive = false;
+        setStatus(interfacePreset().captureFailed);
+      } finally {
+        running = false;
+        renderCaptureStatus();
+        if (pendingAutoRun) {
+          pendingAutoRun = false;
+          scheduleAutoTranslation(250);
+        }
+      }
+      return;
+    }
     if (providerUsesOpenAICompatible(settings.provider)) {
       const connection = openAICompatibleConnection();
       if (!connection.model) {
@@ -1130,16 +1222,6 @@
       setStatus("Confirm online translation");
       return;
     }
-    if (running) {
-      if (manual && abortController) abortController.abort();
-      else pendingAutoRun = true;
-      return;
-    }
-    if (!jobs.length) {
-      setTranslationStatus((text) => text.alreadyTranslated);
-      return;
-    }
-
     const originalJobCount = jobs.length;
     if (providerUsesOpenAICompatible(settings.provider)) jobs = core.batchScreenJobs(jobs, PROVIDERS[settings.provider].contextLimit);
     running = true;
@@ -1237,7 +1319,6 @@
       if (runVariant !== translationVariant()) outcome = "superseded";
       report("result", { outcome, duration_ms: Math.round(performance.now() - started),
         failed_jobs: lastFailedJobs.reduce((count, job) => count + (job.batchParts?.length || 1), 0) });
-      await appendTranslationCapture(metrics, outcome, provider, language, context.connection);
       running = false;
       renderCaptureStatus();
       abortController = null;
@@ -1253,7 +1334,7 @@
 
   function translateScreen(manual) {
     const isManual = manual !== false;
-    if (!isManual && autoBlockedVariant === translationVariant()) return Promise.resolve();
+    if (!isManual && !captureActive && autoBlockedVariant === translationVariant()) return Promise.resolve();
     if (running) {
       if (isManual && abortController) abortController.abort();
       else pendingAutoRun = true;
@@ -1261,7 +1342,9 @@
     }
     const roots = isManual ? null : takeAutoTranslationRoots();
     if (!isManual && !roots.length) return Promise.resolve();
-    const jobs = buildJobs(collectVisibleTextNodes({ roots, includeHiddenTooltips: true }));
+    const jobs = buildJobs(collectVisibleTextNodes({
+      roots, includeHiddenTooltips: true, includeCompleted: captureActive
+    }));
     if (!isManual && !jobs.length) return Promise.resolve();
     return runJobs(jobs, { manual: isManual });
   }
@@ -1312,7 +1395,9 @@
       if (!roots.length) return;
       reapplyKnownTranslations(roots);
       for (const root of roots) pendingTranslationRoots.add(root);
-      if (settings.autoTranslate && (settings.privacyAccepted || !providerRequiresPrivacy(settings.provider)) && settings.mode === "translated") translateScreen(false);
+      if (captureActive || (settings.autoTranslate
+          && (settings.privacyAccepted || !providerRequiresPrivacy(settings.provider))
+          && settings.mode === "translated")) translateScreen(false);
     }, Number(delay) || 350);
   }
 
@@ -1389,30 +1474,30 @@
     const text = interfacePreset();
     captureStatsElement.textContent = formatMessage(text.captureStatus, {
       state: captureActive ? text.on : text.off,
-      count: captureScreens
+      count: captureSets
     });
     captureToggleButton.textContent = captureActive ? text.captureStop : text.captureStart;
     captureToggleButton.title = captureActive ? text.captureStopTitle : text.captureStartTitle;
     captureToggleButton.disabled = !LOCAL_BRIDGE || running;
     captureCopyButton.textContent = text.copyCapture;
     captureCopyButton.title = text.captureCopyTitle;
-    captureCopyButton.disabled = !LOCAL_BRIDGE || captureScreens === 0;
+    captureCopyButton.disabled = !LOCAL_BRIDGE || captureSets === 0;
   }
 
   async function refreshCaptureStatus() {
     if (!LOCAL_BRIDGE) {
       captureActive = false;
-      captureScreens = 0;
+      captureSets = 0;
       renderCaptureStatus();
       return;
     }
     try {
       const result = await requestLocalHelper("/v1/capture/status", { body: {} });
       captureActive = result.active === true;
-      captureScreens = Number.isInteger(result.screens) ? Math.max(0, result.screens) : 0;
+      captureSets = Number.isInteger(result.sets) ? Math.max(0, result.sets) : 0;
     } catch (_) {
       captureActive = false;
-      captureScreens = 0;
+      captureSets = 0;
     }
     renderCaptureStatus();
   }
@@ -1425,14 +1510,15 @@
       if (captureActive) {
         const result = await requestLocalHelper("/v1/capture/stop", { body: {} });
         captureActive = false;
-        captureScreens = Number.isInteger(result.screens) ? result.screens : captureScreens;
+        captureSets = Number.isInteger(result.sets) ? result.sets : captureSets;
         setStatus(text.captureStopped);
       } else {
-        if (captureScreens > 0 && !confirm(text.captureReplaceConfirm)) return;
+        if (captureSets > 0 && !confirm(text.captureReplaceConfirm)) return;
         const result = await requestLocalHelper("/v1/capture/start", { body: { accepted: true } });
         captureActive = result.active === true;
-        captureScreens = 0;
+        captureSets = 0;
         setStatus(text.captureStarted);
+        if (captureActive) await translateScreen(true);
       }
     } catch (_) {
       setStatus(text.captureFailed);
@@ -1442,7 +1528,7 @@
   }
 
   async function copyTranslationCapture() {
-    if (!LOCAL_BRIDGE || captureScreens === 0) return;
+    if (!LOCAL_BRIDGE || captureSets === 0) return;
     const text = interfacePreset();
     captureCopyButton.disabled = true;
     try {
@@ -1453,68 +1539,6 @@
       setStatus(text.captureFailed);
     } finally {
       renderCaptureStatus();
-    }
-  }
-
-  function capturedTranslationItems() {
-    const visible = collectVisibleTextNodes({ includeCompleted: true });
-    const items = [];
-    for (const job of buildJobs(visible)) {
-      if (job.contextual) {
-        const records = job.parts.map((part) => applied.get(part.node));
-        if (!records.every((record, index) => record && record.language === settings.language
-            && record.provider === settings.provider && record.source === job.parts[index].source
-            && record.translation)) continue;
-        items.push({
-          kind: job.kind,
-          source: job.source,
-          translation: core.buildContextSource(records.map((record) => record.translation)),
-          occurrences: 1
-        });
-        continue;
-      }
-      const records = job.nodes.map((node) => applied.get(node)).filter((record) => record
-        && record.language === settings.language && record.provider === settings.provider
-        && record.source === job.source && record.translation);
-      if (!records.length) continue;
-      items.push({
-        kind: job.kind,
-        source: job.source,
-        translation: records[0].translation,
-        occurrences: records.length
-      });
-    }
-    return items;
-  }
-
-  async function appendTranslationCapture(metrics, outcome, provider, language, connection) {
-    if (!captureActive || outcome !== "complete" || !LOCAL_BRIDGE) return;
-    const items = capturedTranslationItems();
-    if (!items.length) return;
-    const gameVersion = typeof adapter.getGameVersion === "function"
-      ? String(adapter.getGameVersion(window) || "unknown") : "unknown";
-    try {
-      const result = await requestLocalHelper("/v1/capture/append", { body: {
-        screen_id: metrics.screen_id,
-        game_id: game.id,
-        game_version: gameVersion,
-        translator_version: VERSION,
-        language,
-        provider,
-        preset: providerUsesOpenAICompatible(provider) ? String(connection.preset || "") : "",
-        model: providerUsesOpenAICompatible(provider) ? String(connection.model || "") : "",
-        reasoning_effort: providerUsesOpenAICompatible(provider)
-          ? String(connection.modelParameters?.reasoningEffort || "") : "",
-        mode: metrics.mode,
-        outcome,
-        items
-      } });
-      captureScreens = Number.isInteger(result.screens) ? result.screens : captureScreens + 1;
-      renderCaptureStatus();
-    } catch (_) {
-      captureActive = false;
-      renderCaptureStatus();
-      setStatus(interfacePreset().captureFailed);
     }
   }
 

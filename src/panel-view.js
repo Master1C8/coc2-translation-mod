@@ -153,7 +153,7 @@
             </div>
           </div>
           <div class="cacheBox"><div class="cacheStats">Cache: … · Log: …</div><button class="secondary cacheCopy" type="button" title="Copy the local service log to the clipboard." disabled>Copy log</button><button class="danger cacheDelete" type="button" title="Delete all cached translations and the local service log. Other settings stay unchanged.">Clear cache and log</button></div>
-          <div class="captureBox"><div class="captureStats">Translation capture: Off · Screens: 0</div><button class="secondary captureToggle" type="button" title="Start a new local capture of original and translated game text.">Start capture</button><button class="secondary captureCopy" type="button" title="Copy the captured original and translated text as JSON." disabled>Copy capture</button></div>
+          <div class="captureBox"><div class="captureStats">Request capture: Off · Sets: 0</div><button class="secondary captureToggle" type="button" title="Capture the exact OpenAI system prompt, selected glossary, and text locally without contacting the provider.">Capture requests</button><button class="secondary captureCopy" type="button" title="Copy the captured OpenAI request sets as JSON." disabled>Copy request set</button></div>
         </div>
         </div>
         <div class="site">

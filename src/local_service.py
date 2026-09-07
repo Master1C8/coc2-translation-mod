@@ -32,6 +32,7 @@ OPENAI_COMPATIBLE_PROMPT_VERSION = OPENAI_COMPATIBLE_CONFIG["promptVersion"]
 OPENAI_COMPATIBLE_MAX_REQUEST_SYSTEM_PROMPT_CHARS = OPENAI_COMPATIBLE_CONFIG[
     "maxRequestSystemPromptChars"
 ]
+OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS = OPENAI_COMPATIBLE_CONFIG["maxGlossaryChars"]
 OPENAI_COMPATIBLE_REASONING_EFFORTS = set(OPENAI_COMPATIBLE_CONFIG["reasoningEfforts"]) - {""}
 OPENAI_COMPATIBLE_VERBOSITIES = set(OPENAI_COMPATIBLE_CONFIG["verbosities"])
 OPENCODE_CHAT_MODELS = {
@@ -117,10 +118,10 @@ def _capture_text(value: Any, limit: int) -> bool:
         and not any(ord(character) < 32 and character not in "\r\n\t" or ord(character) == 127 for character in value)
 
 
-def capture_screen(value: Any) -> dict[str, Any]:
+def capture_request_set(value: Any) -> dict[str, Any]:
     fields = {
         "screen_id", "game_id", "game_version", "translator_version", "language",
-        "provider", "preset", "model", "reasoning_effort", "mode", "outcome", "items",
+        "preset", "model", "reasoning_effort", "mode", "requests",
     }
     if not isinstance(value, dict) or set(value) != fields:
         raise BridgeError("capture_invalid", "Invalid translation capture", 400)
@@ -130,22 +131,24 @@ def capture_screen(value: Any) -> dict[str, Any]:
         and _capture_text(value["game_version"], 100)
         and _capture_text(value["translator_version"], 100)
         and isinstance(value["language"], str) and re.fullmatch(r"[A-Za-z0-9-]{2,24}", value["language"])
-        and value["provider"] in ("google", "openai-compatible")
-        and isinstance(value["preset"], str) and len(value["preset"]) <= 100
+        and value["preset"] in OPENAI_COMPATIBLE_PRESETS
         and isinstance(value["model"], str) and len(value["model"]) <= 512
         and value["reasoning_effort"] in ({""} | OPENAI_COMPATIBLE_REASONING_EFFORTS)
         and value["mode"] in ("manual", "auto")
-        and value["outcome"] in ("complete", "failed", "cancelled", "superseded")
-        and isinstance(value["items"], list) and 1 <= len(value["items"]) <= 500
+        and isinstance(value["requests"], list) and 1 <= len(value["requests"]) <= 500
     )
     if not valid:
         raise BridgeError("capture_invalid", "Invalid translation capture", 400)
-    for item in value["items"]:
-        if not isinstance(item, dict) or set(item) != {"kind", "source", "translation", "occurrences"} \
-                or item["kind"] not in ("story", "control", "tooltip", "ui") \
-                or not _capture_text(item["source"], MAX_TEXT_CHARS) \
-                or not _capture_text(item["translation"], MAX_TEXT_CHARS * 2) \
-                or type(item["occurrences"]) is not int or not 1 <= item["occurrences"] <= 10_000:
+    for request in value["requests"]:
+        if not isinstance(request, dict) \
+                or set(request) != {"kind", "batch_size", "system_prompt", "glossary", "text"} \
+                or request["kind"] not in ("story", "control", "tooltip", "ui") \
+                or type(request["batch_size"]) is not int or not 1 <= request["batch_size"] <= 12 \
+                or not _capture_text(request["system_prompt"], OPENAI_COMPATIBLE_MAX_REQUEST_SYSTEM_PROMPT_CHARS) \
+                or not isinstance(request["glossary"], str) \
+                or len(request["glossary"]) > OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS \
+                or (request["glossary"] and not _capture_text(request["glossary"], OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS)) \
+                or not _capture_text(request["text"], MAX_TEXT_CHARS):
             raise BridgeError("capture_invalid", "Invalid translation capture", 400)
     return value
 
@@ -394,9 +397,9 @@ class LocalServiceBridge:
             return None
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
             raise BridgeError("capture_read_failed", "Could not read the translation capture", 500) from error
-        if not isinstance(value, dict) or value.get("schema_version") != 1 \
+        if not isinstance(value, dict) or value.get("schema_version") != 2 \
                 or not isinstance(value.get("capture_id"), str) \
-                or not isinstance(value.get("screens"), list):
+                or not isinstance(value.get("request_sets"), list):
             raise BridgeError("capture_read_failed", "The translation capture is invalid", 500)
         return value
 
@@ -419,12 +422,12 @@ class LocalServiceBridge:
     def capture_status(self) -> dict[str, Any]:
         with _CAPTURE_LOCK:
             document = self._read_capture_document()
-            count = len(document["screens"]) if document else 0
+            count = len(document["request_sets"]) if document else 0
             try:
                 size = self.capture_path.stat().st_size if document else 0
             except OSError:
                 size = 0
-            return {"ok": True, "active": self._capture_active, "screens": count, "bytes": size}
+            return {"ok": True, "active": self._capture_active, "sets": count, "bytes": size}
 
     def start_capture(self, accepted: Any) -> dict[str, Any]:
         if accepted is not True:
@@ -432,17 +435,17 @@ class LocalServiceBridge:
         with _CAPTURE_LOCK:
             self._capture_id = uuid.uuid4().hex
             document = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "capture_id": self._capture_id,
                 "started_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-                "screens": [],
+                "request_sets": [],
             }
             size = self._write_capture_document(document)
             self._capture_active = True
-            return {"ok": True, "active": True, "screens": 0, "bytes": size}
+            return {"ok": True, "active": True, "sets": 0, "bytes": size}
 
     def append_capture(self, value: Any) -> dict[str, Any]:
-        measured = capture_screen(value)
+        measured = capture_request_set(value)
         with _CAPTURE_LOCK:
             if not self._capture_active or not self._capture_id:
                 raise BridgeError("capture_inactive", "Translation capture is not active", 409)
@@ -451,13 +454,13 @@ class LocalServiceBridge:
                 self._capture_active = False
                 self._capture_id = None
                 raise BridgeError("capture_inactive", "Translation capture is not active", 409)
-            document["screens"].append({
-                "number": len(document["screens"]) + 1,
+            document["request_sets"].append({
+                "number": len(document["request_sets"]) + 1,
                 "captured_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 **measured,
             })
             size = self._write_capture_document(document)
-            return {"ok": True, "active": True, "screens": len(document["screens"]), "bytes": size}
+            return {"ok": True, "active": True, "sets": len(document["request_sets"]), "bytes": size}
 
     def stop_capture(self) -> dict[str, Any]:
         with _CAPTURE_LOCK:
@@ -469,9 +472,9 @@ class LocalServiceBridge:
         with _CAPTURE_LOCK:
             document = self._read_capture_document()
             if not document:
-                return {"ok": True, "screens": 0, "bytes": 0, "content": ""}
+                return {"ok": True, "sets": 0, "bytes": 0, "content": ""}
             content = json.dumps(document, ensure_ascii=False, indent=2)
-            return {"ok": True, "screens": len(document["screens"]),
+            return {"ok": True, "sets": len(document["request_sets"]),
                     "bytes": len(content.encode("utf-8")), "content": content}
 
     @staticmethod

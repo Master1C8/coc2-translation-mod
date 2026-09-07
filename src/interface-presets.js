@@ -49,10 +49,10 @@
       chooseModel: "Choose a model…", freeModel: "Free", customModel: "Custom", enterModel: "Enter model ID manually…",
       deleteConfirm: "Delete all cached translations and the local service log?", cacheDeleted: "Cache and log deleted", cacheDeleteFailed: "Could not completely delete cache and log",
       logCopied: "Log copied", logTailCopied: "Latest 2 MB of log copied", logCopyFailed: "Could not copy log",
-      captureStatus: "Translation capture: {state} · Screens: {count}", captureStart: "Start capture", captureStop: "Stop capture", copyCapture: "Copy capture",
-      captureStartTitle: "Start a new local capture of original and translated game text.", captureStopTitle: "Stop recording translation pairs.",
-      captureCopyTitle: "Copy the captured original and translated text as JSON.", captureReplaceConfirm: "Delete the previous capture and start a new one?",
-      captureStarted: "Translation capture started", captureStopped: "Translation capture stopped", captureCopied: "Translation capture copied", captureFailed: "Could not use translation capture"
+      captureStatus: "Request capture: {state} · Sets: {count}", captureStart: "Capture requests", captureStop: "Stop capture", copyCapture: "Copy request set",
+      captureStartTitle: "Capture the exact OpenAI system prompt, selected glossary, and text locally without contacting the provider.", captureStopTitle: "Stop recording request sets.",
+      captureCopyTitle: "Copy the captured OpenAI request sets as JSON.", captureReplaceConfirm: "Delete the previous request set and start a new one?",
+      captureStarted: "Request capture started", captureSaved: "Request set saved", captureStopped: "Request capture stopped", captureCopied: "Request set copied", captureFailed: "Could not use request capture"
     }),
     ru: Object.freeze({
       language: "Язык", translate: "Перевести", cancel: "Отменить",
@@ -101,10 +101,10 @@
       chooseModel: "Выберите модель…", freeModel: "Бесплатно", customModel: "Другая", enterModel: "Ввести ID модели вручную…",
       deleteConfirm: "Удалить все кэшированные переводы и лог локального сервиса?", cacheDeleted: "Кэш и лог удалены", cacheDeleteFailed: "Не удалось полностью удалить кэш и лог",
       logCopied: "Лог скопирован", logTailCopied: "Скопированы последние 2 МБ лога", logCopyFailed: "Не удалось скопировать лог",
-      captureStatus: "Запись переводов: {state} · Экранов: {count}", captureStart: "Начать запись", captureStop: "Остановить запись", copyCapture: "Копировать запись",
-      captureStartTitle: "Начать новую локальную запись исходного и переведённого текста игры.", captureStopTitle: "Остановить запись пар перевода.",
-      captureCopyTitle: "Скопировать исходный и переведённый текст в формате JSON.", captureReplaceConfirm: "Удалить предыдущую запись переводов и начать новую?",
-      captureStarted: "Запись переводов начата", captureStopped: "Запись переводов остановлена", captureCopied: "Запись переводов скопирована", captureFailed: "Не удалось обработать запись переводов"
+      captureStatus: "Сбор запросов: {state} · Наборов: {count}", captureStart: "Собирать запросы", captureStop: "Остановить сбор", copyCapture: "Копировать набор",
+      captureStartTitle: "Локально собирать точный системный промт OpenAI, выбранный словарь и текст без обращения к провайдеру.", captureStopTitle: "Остановить сбор наборов запросов.",
+      captureCopyTitle: "Скопировать собранные наборы запросов OpenAI в формате JSON.", captureReplaceConfirm: "Удалить предыдущий набор запросов и начать новый?",
+      captureStarted: "Сбор запросов начат", captureSaved: "Набор запросов сохранён", captureStopped: "Сбор запросов остановлен", captureCopied: "Набор запросов скопирован", captureFailed: "Не удалось обработать набор запросов"
     })
   });
 })(typeof globalThis !== "undefined" ? globalThis : this);

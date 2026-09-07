@@ -361,18 +361,20 @@
   const autoBeforeCapture = autoCheckbox.checked;
   autoCheckbox.checked = false;
   autoCheckbox.dispatchEvent(new Event("change"));
+  const captureSource = document.createElement("p");
+  captureSource.style.cssText = "position:fixed;top:40px;left:0;width:200px;height:30px";
+  captureSource.textContent = "Capture this Minstrel source sentence.";
+  document.body.append(captureSource);
+  await new Promise((resolve) => setTimeout(resolve, 260));
   const captureToggleButton = shadow.querySelector(".captureToggle");
   const captureCopyButton = shadow.querySelector(".captureCopy");
+  const providerRequestsBeforeCapture = window.localHelperCalls
+    .filter((path) => path === "/v1/openai-compatible/translate").length;
   captureToggleButton.click();
   for (let attempt = 0; attempt < 50 && !window.smokeCapture.active; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  const captureSource = document.createElement("p");
-  captureSource.style.cssText = "position:fixed;top:40px;left:0;width:200px;height:30px";
-  captureSource.textContent = "Capture this source sentence.";
-  document.body.append(captureSource);
-  await window.__vnRevivalTranslator.translateScreen();
-  for (let attempt = 0; attempt < 50 && window.smokeCapture.screens.length === 0; attempt += 1) {
+  for (let attempt = 0; attempt < 50 && window.smokeCapture.sets.length === 0; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   captureToggleButton.click();
@@ -380,15 +382,22 @@
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   captureCopyButton.click();
-  for (let attempt = 0; attempt < 50 && !window.smokeClipboard.includes("Capture this source sentence."); attempt += 1) {
+  for (let attempt = 0; attempt < 50 && !window.smokeClipboard.includes("Capture this Minstrel source sentence."); attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  const translationCaptureWorks = window.smokeCapture.screens.length === 1
-    && window.smokeCapture.screens[0].items.some((item) => item.source === "Capture this source sentence."
-      && item.translation === "ترجمة")
+  const capturedRequest = window.smokeCapture.sets[0]?.requests.find((request) =>
+    request.text.includes("Capture this Minstrel source sentence."));
+  const translationCaptureWorks = window.smokeCapture.sets.length === 1
+    && capturedRequest?.system_prompt
+    && !capturedRequest.system_prompt.includes("{targetName}")
+    && !capturedRequest.system_prompt.includes("{target}")
+    && capturedRequest.system_prompt.includes("Minstrel = Менестрель")
+    && capturedRequest.glossary === "Minstrel = Менестрель"
+    && window.localHelperCalls.filter((path) => path === "/v1/openai-compatible/translate").length
+      === providerRequestsBeforeCapture
     && !window.smokeCapture.active
-    && shadow.querySelector(".captureStats").textContent === "Translation capture: Off · Screens: 1"
-    && window.smokeClipboard.includes("Capture this source sentence.");
+    && shadow.querySelector(".captureStats").textContent === "Request capture: Off · Sets: 1"
+    && window.smokeClipboard.includes("Capture this Minstrel source sentence.");
   captureSource.remove();
   autoCheckbox.checked = autoBeforeCapture;
   autoCheckbox.dispatchEvent(new Event("change"));
@@ -545,7 +554,7 @@
     translatedButtonHeight: translated.buttonHeight === "auto",
     translatedButtonWrap: translated.buttonWrap === "normal",
     scrolledTranslation: scrolledTranslation === "ترجمة",
-    repairedMetadataRecords: repairedMetadata.records === 6,
+    repairedMetadataRecords: repairedMetadata.records === 5,
     compactCacheRow,
     logCopied,
     cacheDeleted,

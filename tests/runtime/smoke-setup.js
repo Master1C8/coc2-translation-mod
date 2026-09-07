@@ -78,7 +78,7 @@ window.fetchCalls = [];
 window.localHelperCalls = [];
 window.smokeLogBytes = 2048;
 window.smokeClipboard = "";
-window.smokeCapture = { active: false, screens: [] };
+window.smokeCapture = { active: false, sets: [] };
 Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
   writeText: async (value) => { window.smokeClipboard = value; }
 } });
@@ -108,25 +108,25 @@ window.fetch = async function (input, options = {}) {
     }
     if (url.pathname === "/v1/capture/status") {
       return { ok: true, json: async () => ({ ok: true, active: window.smokeCapture.active,
-        screens: window.smokeCapture.screens.length, bytes: 0 }) };
+        sets: window.smokeCapture.sets.length, bytes: 0 }) };
     }
     if (url.pathname === "/v1/capture/start") {
-      window.smokeCapture = { active: true, screens: [] };
-      return { ok: true, json: async () => ({ ok: true, active: true, screens: 0, bytes: 0 }) };
+      window.smokeCapture = { active: true, sets: [] };
+      return { ok: true, json: async () => ({ ok: true, active: true, sets: 0, bytes: 0 }) };
     }
     if (url.pathname === "/v1/capture/append") {
-      if (window.smokeCapture.active) window.smokeCapture.screens.push(JSON.parse(options.body));
+      if (window.smokeCapture.active) window.smokeCapture.sets.push(JSON.parse(options.body));
       return { ok: true, json: async () => ({ ok: true, active: window.smokeCapture.active,
-        screens: window.smokeCapture.screens.length, bytes: 100 }) };
+        sets: window.smokeCapture.sets.length, bytes: 100 }) };
     }
     if (url.pathname === "/v1/capture/stop") {
       window.smokeCapture.active = false;
       return { ok: true, json: async () => ({ ok: true, active: false,
-        screens: window.smokeCapture.screens.length, bytes: 100 }) };
+        sets: window.smokeCapture.sets.length, bytes: 100 }) };
     }
     if (url.pathname === "/v1/capture/read") {
-      return { ok: true, json: async () => ({ ok: true, screens: window.smokeCapture.screens.length,
-        bytes: 100, content: JSON.stringify({ schema_version: 1, screens: window.smokeCapture.screens }) }) };
+      return { ok: true, json: async () => ({ ok: true, sets: window.smokeCapture.sets.length,
+        bytes: 100, content: JSON.stringify({ schema_version: 2, request_sets: window.smokeCapture.sets }) }) };
     }
     return { ok: true, json: async () => ({ ok: true, reselectOnNextLaunch: true }) };
   }
