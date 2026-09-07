@@ -1,42 +1,17 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
-require("../src/languages.js");
-
-const expected = [
-  ["zh", "Chinese (Simplified)", "中文（简体）"],
-  ["en", "English", "English"],
-  ["ru", "Russian", "русский"],
-  ["es", "Spanish", "español"],
-  ["pt-BR", "Portuguese (Brazilian)", "português (Brasil)"],
-  ["ja", "Japanese", "日本語"],
-  ["de", "German", "Deutsch"],
-  ["ko", "Korean", "한국어"],
-  ["fr", "French", "français"],
-  ["tr", "Turkish", "Türkçe"],
-  ["pl", "Polish", "polski"],
-  ["zh-TW", "Chinese (Traditional)", "中文（繁體）"],
-  ["it", "Italian", "italiano"],
-  ["th", "Thai", "ไทย"],
-  ["vi", "Vietnamese", "Tiếng Việt"],
-  ["id", "Indonesian", "Bahasa Indonesia"],
-  ["uk", "Ukrainian", "українська"],
-  ["ar", "Arabic", "العربية"],
-  ["cs", "Czech", "čeština"],
-  ["hu", "Hungarian", "magyar"],
-  ["nl", "Dutch", "Nederlands"],
-  ["fa", "Persian", "فارسی"],
-  ["ro", "Romanian", "română"],
-  ["hi", "Hindi", "हिन्दी"],
-  ["fil", "Filipino", "Filipino"],
-  ["el", "Greek", "ελληνικά"],
-  ["bg", "Bulgarian", "български"],
-  ["sr", "Serbian", "српски"],
-  ["sw", "Swahili", "Kiswahili"],
-  ["he", "Hebrew", "עברית"]
-];
+const expected = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "languages.json"), "utf8"));
+require("../.build/languages.js");
 
 test("language catalog matches the canonical VN Revival site locales", () => {
   assert.deepEqual(globalThis.VNRevivalTranslatorLanguages, expected);
+  assert.deepEqual(expected.map(([code]) => code), [
+    "zh", "en", "ru", "es", "pt-BR", "ja", "de", "ko", "fr", "tr",
+    "pl", "zh-TW", "it", "th", "vi", "id", "uk", "ar", "cs", "hu",
+    "nl", "fa", "ro", "hi", "fil", "el", "bg", "sr", "sw", "he"
+  ]);
 });

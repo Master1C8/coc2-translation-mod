@@ -12,6 +12,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(gameDirectory, "game.json"
 require(path.join(gameDirectory, "adapter.js"));
 const adapter = globalThis.VNRevivalGameAdapter;
 const runtimeSource = fs.readFileSync(path.join(__dirname, "..", "src", "translator-runtime.js"), "utf8");
+const panelSource = fs.readFileSync(path.join(__dirname, "..", "src", "panel-view.js"), "utf8");
 
 test("selected game manifest supplies universal runtime identity", () => {
   assert.equal(manifest.id, gameId);
@@ -36,10 +37,10 @@ test("selected DOM adapter satisfies contract version 2", () => {
 });
 
 test("model suggestions avoid the Chromium datalist crash path", () => {
-  assert.match(runtimeSource, /<select class="openAICompatibleModel"/);
-  assert.doesNotMatch(runtimeSource, /openAICompatibleModelSuggestion/);
-  assert.doesNotMatch(runtimeSource, /class="openAICompatibleModel" type="text"/);
-  assert.doesNotMatch(runtimeSource, /<datalist\b|\blist="openAICompatibleModels"/);
+  assert.match(panelSource, /<select class="openAICompatibleModel"/);
+  assert.doesNotMatch(runtimeSource + panelSource, /openAICompatibleModelSuggestion/);
+  assert.doesNotMatch(panelSource, /class="openAICompatibleModel" type="text"/);
+  assert.doesNotMatch(panelSource, /<datalist\b|\blist="openAICompatibleModels"/);
 });
 
 test("model picker prioritizes free models and alphabetizes each group", () => {

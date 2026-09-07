@@ -62,6 +62,7 @@ unzip -q "$PYTHON_ZIP" -d "$PYTHON_DIR"
 
 cp "$BUNDLE" "$RESOURCE_DIR/translator.bundle.js"
 cp "$ROOT/src/local_service.py" "$RESOURCE_DIR/local_service.py"
+cp "$ROOT/src/openai-compatible.json" "$RESOURCE_DIR/openai-compatible.json"
 cp "$GAME_MANIFEST" "$RESOURCE_DIR/game.json"
 python3 "$ROOT/scripts/render-template.py" "$ROOT/launcher/windows/README-Windows.txt" "$DIST_DIR/README.txt" \
   PRODUCT_NAME "$PRODUCT_NAME" GAME_TITLE "$GAME_TITLE" DATA_DIRECTORY_WINDOWS "$DATA_DIRECTORY_WINDOWS"
@@ -109,6 +110,7 @@ grep -Eq 'PE32\+ executable.*x86-64' "$BUILD_ROOT/executable-type.txt"
 [[ -s "$DIST_DIR/$PRODUCT_NAME.exe" ]]
 [[ -s "$DIST_DIR/resources/python/python.exe" ]]
 [[ -s "$DIST_DIR/resources/local_service.py" ]]
+[[ -s "$DIST_DIR/resources/openai-compatible.json" ]]
 [[ -s "$DIST_DIR/resources/translator.bundle.js" ]]
 [[ -s "$DIST_DIR/resources/game.json" ]]
 
@@ -125,6 +127,7 @@ unzip -Z1 "$ZIP_PATH" > "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/$PRODUCT_NAME.exe" "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/resources/python/python.exe" "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/resources/local_service.py" "$BUILD_ROOT/archive-contents.txt"
+grep -Fqx "$DIST_NAME/resources/openai-compatible.json" "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/resources/translator.bundle.js" "$BUILD_ROOT/archive-contents.txt"
 grep -Fqx "$DIST_NAME/resources/game.json" "$BUILD_ROOT/archive-contents.txt"
 

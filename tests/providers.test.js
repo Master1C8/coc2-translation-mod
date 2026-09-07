@@ -1,10 +1,18 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
+require("../.build/openai-config.js");
 require("../src/translation-core.js");
 require("../src/providers.js");
 const registry = globalThis.VNRevivalTranslationProviders;
+
+test("generated OpenAI-compatible config matches its canonical JSON source", () => {
+  const expected = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "openai-compatible.json"), "utf8"));
+  assert.deepEqual(globalThis.VNRevivalOpenAICompatibleConfig, expected);
+});
 
 test("provider registry exposes a stable extension contract", () => {
   assert.equal(registry.contractVersion, 1);
