@@ -18,6 +18,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 - The `Language` selector remains visible at the top of the panel.
 - `Ctrl+Shift+T`, displayed inside the main button, performs the same translate/cancel action.
 - Provider, auto-translate, and cache controls are always visible while the panel is expanded.
+- Hold the pointer over a complex setting to see its short explanation.
 - `− / +` collapses the panel to a single `+` button or expands it completely.
 - Drag the top bar to move the panel.
 
@@ -106,6 +107,7 @@ advanced launches can select Parallels with
 - Список `Language` постоянно виден в верхней части панели.
 - `Ctrl+Shift+T`, указанная внутри основной кнопки, выполняет то же действие перевода/отмены.
 - Провайдер, автоперевод и кэш всегда видны в развёрнутой панели.
+- Задержите курсор над сложной настройкой, чтобы увидеть её краткое пояснение.
 - `− / +` сворачивает панель до одной кнопки `+` или полностью разворачивает её.
 - Верхняя полоса перемещает панель.
 

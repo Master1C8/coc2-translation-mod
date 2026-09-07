@@ -1436,7 +1436,7 @@
         <label class="title">Translation service</label><select class="provider"></select>
         <div class="providerHint"></div>
         <div class="openAICompatibleBox" hidden>
-          <select class="openAICompatiblePreset" aria-label="OpenAI-compatible preset">
+          <select class="openAICompatiblePreset" aria-label="OpenAI-compatible preset" title="Select a provider profile, or Custom for your own endpoint.">
             <option value="opencode-go">OpenCode Go</option>
             <option value="opencode-zen">OpenCode Zen</option>
             <option value="openrouter">OpenRouter</option>
@@ -1444,38 +1444,38 @@
             <option value="lmstudio">LM Studio</option>
             <option value="custom">Custom</option>
           </select>
-          <input class="openAICompatibleBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://provider.example/v1">
-          <input class="openAICompatibleKey" type="password" autocomplete="off" spellcheck="false" placeholder="API key (stored securely)">
-          <select class="openAICompatibleModel" aria-label="OpenAI-compatible model">
+          <input class="openAICompatibleBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://provider.example/v1" title="API endpoint used to list models and send translation requests.">
+          <input class="openAICompatibleKey" type="password" autocomplete="off" spellcheck="false" placeholder="API key (stored securely)" title="Saved securely for this Base URL and never stored in the game.">
+          <select class="openAICompatibleModel" aria-label="OpenAI-compatible model" title="Open the list to refresh available models, or choose manual entry.">
             <option value="">Choose a listed model…</option>
           </select>
           <div class="openAICompatibleParameterTitle">Model parameters</div>
           <div class="openAICompatibleParameters">
-            <label><span>Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort"><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
-            <label><span>Verbosity</span><select class="openAICompatibleVerbosity" aria-label="Output verbosity"><option value="">Provider default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
-            <label><span>Parallel requests</span><select class="openAICompatibleConcurrency" aria-label="Parallel requests"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label>
+            <label><span>Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort" title="Controls how much reasoning the model may use. Higher values can be slower."><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
+            <label><span>Verbosity</span><select class="openAICompatibleVerbosity" aria-label="Output verbosity" title="Controls the requested detail level of the model output."><option value="">Provider default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+            <label><span>Parallel requests</span><select class="openAICompatibleConcurrency" aria-label="Parallel requests" title="Number of translation requests sent at once. Higher is faster but may hit rate limits."><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label>
           </div>
-          <button class="secondary openAICompatibleAdvancedToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleAdvanced">Advanced</button>
+          <button class="secondary openAICompatibleAdvancedToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleAdvanced" title="Show system prompt and glossary settings.">Advanced</button>
           <div id="openAICompatibleAdvanced" class="openAICompatibleAdvanced" hidden>
-            <button class="secondary openAICompatiblePromptToggle" type="button" aria-expanded="false" aria-controls="openAICompatiblePromptEditor">System prompt</button>
+            <button class="secondary openAICompatiblePromptToggle" type="button" aria-expanded="false" aria-controls="openAICompatiblePromptEditor" title="Edit the instructions sent to the AI before each text fragment.">System prompt</button>
             <div id="openAICompatiblePromptEditor" class="openAICompatiblePromptEditor" hidden>
-              <div class="openAICompatiblePromptLabel"><label for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button">Restore default</button></div>
-              <textarea id="openAICompatiblePrompt" class="openAICompatiblePrompt" maxlength="${OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS}" spellcheck="false" aria-label="OpenAI-compatible system prompt"></textarea>
+              <div class="openAICompatiblePromptLabel"><label for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button" title="Replace the custom prompt with the built-in default.">Restore default</button></div>
+              <textarea id="openAICompatiblePrompt" class="openAICompatiblePrompt" maxlength="${OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS}" spellcheck="false" aria-label="OpenAI-compatible system prompt" title="Instructions sent to the AI before each text fragment."></textarea>
             </div>
-            <button class="secondary openAICompatibleGlossaryToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleGlossaryEditor">Glossary</button>
+            <button class="secondary openAICompatibleGlossaryToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleGlossaryEditor" title="Set preferred translations that are appended to the system prompt.">Glossary</button>
             <div id="openAICompatibleGlossaryEditor" class="openAICompatibleGlossaryEditor" hidden>
-              <textarea class="openAICompatibleGlossary" maxlength="${OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS}" spellcheck="false" aria-label="Translation glossary" placeholder="One entry per line: source = translation"></textarea>
+              <textarea class="openAICompatibleGlossary" maxlength="${OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS}" spellcheck="false" aria-label="Translation glossary" placeholder="One entry per line: source = translation" title="Add one source-to-translation mapping per line."></textarea>
             </div>
           </div>
         </div>
-        <label class="autoToggle">
+        <label class="autoToggle" title="Translate newly visible or changed game text automatically.">
           <input type="checkbox" class="auto" aria-label="Automatically translate new screens">
           <span class="autoCopy"><span class="autoTitle">Auto translate</span><span class="autoState" aria-hidden="true"></span></span>
           <span class="autoTrack" aria-hidden="true"><span class="autoThumb"></span></span>
         </label>
         <div class="cacheBox">
           <div class="cacheStats">Cache: …</div>
-          <button class="danger cacheDelete" type="button">Delete</button>
+          <button class="danger cacheDelete" type="button" title="Delete all cached translations. Other settings stay unchanged.">Delete</button>
         </div>
       </div>
       <div class="site">

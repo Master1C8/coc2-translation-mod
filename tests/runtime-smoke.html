@@ -196,6 +196,13 @@
       const openAIModelSelectionSaved = openAIModelSelect.value === "model-b"
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null")
           ?.openAICompatibleModel === "model-b";
+      const complexControlTooltips = [
+        ".openAICompatiblePreset", ".openAICompatibleBaseURL", ".openAICompatibleKey",
+        ".openAICompatibleModel", ".openAICompatibleReasoningEffort", ".openAICompatibleVerbosity",
+        ".openAICompatibleConcurrency", ".openAICompatibleAdvancedToggle",
+        ".openAICompatiblePromptToggle", ".openAICompatiblePromptReset",
+        ".openAICompatibleGlossaryToggle", ".openAICompatibleGlossary", ".autoToggle", ".cacheDelete"
+      ].every((selector) => (shadow.querySelector(selector)?.title || "").length >= 20);
       const openAIAdvancedToggle = shadow.querySelector(".openAICompatibleAdvancedToggle");
       const openAIAdvanced = shadow.querySelector(".openAICompatibleAdvanced");
       const openAIAdvancedInitiallyCollapsed = openAIAdvanced.hidden
@@ -468,6 +475,7 @@
         && safeOpenAIModelPicker
         && modelListRefreshesOnOpen
         && openAIModelSelectionSaved
+        && complexControlTooltips
         && openAIAdvancedInitiallyCollapsed
         && openAIAdvancedOpenedByButton
         && openAIAdvancedClosedByButton
@@ -534,6 +542,7 @@
         safeOpenAIModelPicker,
         modelListRefreshesOnOpen,
         openAIModelSelectionSaved,
+        complexControlTooltips,
         openAIAdvancedInitiallyCollapsed,
         openAIAdvancedOpenedByButton,
         openAIAdvancedClosedByButton,
