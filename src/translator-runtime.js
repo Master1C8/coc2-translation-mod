@@ -731,10 +731,15 @@
 
   function collectVisibleTextNodes(options) {
     const includeCompleted = !!(options && options.includeCompleted);
+    const includeHiddenTooltips = !!(options && options.includeHiddenTooltips);
     const result = [];
     const roots = options && Array.isArray(options.roots) ? options.roots : null;
     for (const node of textNodesWithinRoots(roots)) {
-      if (!node.parentElement || !isVisible(node.parentElement)) continue;
+      if (!node.parentElement) continue;
+      const prefetchableTooltip = includeHiddenTooltips
+        && !isPrivateOrTechnical(node.parentElement)
+        && classifyNode(node) === "tooltip";
+      if (!isVisible(node.parentElement) && !prefetchableTooltip) continue;
       const source = sourceForNode(node);
       if (!hasSourceText(source)) continue;
       const record = applied.get(node);
@@ -788,7 +793,10 @@
         observedTranslationContainers.add(container);
         if (translationVisibilityObserver) translationVisibilityObserver.observe(container);
       }
-      if (!translationVisibilityObserver && isElementOnScreen(container)) queueTranslationContainer(container);
+      if (classifyNode(node) === "tooltip"
+          || (!translationVisibilityObserver && isElementOnScreen(container))) {
+        queueTranslationContainer(container);
+      }
     }
   }
 
@@ -1146,7 +1154,7 @@
     }
     const roots = isManual ? null : takeAutoTranslationRoots();
     if (!isManual && !roots.length) return Promise.resolve();
-    const jobs = buildJobs(collectVisibleTextNodes(roots ? { roots } : null));
+    const jobs = buildJobs(collectVisibleTextNodes({ roots, includeHiddenTooltips: true }));
     if (!isManual && !jobs.length) return Promise.resolve();
     return runJobs(jobs, { manual: isManual });
   }
@@ -1154,7 +1162,7 @@
   function retryFailed() {
     const jobs = lastFailedJobs.filter((job) => job.nodes.some((node) => node.isConnected));
     lastFailedJobs = [];
-    return runJobs(jobs.length ? jobs : buildJobs(collectVisibleTextNodes()), { manual: true });
+    return runJobs(jobs.length ? jobs : buildJobs(collectVisibleTextNodes({ includeHiddenTooltips: true })), { manual: true });
   }
 
   function reapplyKnownTranslations(roots) {

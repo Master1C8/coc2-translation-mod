@@ -14,6 +14,7 @@
   <p id="rich">You see <b>a beautiful woman</b> near the door.</p>
   <button id="button">A very short button</button>
   <p id="legacy">Legacy line</p>
+  <div class="tooltip" style="display:none"><p id="prefetched-tooltip">A hidden tooltip is ready.</p></div>
   <div id="spacer"></div>
   <p id="later">A later paragraph appears after scrolling.</p>
   <pre id="result" data-coc2-private>PENDING</pre>
@@ -283,6 +284,7 @@
       const rich = document.getElementById("rich");
       const button = document.getElementById("button");
       const legacy = document.getElementById("legacy");
+      const prefetchedTooltip = document.getElementById("prefetched-tooltip");
       const translated = {
         text: rich.textContent.replace(/\s+/g, " ").trim(),
         direction: rich.getAttribute("dir"),
@@ -297,6 +299,8 @@
         && !window.fetchCalls.includes("Legacy line")
         && !window.smokeCache.has("v1\nar\n811c9dc5\nLegacy line")
         && window.smokeCache.get("v3\ncoc2\ngoogle\nar\nLegacy line") === "سطر قديم";
+      const hiddenTooltipPrefetched = prefetchedTooltip.textContent.trim() === "ترجمة"
+        && getComputedStyle(prefetchedTooltip.closest(".tooltip")).display === "none";
 
       const later = document.getElementById("later");
       later.scrollIntoView();
@@ -348,12 +352,13 @@
         && translated.buttonHeight === "auto"
         && translated.buttonWrap === "normal"
         && scrolledTranslation === "ترجمة"
-        && repairedMetadata.records === 4
+        && repairedMetadata.records === 5
         && compactCacheRow
         && cacheDeleted
         && originalButtonRemoved
         && metadataDirty === null
         && legacyMigrated
+        && hiddenTooltipPrefetched
         && legacyGlobalsScopedToCoC2
         && shortcutInsideMainButton
         && cancelStateKeepsShortcut
@@ -411,6 +416,7 @@
         cacheDeleted,
         metadataDirty,
         legacyMigrated,
+        hiddenTooltipPrefetched,
         legacyGlobalsScopedToCoC2,
         shortcutInsideMainButton,
         cancelStateKeepsShortcut,

@@ -44,7 +44,7 @@
   не меняя prompt, модель, cache variant или проверку результата;
 - прежняя v1/v2 → v3 миграция Google-кэша остаётся доступной;
 - DOM runtime сохраняет контекстную группировку, пофрагментный fallback, формы/слоты/имена, `Ctrl+Shift+T`, RTL, шрифты и переносы;
-- `IntersectionObserver`, `MutationObserver` и `visibilitychange` сохраняют экономный видимый/изменённый проход;
+- `IntersectionObserver`, `MutationObserver` и `visibilitychange` сохраняют экономный видимый/изменённый проход, а скрытые tooltip-блоки переводятся заранее без обработки остального скрытого интерфейса;
 - macOS/Windows launchers сохраняют строгий CDP target, системный выбор EXE, сохранённый путь и lifecycle helper;
 - macOS launcher автоматически выбирает Parallels при отсутствии CrossOver, использует `prlctl exec --current-user` и не открывает гостевой CDP наружу;
 - app-only сборка включает проверенный Windows payload для Parallels и не создаёт релизные архивы;

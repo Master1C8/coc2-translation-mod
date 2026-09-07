@@ -23,7 +23,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 
 The panel has only two states: fully expanded or fully collapsed.
 
-Automatic translation processes only visible, newly visible, or changed blocks. It pauses and cancels an active request when the game window is hidden.
+Automatic translation processes visible, newly visible, or changed blocks and pre-translates tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
 The language selector uses the same 30 locales and order as VN Revival. English and `Auto translate: On` are selected on the first launch; later choices are preserved locally. The first network request still waits for the privacy choice.
 
@@ -110,7 +110,7 @@ advanced launches can select Parallels with
 
 У панели только два состояния: полностью развёрнутое и полностью свёрнутое.
 
-Автоперевод обрабатывает только видимые, впервые появившиеся или изменённые блоки. При скрытом окне таймер останавливается, активный запрос отменяется.
+Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки и заранее переводит уже присутствующие в DOM tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
 Список и порядок 30 языков совпадают с каталогом VN Revival. При первом запуске выбран английский и `Auto translate: On`; последующий выбор сохраняется локально. Первый сетевой запрос всё равно ожидает выбора режима приватности.
 
