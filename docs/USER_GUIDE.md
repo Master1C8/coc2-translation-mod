@@ -23,7 +23,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 - `− / +` collapses the panel to a single `+` button or expands it completely.
 - Drag the space around the language controls in the top row to move the panel.
 
-The panel has only two states: expanded or collapsed. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel.
+The panel has only two states: expanded or collapsed. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel. Progress, errors, and the retry button use a fixed-height area so translation updates do not resize the panel or move its controls. Long error messages scroll within that area.
 
 Automatic translation processes visible, newly visible, or changed blocks and pre-translates tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
@@ -115,7 +115,7 @@ advanced launches can select Parallels with
 - `− / +` сворачивает панель до одной кнопки `+` или полностью разворачивает её.
 - Свободное место в верхней строке с языком позволяет перемещать панель.
 
-У панели два состояния: развёрнутое и свёрнутое. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели.
+У панели два состояния: развёрнутое и свёрнутое. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели. Прогресс, ошибки и кнопка повтора занимают область постоянной высоты: обновления перевода не меняют размер панели и не сдвигают элементы управления. Длинные сообщения об ошибках прокручиваются внутри этой области.
 
 Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки и заранее переводит уже присутствующие в DOM tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 

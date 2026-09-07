@@ -60,9 +60,10 @@
         .row{margin-bottom:10px}
         .translate{display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
         .translateShortcut{font-size:10px;font-weight:400;opacity:.8}
-        .status{margin:8px 0;color:var(--warning);font-size:12px;overflow-wrap:anywhere}
+        .translationFeedback{height:48px;margin:8px 0;display:flex;align-items:center;gap:8px}
+        .status{flex:1;min-width:0;max-height:100%;overflow:auto;color:var(--warning);font-size:12px;overflow-wrap:anywhere}
         .status:empty,.providerHint:empty{display:none}
-        .retry{margin-bottom:8px}
+        .retry{flex:0 0 96px;max-height:100%;overflow:auto}
         .compat,.privacy{padding:8px;margin:8px 0;border:1px solid var(--border);border-radius:6px;color:var(--warning);font-size:12px}
         .privacyActions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
         .privacyActions button{flex:1}
@@ -110,8 +111,10 @@
             <span class="autoTrack" aria-hidden="true"><span class="autoThumb"></span></span>
           </label>
           <div class="row" hidden><button class="primary translate" aria-label="Translate (Ctrl+Shift+T)"><span class="translateAction">Translate</span><span class="translateShortcut" aria-hidden="true">Ctrl+Shift+T</span></button></div>
-        <div class="status"></div>
-        <button class="secondary retry" hidden>Retry failed</button>
+        <div class="translationFeedback">
+          <div class="status" role="status" aria-live="polite" tabindex="0"></div>
+          <button class="secondary retry" hidden>Retry failed</button>
+        </div>
         <div class="compat" hidden></div>
         <div class="privacy" hidden>
           <span class="privacyText">Visible game text is sent to the selected translation service. Save slots and input fields are excluded.</span>

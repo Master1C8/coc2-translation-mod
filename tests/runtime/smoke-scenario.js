@@ -24,6 +24,51 @@
   const compactGooglePanel = shadow.querySelector(".openAICompatibleBox").hidden
     && host.getBoundingClientRect().height < 400;
   const gameThemeApplied = getComputedStyle(shadow.querySelector(".panel")).backgroundColor === "rgb(32, 19, 28)";
+  // Exercise idle, progress, wrapped failures and retry in both provider layouts.
+  // Check actual geometry, including the footer and controls, at a narrow width.
+  const stableTranslationFeedback = (() => {
+    const panel = shadow.querySelector(".panel");
+    const status = shadow.querySelector(".status");
+    const retry = shadow.querySelector(".retry");
+    const aiBox = shadow.querySelector(".openAICompatibleBox");
+    const saved = { status: status.textContent, retry: retry.hidden, ai: aiBox.hidden, width: panel.style.width };
+    const geometry = () => [panel, shadow.querySelector(".settings"), shadow.querySelector(".site")]
+      .flatMap((element) => {
+        const bounds = element.getBoundingClientRect();
+        return [bounds.x, bounds.y, bounds.width, bounds.height];
+      }).join(",");
+    let stable = true;
+    try {
+      for (const width of ["330px", "240px"]) {
+        panel.style.width = width;
+        for (const aiHidden of [true, false]) {
+          aiBox.hidden = aiHidden;
+          status.textContent = "";
+          retry.hidden = true;
+          const idle = geometry();
+          for (const [message, failed] of [
+            ["Translating 1/9999", false],
+            ["Provider rate limit reached · retrying in 60s (4/4)", false],
+            ["Провайдер отклонил запрос. ".repeat(30), true],
+            ["", false],
+          ]) {
+            status.textContent = message;
+            retry.hidden = !failed;
+            stable = stable && geometry() === idle;
+            if (failed) stable = stable && status.scrollHeight > status.clientHeight
+              && getComputedStyle(status).overflowY === "auto" && status.tabIndex === 0
+              && retry.getBoundingClientRect().height > 0;
+          }
+        }
+      }
+      return stable;
+    } finally {
+      status.textContent = saved.status;
+      retry.hidden = saved.retry;
+      aiBox.hidden = saved.ai;
+      panel.style.width = saved.width;
+    }
+  })();
   const requestsBeforeInterfacePreset = window.fetchCalls.length + window.localHelperCalls.length;
   shadow.querySelector(".language").value = "ru";
   shadow.querySelector(".language").dispatchEvent(new Event("change"));
@@ -379,6 +424,7 @@
     languageIsTopLevel,
     interfaceToggleIsClearlyLabelled,
     compactGooglePanel,
+    stableTranslationFeedback,
     gameThemeApplied,
     russianInterfacePresetApplied,
     englishInterfaceRestored,
