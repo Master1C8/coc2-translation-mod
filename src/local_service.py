@@ -10,6 +10,7 @@ from email.utils import parsedate_to_datetime
 import hashlib
 import ipaddress
 import json
+import math
 import os
 import re
 import subprocess
@@ -70,9 +71,13 @@ def translation_diagnostics(value: Any) -> dict[str, Any]:
 def screen_metrics(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise BridgeError("invalid_metrics", "Invalid screen metrics", 400)
-    counters = {"jobs", "requests_planned", "helper_requests", "batch_requests", "batch_fallbacks", "cache_hits", "max_queue_wait_ms"}
+    counters = {
+        "jobs", "requests_planned", "helper_requests", "batch_requests", "batch_fallbacks",
+        "cache_hits", "max_queue_wait_ms", "usage_requests", "costed_requests",
+        "input_tokens", "output_tokens", "total_tokens", "cached_input_tokens", "reasoning_tokens",
+    }
     nullable = {"first_apply_ms", "first_story_ms"}
-    fields = {"phase", "screen_id", "mode"} | counters | nullable
+    fields = {"phase", "screen_id", "mode", "reported_cost_usd"} | counters | nullable
     if value.get("phase") == "result":
         fields |= {"outcome", "duration_ms", "failed_jobs"}
         counters |= {"duration_ms", "failed_jobs"}
@@ -81,7 +86,12 @@ def screen_metrics(value: Any) -> dict[str, Any]:
              and value.get("mode") in ("manual", "auto")
              and ("outcome" not in value or value["outcome"] in ("complete", "failed", "cancelled", "superseded")))
     if not valid or any(type(value[key]) is not int or not 0 <= value[key] <= 1_000_000_000 for key in counters) \
-            or any(value[key] is not None and (type(value[key]) is not int or not 0 <= value[key] <= 1_000_000_000) for key in nullable):
+            or any(value[key] is not None and (type(value[key]) is not int or not 0 <= value[key] <= 1_000_000_000) for key in nullable) \
+            or (value["reported_cost_usd"] is not None and (
+                type(value["reported_cost_usd"]) not in (int, float)
+                or not math.isfinite(value["reported_cost_usd"])
+                or not 0 <= value["reported_cost_usd"] <= 1_000_000_000
+            )):
         raise BridgeError("invalid_metrics", "Invalid screen metrics", 400)
     return {key: item for key, item in value.items() if key != "phase"}
 
@@ -93,9 +103,9 @@ def safe_exception_kind(error: BaseException) -> str:
 
 def token_usage(payload: dict[str, Any]) -> dict[str, Any]:
     usage = payload.get("usage")
-    result: dict[str, Any] = {"usage_available": False}
+    result: dict[str, Any] = {"usage_available": False, "cost_available": False}
     if not isinstance(usage, dict):
-        return result
+        usage = {}
     for source, target in (("prompt_tokens", "input_tokens"), ("completion_tokens", "output_tokens"), ("total_tokens", "total_tokens")):
         value = usage.get(source, usage.get(target))
         if type(value) is int and 0 <= value <= 10**12:
@@ -110,6 +120,12 @@ def token_usage(payload: dict[str, Any]) -> dict[str, Any]:
         if type(value) is int and 0 <= value <= 10**12:
             result[target] = value
             result["usage_available"] = True
+    cost = usage.get("cost", payload.get("cost"))
+    if isinstance(cost, str) and re.fullmatch(r"\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", cost.strip()):
+        cost = float(cost)
+    if type(cost) in (int, float) and math.isfinite(cost) and 0 <= cost <= 10**9:
+        result["cost_usd"] = round(float(cost), 12)
+        result["cost_available"] = True
     return result
 
 
@@ -162,12 +178,14 @@ class BridgeError(Exception):
         *,
         provider_status: int | None = None,
         retry_after_ms: int | None = None,
+        usage: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.code = code
         self.status = status
         self.provider_status = provider_status
         self.retry_after_ms = retry_after_ms
+        self.usage = usage
 
 
 class OpenAICompatibleCredentialStore:
@@ -944,6 +962,7 @@ class LocalServiceBridge:
         }
         try:
             payload = None
+            measured_usage: dict[str, Any] = {"usage_available": False, "cost_available": False}
             ignored_model_parameters: list[str] = []
             response_formats = [None] if (
                 connection["preset"] == "opencode-zen" and self._is_free_model(model.strip())
@@ -962,7 +981,8 @@ class LocalServiceBridge:
                     choices = payload.get("choices")
                     choice = choices[0] if isinstance(choices, list) and choices else None
                     finish = choice.get("finish_reason") if isinstance(choice, dict) else None
-                    self.log_event("provider.usage", attempt=attempt, **token_usage(payload),
+                    measured_usage = token_usage(payload)
+                    self.log_event("provider.usage", attempt=attempt, **measured_usage,
                                    finish_reason=finish if finish in ("stop", "length", "content_filter", "tool_calls") else "unknown")
                     break
                 except urllib.error.HTTPError as error:
@@ -1020,14 +1040,18 @@ class LocalServiceBridge:
                 "openai_unavailable", "Could not connect to the OpenAI-compatible provider", 503
             ) from error
 
-        content = self._completion_content(payload)
-        if not content:
-            raise BridgeError("openai_empty_translation", "The provider returned an empty translation", 502)
-        translation = self._translation_content(content).strip()
-        if not translation:
-            raise BridgeError("openai_empty_translation", "The provider returned an empty translation", 502)
-        if self._context_markers(text) != self._context_markers(translation):
-            raise BridgeError("openai_format_invalid", "The provider changed a context marker", 422)
+        try:
+            content = self._completion_content(payload)
+            if not content:
+                raise BridgeError("openai_empty_translation", "The provider returned an empty translation", 502)
+            translation = self._translation_content(content).strip()
+            if not translation:
+                raise BridgeError("openai_empty_translation", "The provider returned an empty translation", 502)
+            if self._context_markers(text) != self._context_markers(translation):
+                raise BridgeError("openai_format_invalid", "The provider changed a context marker", 422)
+        except BridgeError as error:
+            error.usage = measured_usage
+            raise
         return {
             "ok": True,
             "translatedText": translation,
@@ -1037,6 +1061,7 @@ class LocalServiceBridge:
             "loopback": connection["loopback"],
             "promptVersion": OPENAI_COMPATIBLE_PROMPT_VERSION,
             "ignoredModelParameters": ignored_model_parameters,
+            "usage": measured_usage,
             "reviewed": False,
         }
 
@@ -1114,6 +1139,8 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 payload["providerStatus"] = error.provider_status
             if error.retry_after_ms is not None:
                 payload["retryAfterMs"] = error.retry_after_ms
+            if error.usage is not None:
+                payload["usage"] = error.usage
             self._write_json(payload, error.status)
         except Exception as error:
             self.bridge.log_event("http.internal_error", error_kind=safe_exception_kind(error))
@@ -1179,6 +1206,8 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 payload["providerStatus"] = error.provider_status
             if error.retry_after_ms is not None:
                 payload["retryAfterMs"] = error.retry_after_ms
+            if error.usage is not None:
+                payload["usage"] = error.usage
             self._write_json(payload, error.status)
         except Exception as error:
             self.bridge.log_event("http.internal_error", error_kind=safe_exception_kind(error))

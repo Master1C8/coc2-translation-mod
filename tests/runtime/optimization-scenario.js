@@ -43,11 +43,21 @@ window.runOptimizationSmoke = async function (shadow) {
     if (typeof rejectRequests === "function" ? rejectRequests(body) : rejectRequests) return { ok: false, status: 502, json: async () => ({ ok: false,
       error: "openai_request_failed", providerStatus: 400, message: "Provider returned HTTP 400" }) };
     if (badBatch === "helper" && body.diagnostics.batch_size > 1) return { ok: false, status: 422,
-      json: async () => ({ ok: false, error: "openai_format_invalid", message: "Provider changed a context marker" }) };
+      json: async () => ({ ok: false, error: "openai_format_invalid", message: "Provider changed a context marker",
+        usage: { usage_available: true, cost_available: true, input_tokens: 100, output_tokens: 20,
+          total_tokens: 120, cached_input_tokens: 60, reasoning_tokens: 5, cost_usd: 0.0002 } }) };
     const count = (body.text.match(/VRCTXSEP\d+X/g) || []).length + 1;
     const parts = count > 1 ? core.parseContextTranslation(body.text, count) : [body.text];
     const text = badBatch && count > 1 ? "Повреждённый пакет" : core.buildContextSource(parts.map(translated));
-    return { ok: true, json: async () => ({ ok: true, translatedText: text }) };
+    return { ok: true, json: async () => ({
+      ok: true,
+      translatedText: text,
+      usage: {
+        usage_available: true, cost_available: true, input_tokens: 100,
+        output_tokens: 20, total_tokens: 120, cached_input_tokens: 60,
+        reasoning_tokens: 5, cost_usd: 0.0002
+      }
+    }) };
   };
   const checks = {};
   try {
@@ -65,7 +75,10 @@ window.runOptimizationSmoke = async function (shadow) {
     const first = metrics.find(event => event.phase === "result");
     checks.screenMetrics = first?.jobs === 12 && first.helper_requests === 1 && first.batch_requests === 1
       && first.first_apply_ms >= 0 && first.first_story_ms === null && first.outcome === "complete"
-      && first.duration_ms >= first.first_apply_ms && first.screen_id === requests[0].diagnostics.screen_id;
+      && first.duration_ms >= first.first_apply_ms && first.screen_id === requests[0].diagnostics.screen_id
+      && first.usage_requests === 1 && first.costed_requests === 1 && first.input_tokens === 100
+      && first.output_tokens === 20 && first.total_tokens === 120 && first.cached_input_tokens === 60
+      && first.reasoning_tokens === 5 && first.reported_cost_usd === 0.0002;
     show([labels[8], labels[2], labels[8], labels[0]]);
     await api.translateScreen();
     checks.batchReorderSubsetCache = requests.length === 1 && metrics.at(-1).cache_hits === 3
@@ -110,7 +123,9 @@ window.runOptimizationSmoke = async function (shadow) {
     const partialStart = requests.length;
     await api.translateScreen();
     checks.batchPartialFailureRetainsCompleted = requests.length === partialStart + 3
-      && metrics.at(-1).failed_jobs === 2 && area.firstChild.textContent === "Перевод 60";
+      && metrics.at(-1).failed_jobs === 2 && metrics.at(-1).usage_requests === 2
+      && metrics.at(-1).costed_requests === 2 && metrics.at(-1).reported_cost_usd === 0.0004
+      && area.firstChild.textContent === "Перевод 60";
     rejectRequests = false;
     badBatch = false;
     const resumeStart = requests.length;

@@ -49,7 +49,8 @@ class ServiceLoggingTests(unittest.TestCase):
     def test_success_correlates_usage_without_recording_private_content(self):
         usage = {"prompt_tokens": 120, "completion_tokens": 40, "total_tokens": 160,
                  "prompt_tokens_details": {"cached_tokens": 100},
-                 "completion_tokens_details": {"reasoning_tokens": 10}, "other": "PRIVATE-USAGE"}
+                 "completion_tokens_details": {"reasoning_tokens": 10},
+                 "cost": 0.000321, "other": "PRIVATE-USAGE"}
         with mock.patch.object(local_service.urllib.request, "urlopen", return_value=self.response(usage=usage)):
             result = self.translate()
         self.assertEqual(result["translatedText"], "PRIVATE-TRANSLATION")
@@ -61,6 +62,9 @@ class ServiceLoggingTests(unittest.TestCase):
         self.assertEqual([measured[key] for key in (
             "input_tokens", "output_tokens", "total_tokens", "cached_input_tokens", "reasoning_tokens",
         )], [120, 40, 160, 100, 10])
+        self.assertTrue(measured["cost_available"])
+        self.assertEqual(measured["cost_usd"], 0.000321)
+        self.assertEqual(result["usage"]["cost_usd"], 0.000321)
         self.assertTrue(events[-1]["ok"])
 
     def test_repeats_and_changed_configuration_can_be_distinguished(self):
@@ -114,20 +118,27 @@ class ServiceLoggingTests(unittest.TestCase):
 
     def test_paid_but_invalid_translation_keeps_usage(self):
         with mock.patch.object(local_service.urllib.request, "urlopen",
-                               return_value=self.response(usage={"total_tokens": 75})):
-            with self.assertRaises(local_service.BridgeError):
+                               return_value=self.response(usage={"total_tokens": 75, "cost": 0.00015})):
+            with self.assertRaises(local_service.BridgeError) as caught:
                 self.translate(text="PRIVATE-SOURCE VRCTXSEP1X PRIVATE-SOURCE")
         events = self.events()
         self.assertEqual(events[-1]["error"], "openai_format_invalid")
         self.assertEqual(next(event for event in events if event["event"] == "provider.usage")["total_tokens"], 75)
+        self.assertEqual(caught.exception.usage["cost_usd"], 0.00015)
 
     def test_absent_and_malformed_usage_are_not_zero(self):
         for usage in (None, {}, "PRIVATE", {"prompt_tokens": True, "completion_tokens": -1,
                                           "total_tokens": "123", "input_tokens_details": {"cached_tokens": 10**20}}):
             with self.subTest(usage=usage):
-                self.assertEqual(local_service.token_usage({"usage": usage}), {"usage_available": False})
+                self.assertEqual(local_service.token_usage({"usage": usage}),
+                                 {"usage_available": False, "cost_available": False})
         self.assertEqual(local_service.token_usage({"usage": {"input_tokens": 0, "output_tokens": 4}}),
-                         {"usage_available": True, "input_tokens": 0, "output_tokens": 4})
+                         {"usage_available": True, "cost_available": False,
+                          "input_tokens": 0, "output_tokens": 4})
+        self.assertEqual(local_service.token_usage({"usage": {"cost": 0}}),
+                         {"usage_available": False, "cost_available": True, "cost_usd": 0.0})
+        self.assertEqual(local_service.token_usage({"usage": {}, "cost": "0.00004"}),
+                         {"usage_available": False, "cost_available": True, "cost_usd": 0.00004})
 
     def test_concurrent_requests_keep_separate_trace_ids_and_complete_lines(self):
         barrier = threading.Barrier(4)
@@ -189,6 +200,9 @@ class ServiceLoggingTests(unittest.TestCase):
             "phase": "result", "screen_id": "b" * 32, "mode": "auto", "jobs": 12,
             "requests_planned": 1, "helper_requests": 1, "batch_requests": 1,
             "batch_fallbacks": 0, "cache_hits": 0, "max_queue_wait_ms": 2,
+            "usage_requests": 1, "costed_requests": 1, "input_tokens": 120,
+            "output_tokens": 40, "total_tokens": 160, "cached_input_tokens": 100,
+            "reasoning_tokens": 10, "reported_cost_usd": 0.000321,
             "first_apply_ms": 123, "first_story_ms": None,
             "outcome": "complete", "duration_ms": 150, "failed_jobs": 0,
         }
@@ -205,8 +219,10 @@ class ServiceLoggingTests(unittest.TestCase):
         self.assertEqual(event["event"], "screen.result")
         self.assertEqual(event["first_apply_ms"], 123)
         self.assertIsNone(event["first_story_ms"])
+        self.assertEqual(event["reported_cost_usd"], 0.000321)
         for key, value in (("text", "PRIVATE"), ("duration_ms", "PRIVATE"), ("cache_hits", True),
-                           ("first_apply_ms", -1), ("outcome", "PRIVATE"), ("phase", "PRIVATE")):
+                           ("first_apply_ms", -1), ("reported_cost_usd", float("nan")),
+                           ("outcome", "PRIVATE"), ("phase", "PRIVATE")):
             handler._read_json.return_value = {**payload, key: value}
             handler._write_json.reset_mock()
             handler.do_POST()

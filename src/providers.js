@@ -4,6 +4,20 @@
   const core = root.VNRevivalTranslationCore;
   if (!core) throw new Error("VN Revival translation core is missing before providers");
 
+  function recordUsage(metrics, usage) {
+    if (!metrics || !usage || typeof usage !== "object") return;
+    if (usage.usage_available === true) {
+      metrics.usage_requests += 1;
+      for (const field of ["input_tokens", "output_tokens", "total_tokens", "cached_input_tokens", "reasoning_tokens"]) {
+        if (Number.isInteger(usage[field]) && usage[field] >= 0) metrics[field] += usage[field];
+      }
+    }
+    if (usage.cost_available === true && Number.isFinite(usage.cost_usd) && usage.cost_usd >= 0) {
+      metrics.costed_requests += 1;
+      metrics.reported_cost_usd = Number(((metrics.reported_cost_usd || 0) + usage.cost_usd).toFixed(12));
+    }
+  }
+
   const providers = [
     {
       id: "google",
@@ -53,24 +67,31 @@
       },
       async translateChunk(context) {
         const connection = context.openAICompatible || {};
-        const payload = await context.localRequest("/v1/openai-compatible/translate", {
-          body: {
-            text: context.text,
-            target: context.language,
-            targetName: context.languageName || context.language,
-            model: connection.model,
-            preset: connection.preset,
-            baseURL: connection.baseURL,
-            systemPrompt: connection.requestSystemPrompt || connection.systemPrompt,
-            modelParameters: connection.modelParameters
-          },
-          signal: context.signal
-        });
+        let payload;
+        try {
+          payload = await context.localRequest("/v1/openai-compatible/translate", {
+            body: {
+              text: context.text,
+              target: context.language,
+              targetName: context.languageName || context.language,
+              model: connection.model,
+              preset: connection.preset,
+              baseURL: connection.baseURL,
+              systemPrompt: connection.requestSystemPrompt || connection.systemPrompt,
+              modelParameters: connection.modelParameters
+            },
+            signal: context.signal
+          });
+        } catch (error) {
+          recordUsage(context.metrics, error?.usage);
+          throw error;
+        }
         if (typeof payload.translatedText !== "string" || !payload.translatedText.trim()) {
           const error = new Error("The OpenAI-compatible provider returned an empty translation");
           error.code = "openai_empty_translation";
           throw error;
         }
+        recordUsage(context.metrics, payload.usage);
         return payload.translatedText;
       }
     }

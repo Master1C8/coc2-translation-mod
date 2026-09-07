@@ -536,6 +536,7 @@
       error.httpStatus = response.status;
       error.providerStatus = payload && Number.isInteger(payload.providerStatus) ? payload.providerStatus : null;
       error.retryAfterMs = payload && Number.isFinite(payload.retryAfterMs) ? payload.retryAfterMs : null;
+      error.usage = payload && payload.usage && typeof payload.usage === "object" ? payload.usage : null;
       throw error;
     }
     return payload;
@@ -580,6 +581,7 @@
         }
         return await selectedProvider.translateChunk({
           text, language, sourceLanguage: SOURCE_LANGUAGE, signal,
+          metrics: context.metrics || null,
           openAICompatible: providerUsesOpenAICompatible(provider) ? (context.connection || connectionForSource(text)) : null,
           languageName: (LANGUAGES.find(([code]) => code === language) || [null, language])[1],
           fetch: (input, init) => fetch(input, init),
@@ -1235,7 +1237,9 @@
       screen_id: crypto.randomUUID().replace(/-/g, ""), mode: manual ? "manual" : "auto",
       jobs: originalJobCount, requests_planned: jobs.length, helper_requests: 0,
       batch_requests: 0, batch_fallbacks: 0, cache_hits: 0, max_queue_wait_ms: 0,
-      first_apply_ms: null, first_story_ms: null
+      usage_requests: 0, costed_requests: 0, input_tokens: 0, output_tokens: 0,
+      total_tokens: 0, cached_input_tokens: 0, reasoning_tokens: 0,
+      reported_cost_usd: null, first_apply_ms: null, first_story_ms: null
     };
     const context = { metrics, started, signal: abortController.signal,
       connection: openAICompatibleConnection(), variant: runVariant };
