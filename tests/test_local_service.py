@@ -412,6 +412,16 @@ class LocalServiceTests(unittest.TestCase):
                 )
             self.assertEqual(caught.exception.code, "openai_system_prompt_invalid")
 
+    def test_translation_rejects_an_oversized_system_prompt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            with self.assertRaises(local_service.BridgeError) as caught:
+                bridge.openai_translate(
+                    "ru", "Russian", "Hello", "model", "openrouter", "ignored",
+                    "x" * (local_service.OPENAI_COMPATIBLE_MAX_REQUEST_SYSTEM_PROMPT_CHARS + 1)
+                )
+            self.assertEqual(caught.exception.code, "openai_system_prompt_invalid")
+
     def test_translation_rejects_changed_context_markers(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")

@@ -49,7 +49,7 @@ runtime
 - `google` — публичный endpoint без API-ключа;
 - `openai-compatible` — от одного до восьми параллельных запросов через локальный helper; пользовательское значение по умолчанию — четыре.
 
-OpenAI-compatible включает preset OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom. Runtime сохраняет preset, Base URL, model ID, редактируемый шаблон системного prompt, параметры модели (reasoning effort и verbosity) и отдельный лимит параллельных запросов. Лимит влияет только на число workers и не входит в payload или cache variant. Шаблон поддерживает `{targetName}` и `{target}`; helper подставляет выбранный язык перед запросом. Открытие model picker вызывает `GET /models`; единый безопасный select закрепляет бесплатные модели сверху, сортирует обе группы по алфавиту и оставляет отдельный пункт для ручного ID. Поскольку каталоги OpenCode Go и Zen смешивают модели для нескольких wire protocol, helper пропускает в select только модели, документированные для Chat Completions. Перевод использует `POST /chat/completions`; временные отказы повторяются с exponential backoff и `Retry-After`, а исчерпанный rate limit останавливает оставшуюся очередь вместо серии бесполезных запросов.
+OpenAI-compatible включает preset OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom. Runtime сохраняет preset, Base URL, model ID, редактируемый шаблон системного prompt, пользовательский словарь, параметры модели (reasoning effort и verbosity) и отдельный лимит параллельных запросов. Лимит влияет только на число workers и не входит в payload или cache variant. Непустой словарь дописывается к шаблону перед каждым запросом; шаблон поддерживает `{targetName}` и `{target}`, которые helper заменяет выбранным языком. Открытие model picker вызывает `GET /models`; единый безопасный select закрепляет бесплатные модели сверху, сортирует обе группы по алфавиту и оставляет отдельный пункт для ручного ID. Поскольку каталоги OpenCode Go и Zen смешивают модели для нескольких wire protocol, helper пропускает в select только модели, документированные для Chat Completions. Перевод использует `POST /chat/completions`; временные отказы повторяются с exponential backoff и `Retry-After`, а исчерпанный rate limit останавливает оставшуюся очередь вместо серии бесполезных запросов.
 
 Helper сначала просит JSON Schema. При явном отказе endpoint от этого формата он
 переходит на `json_object`, а при ещё одном явном отказе — на запрос без
@@ -80,7 +80,7 @@ Custom URL отклоняется при наличии credentials, query, frag
 
 ## Кэш
 
-IndexedDB хранит полный кэш; RAM-кэш — LRU на 20 000 записей. V3-ключ включает `game-id`, provider и language. Для OpenAI-compatible используется v4: fingerprint включает preset, Base URL, model ID, параметры модели, версию и полный текст системного prompt, поэтому смена endpoint, модели, параметров или инструкции не подменяет новый результат старым.
+IndexedDB хранит полный кэш; RAM-кэш — LRU на 20 000 записей. V3-ключ включает `game-id`, provider и language. Для OpenAI-compatible используется v4: fingerprint включает preset, Base URL, model ID, параметры модели, версию, полный текст системного prompt и словарь, поэтому смена endpoint, модели, параметров, инструкции или словаря не подменяет новый результат старым.
 
 Существующие CoC2 Google-ключи v1/v2 читаются как fallback и лениво заменяются v3 после успешной записи. Для OpenAI-compatible legacy fallback не применяется. Метаданные количества/байтов защищены dirty-маркером и при расхождении восстанавливаются потоковым курсором.
 

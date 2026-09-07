@@ -40,6 +40,7 @@ test("OpenAI-compatible delegates endpoint profile and model without exposing it
     openAICompatible: {
       preset: "openrouter", baseURL: "https://openrouter.ai/api/v1", model: "provider/model",
       systemPrompt: "Translate into {targetName} ({target}).",
+      requestSystemPrompt: "Translate into {targetName} ({target}).\n\nGlossary:\nMinstrel = Менестрель",
       modelParameters: { reasoningEffort: "high", verbosity: "low" }
     },
     localRequest: async (path, options) => {
@@ -52,7 +53,7 @@ test("OpenAI-compatible delegates endpoint profile and model without exposing it
   assert.deepEqual(request.options.body, {
     text: "Hello", target: "ru", targetName: "Russian", model: "provider/model",
     preset: "openrouter", baseURL: "https://openrouter.ai/api/v1",
-    systemPrompt: "Translate into {targetName} ({target}).",
+    systemPrompt: "Translate into {targetName} ({target}).\n\nGlossary:\nMinstrel = Менестрель",
     modelParameters: { reasoningEffort: "high", verbosity: "low" }
   });
   assert.equal(registry.byId["openai-compatible"].credentialManager, "openai-compatible");

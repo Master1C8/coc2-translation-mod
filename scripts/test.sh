@@ -51,10 +51,10 @@ if grep -RInE "381780|BepInEx|StorySentenceElement|EightyDaysRussianTranslator" 
   exit 1
 fi
 
-if grep -RIniE "glossary|словар" src launcher/macos launcher/windows; then
-  echo "Removed dictionary functionality is still present" >&2
+grep -Fq 'openAICompatibleGlossary' src/translator-runtime.js || {
+  echo "Missing OpenAI-compatible glossary support" >&2
   exit 1
-fi
+}
 
 if grep -RIniE "omori|asset-cache|asset extraction|workbench|bulk translate" \
   src launcher/macos launcher/windows; then

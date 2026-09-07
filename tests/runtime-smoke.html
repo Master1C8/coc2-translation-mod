@@ -220,6 +220,30 @@
         && getComputedStyle(openAIPromptEditor).display === "none"
         && openAIPromptToggle.textContent === "System prompt"
         && openAIPromptToggle.getAttribute("aria-expanded") === "false";
+      const openAIGlossaryToggle = shadow.querySelector(".openAICompatibleGlossaryToggle");
+      const openAIGlossaryEditor = shadow.querySelector(".openAICompatibleGlossaryEditor");
+      const openAIGlossaryInput = shadow.querySelector(".openAICompatibleGlossary");
+      const openAIGlossaryInitiallyCollapsed = openAIGlossaryEditor.hidden
+        && getComputedStyle(openAIGlossaryEditor).display === "none"
+        && openAIGlossaryToggle.textContent === "Glossary"
+        && openAIGlossaryToggle.getAttribute("aria-expanded") === "false"
+        && openAIGlossaryInput.value === ""
+        && openAIGlossaryInput.maxLength === 8000
+        && openAIGlossaryInput.placeholder.includes("source = translation");
+      openAIGlossaryToggle.click();
+      const openAIGlossaryOpenedByButton = !openAIGlossaryEditor.hidden
+        && getComputedStyle(openAIGlossaryEditor).display !== "none"
+        && openAIGlossaryToggle.textContent === "Hide glossary"
+        && openAIGlossaryToggle.getAttribute("aria-expanded") === "true";
+      openAIGlossaryInput.value = "Minstrel = Менестрель";
+      openAIGlossaryInput.dispatchEvent(new Event("change"));
+      const openAIGlossarySaved = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null")
+        ?.openAICompatibleGlossary === openAIGlossaryInput.value;
+      openAIGlossaryToggle.click();
+      const openAIGlossaryClosedByButton = openAIGlossaryEditor.hidden
+        && getComputedStyle(openAIGlossaryEditor).display === "none"
+        && openAIGlossaryToggle.textContent === "Glossary"
+        && openAIGlossaryToggle.getAttribute("aria-expanded") === "false";
       const reasoningEffortInput = shadow.querySelector(".openAICompatibleReasoningEffort");
       const verbosityInput = shadow.querySelector(".openAICompatibleVerbosity");
       const concurrencyInput = shadow.querySelector(".openAICompatibleConcurrency");
@@ -431,6 +455,10 @@
         && openAIPromptEditable
         && openAIPromptSaved
         && openAIPromptClosedByButton
+        && openAIGlossaryInitiallyCollapsed
+        && openAIGlossaryOpenedByButton
+        && openAIGlossarySaved
+        && openAIGlossaryClosedByButton
         && openAIModelParametersVisible
         && openAIModelParametersSaved
         && openAIHintRemoved
@@ -490,6 +518,10 @@
         openAIPromptEditable,
         openAIPromptSaved,
         openAIPromptClosedByButton,
+        openAIGlossaryInitiallyCollapsed,
+        openAIGlossaryOpenedByButton,
+        openAIGlossarySaved,
+        openAIGlossaryClosedByButton,
         openAIModelParametersVisible,
         openAIModelParametersSaved,
         openAIHintRemoved,

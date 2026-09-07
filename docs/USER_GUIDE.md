@@ -47,6 +47,7 @@ At first network use, select `Allow auto-translate` or `Manual only`. The choice
 5. Choose a model from the single list. Free models are pinned first, and both the free and paid groups are alphabetical. OpenCode Go and Zen show only models documented for Chat Completions because their full catalogs also contain models for other incompatible APIs. Use `Enter model ID manually…` when the endpoint does not list the required ID.
 6. Optionally set reasoning effort and output verbosity. `Provider default` omits that optional parameter. Choose `Parallel requests` from 1 to 8; the default is 4. Reduce it if the provider rate-limits requests.
 7. Click `System prompt` to open the editor when needed. `{targetName}` and `{target}` are replaced with the selected language name and code. Use `Restore default` to recover the built-in instruction.
+8. Click `Glossary` to add one preferred mapping per line, for example `Minstrel = Менестрель`. The saved glossary is appended to every AI system prompt automatically.
 
 Preset Base URLs:
 
@@ -66,7 +67,7 @@ The helper validates response structure and context markers before applying text
 
 ### Cache and layout
 
-Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, model parameters, prompt version, and the complete system prompt. Changing the prompt or parameters therefore does not reuse results produced with an older configuration. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
+Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, model parameters, prompt version, the complete system prompt, and the glossary. Changing the prompt, glossary, or parameters therefore does not reuse results produced with an older configuration. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
 
 RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored before retranslation after a language or configuration change. Existing HTML elements and click handlers remain in place.
 
@@ -134,6 +135,7 @@ advanced launches can select Parallels with
 5. Выберите модель в единственном списке. Бесплатные модели закреплены сверху, а бесплатная и платная группы отсортированы по алфавиту. Для OpenCode Go и Zen показываются только модели, документированные для Chat Completions: полные каталоги этих провайдеров также содержат модели для других несовместимых API. Для отсутствующего в каталоге ID используйте `Enter model ID manually…`.
 6. При необходимости задайте reasoning effort и verbosity. `Provider default` не отправляет соответствующий optional-параметр. В `Parallel requests` выберите от 1 до 8 одновременных запросов; по умолчанию — 4. Уменьшите значение, если провайдер ограничивает частоту запросов.
 7. При необходимости нажмите `System prompt`, чтобы открыть редактор. Вместо `{targetName}` и `{target}` helper подставляет название и код выбранного языка. Кнопка `Restore default` возвращает встроенную инструкцию.
+8. Нажмите `Glossary` и добавьте по одной предпочтительной паре в строке, например `Minstrel = Менестрель`. Сохранённый словарь автоматически дописывается к системной инструкции каждого ИИ-запроса.
 
 Base URL preset:
 
@@ -153,7 +155,7 @@ Helper проверяет структуру ответа и контекстн�
 
 ### Кэш и оформление
 
-Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, параметрам модели, версии и полному тексту системной инструкции. Поэтому после изменения prompt или параметров не используются ответы, созданные с прежней конфигурацией. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
+Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, параметрам модели, версии, полному тексту системной инструкции и словарю. Поэтому после изменения prompt, словаря или параметров не используются ответы, созданные с прежней конфигурацией. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
 
 RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются перед повторным переводом при смене языка или конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 

@@ -42,6 +42,7 @@
 - OpenAI-compatible передаёт только явно выбранные reasoning effort и verbosity,
   а явно неподдерживаемые optional-параметры удаляет ограниченным повтором запроса;
 - редактор system prompt по умолчанию скрыт и открывается отдельной кнопкой;
+- редактор словаря по умолчанию скрыт; пары сохраняются локально, дописываются к system prompt и изолируют новый кэш от результатов со старым словарём;
 - OpenAI-compatible обрабатывает выбранное пользователем число от одного до восьми независимых переводческих заданий параллельно (по умолчанию четыре),
   не меняя prompt, модель, cache variant или проверку результата;
 - прежняя v1/v2 → v3 миграция Google-кэша остаётся доступной;
@@ -65,7 +66,7 @@
 - 22 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
   cache isolation/migration, UTF-8 splitting, context markers and launcher
   lifecycle contracts;
-- 34 Python tests: manifest/launcher contracts и local helper, включая preset,
+- 35 Python tests: manifest/launcher contracts и local helper, включая preset,
   URL policy, credential vault, model discovery, Chat Completions, structured
   response/model-parameter fallback, marker validation и safe errors;
 - source verification: 30 языков из общего каталога сайта;

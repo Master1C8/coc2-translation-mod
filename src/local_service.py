@@ -22,7 +22,7 @@ from typing import Any
 
 
 OPENAI_COMPATIBLE_PROMPT_VERSION = "vnrevival-openai-compatible-v2"
-OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS = 12_000
+OPENAI_COMPATIBLE_MAX_REQUEST_SYSTEM_PROMPT_CHARS = 24_000
 OPENAI_COMPATIBLE_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
 OPENAI_COMPATIBLE_VERBOSITIES = {"low", "medium", "high"}
 OPENCODE_CHAT_MODELS = {
@@ -657,7 +657,7 @@ class LocalServiceBridge:
         if system_prompt is None:
             system_prompt = OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT
         if not isinstance(system_prompt, str) or not system_prompt.strip() \
-                or len(system_prompt) > OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS \
+                or len(system_prompt) > OPENAI_COMPATIBLE_MAX_REQUEST_SYSTEM_PROMPT_CHARS \
                 or any(ord(character) < 32 and character not in "\r\n\t" or ord(character) == 127
                        for character in system_prompt):
             raise BridgeError("openai_system_prompt_invalid", "Enter a valid system prompt", 400)
