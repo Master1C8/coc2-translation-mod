@@ -143,20 +143,23 @@ test("selects relevant glossary mappings conservatively and preserves free-form 
   }
 });
 
-test("batches bounded independent labels while preserving story and context jobs", () => {
-  const labels = Array.from({ length: 25 }, (_, i) => ({ source: `Label ${i}`, kind: "control", nodes: [i] }));
-  const preserved = [
-    { source: "A short story", kind: "story", nodes: [30] },
-    { source: "Context", kind: "control", contextual: true, nodes: [31] },
-    { source: "Long ".repeat(20), kind: "ui", nodes: [32] },
-    { source: "Tooltip", kind: "tooltip", nodes: [33] },
-    { source: "First\nSecond", kind: "ui", nodes: [34] },
-    { source: "First VRCTXSEP1X Second", kind: "ui", nodes: [35] },
-  ];
-  const batches = core.batchShortJobs([...labels, ...preserved]);
-  assert.equal(batches[0], preserved[0]);
-  assert.deepEqual(batches.filter(job => job.batchParts).map(job => job.batchParts.length), [12, 12]);
-  assert.ok(preserved.every(job => batches.includes(job)));
-  assert.deepEqual(batches.flatMap(job => job.nodes).sort((a, b) => a - b), [...labels, ...preserved].flatMap(job => job.nodes));
-  assert.equal(core.batchShortJobs(labels, 0).length, 3);
+test("packs ordered screen blocks within request and fragment limits", () => {
+  const story = (source, region = "scene") => ({ source, kind: "story", nodes: [source], batchRegion: region });
+  const first = story("First paragraph.");
+  const rich = { ...story(""), contextual: true, parts: [{ source: "A bold" }, { source: " continuation." }] };
+  const last = story("Last paragraph.");
+  const packed = core.batchScreenJobs([first, rich, last]);
+  assert.deepEqual(packed[0].batchParts, [first, rich, last]);
+  assert.deepEqual(packed[0].batchParts.flatMap(core.jobTextParts), ["First paragraph.", "A bold", " continuation.", "Last paragraph."]);
+  const huge = story("Word ".repeat(2000));
+  const other = story("Other scene", "other");
+  const tooltip = { source: "Tooltip", kind: "tooltip", nodes: ["tip"] };
+  assert.deepEqual(core.batchScreenJobs([first, huge, other, tooltip]), [first, huge, other, tooltip]);
+  assert.equal(core.batchScreenJobs([story("é".repeat(1450)), story("é".repeat(1450)), story("é".repeat(1450))]).length, 2);
+  const many = Array.from({ length: 25 }, (_, index) => story(`Paragraph ${index}`));
+  assert.deepEqual(core.batchScreenJobs(many).map(job => job.batchParts?.length || 1), [12, 12, 1]);
+  const manyRich = Array.from({ length: 5 }, () => ({ ...rich, parts: Array.from({ length: 12 }, () => ({ source: "Text" })) }));
+  assert.deepEqual(core.batchScreenJobs(manyRich).map(job => job.batchParts?.length || 1), [4, 1]);
+  const literalMarker = story("Literal VRCTXSEP1X marker");
+  assert.deepEqual(core.batchScreenJobs([first, literalMarker, last]), [first, literalMarker, last]);
 });

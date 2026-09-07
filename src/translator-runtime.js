@@ -857,6 +857,11 @@
   function rememberTranslation(node, source, translation, language, provider, context = {}, dependencySource = source) {
     if (!node || !node.isConnected || !translation || context.signal?.aborted
         || (context.variant && context.variant !== translationVariant())) return;
+    if (sourceForNode(node) !== source) return;
+    if (context.deferred) {
+      context.deferred.push([node, source, translation, language, provider, context, dependencySource]);
+      return;
+    }
     applied.set(node, { source, translation, language, provider, dependencySource });
     appliedNodes.add(node);
     if (settings.mode === "translated") {
@@ -928,6 +933,7 @@
 
   function buildJobs(nodes) {
     const blocks = new Map();
+    const order = new Map(nodes.map((node, index) => [node, index]));
     for (const node of nodes) {
       const source = sourceForNode(node);
       if (!hasSourceText(source)) continue;
@@ -961,14 +967,21 @@
           continue;
         }
         const entry = entries[offset];
-        if (!simple.has(entry.source)) simple.set(entry.source, { source: entry.source, nodes: [], kind: entry.kind, contextual: false });
-        simple.get(entry.source).nodes.push(entry.node);
+        if (entry.kind === "story") {
+          jobs.push({ source: entry.source, nodes: [entry.node], kind: entry.kind, contextual: false });
+        } else {
+          if (!simple.has(entry.source)) simple.set(entry.source, { source: entry.source, nodes: [], kind: entry.kind, contextual: false });
+          simple.get(entry.source).nodes.push(entry.node);
+        }
         offset += 1;
       }
     }
     jobs.push(...simple.values());
     const priority = { story: 0, control: 1, tooltip: 2, ui: 3 };
-    return jobs.sort((a, b) => priority[a.kind] - priority[b.kind]);
+    for (const job of jobs) {
+      job.batchRegion = job.kind === "control" ? null : contextContainerForNode(job.nodes[0])?.parentElement;
+    }
+    return jobs.sort((a, b) => priority[a.kind] - priority[b.kind] || order.get(a.nodes[0]) - order.get(b.nodes[0]));
   }
 
   function batchFormatError(error) {
@@ -981,23 +994,31 @@
       signal.throwIfAborted();
       const key = translationCacheKey(part.source, language, provider, context.connection);
       const cached = await cacheGet(key);
-      if (cached) {
+      if (cached && (!part.contextual || core.parseContextTranslation(cached, part.parts.length))) {
         context.metrics.cache_hits += 1;
-        for (const node of part.nodes) {
-          if (sourceForNode(node) === part.source) rememberTranslation(node, part.source, cached, language, provider, context);
-        }
+        applyResolvedTranslation(part, cached, language, provider, context);
       } else missing.push({ ...part, key });
     }
     if (!missing.length) return true;
     if (missing.length > 1) {
-      const source = core.buildContextSource(missing.map(part => part.source));
+      const fragments = missing.flatMap(core.jobTextParts);
+      const source = core.buildContextSource(fragments);
       const connection = connectionForSource(source, context.connection);
-      connection.requestSystemPrompt += "\nThese are independent interface labels. Translate each separately; preserve every VRCTXSEP marker and its order.";
+      let offset = 1;
+      const boundaries = missing.map(part => {
+        const start = offset;
+        offset += core.jobTextParts(part).length;
+        return start === offset - 1 ? String(start) : `${start}-${offset - 1}`;
+      }).join("; ");
+      connection.requestSystemPrompt += job.kind === "story"
+        ? `\nTranslate this passage coherently in its original order. Paragraph fragment groups (1-based): ${boundaries}.`
+        : `\nTranslate these interface blocks independently. Block fragment groups (1-based): ${boundaries}.`;
+      connection.requestSystemPrompt += " Preserve every VRCTXSEP marker and its order; do not move text between fragments.";
       let parts;
       try {
         const translated = await requestChunk(provider, source, language, signal, onRetry,
           { ...context, connection, batchSize: missing.length });
-        parts = core.parseContextTranslation(translated, missing.length);
+        parts = core.parseContextTranslation(translated, fragments.length);
       } catch (error) {
         if (!batchFormatError(error)) {
           error.failedJobs = missing;
@@ -1005,19 +1026,20 @@
         }
       }
       if (parts) {
-        for (let index = 0; index < missing.length; index += 1) {
-          const part = missing[index];
-          await cachePut(part.key, parts[index]);
-          for (const node of part.nodes) {
-            if (sourceForNode(node) === part.source) rememberTranslation(node, part.source, parts[index], language, provider, context);
-          }
+        let index = 0;
+        for (const part of missing) {
+          const count = core.jobTextParts(part).length;
+          const translated = core.buildContextSource(parts.slice(index, index + count));
+          index += count;
+          await cachePut(part.key, translated);
+          applyResolvedTranslation(part, translated, language, provider, context);
         }
         await sleep(providerRequestDelay(provider), signal);
         return false;
       }
       context.metrics.batch_fallbacks += 1;
     }
-    // A malformed batch never enters the cache. Retry its missing labels individually.
+    // A malformed batch never enters the cache. Retry only its missing original blocks.
     for (let index = 0; index < missing.length; index += 1) {
       try {
         await applyJobTranslation(missing[index], language, provider, signal, onRetry, context);
@@ -1029,26 +1051,46 @@
     return false;
   }
 
+  function applyResolvedTranslation(job, translated, language, provider, context) {
+    if (!job.contextual) {
+      for (const node of job.nodes) rememberTranslation(node, job.source, translated, language, provider, context);
+      return true;
+    }
+    const parts = core.parseContextTranslation(translated, job.parts.length);
+    if (!parts) return false;
+    for (let index = 0; index < job.parts.length; index += 1) {
+      const part = job.parts[index];
+      rememberTranslation(part.node, part.source, parts[index], language, provider, context, job.source);
+    }
+    return true;
+  }
+
   async function applyJobTranslation(job, language, provider, signal, onRetry, context = {}) {
     context = { ...context, kind: job.kind };
-    if (job.batchParts) return applyBatchTranslation(job, language, provider, signal, onRetry, context);
-    const result = await translateText(job.source, language, provider, signal, onRetry, context);
-    if (!job.contextual) {
-      for (const node of job.nodes) {
-        if (node.isConnected && sourceForNode(node) === job.source) rememberTranslation(node, job.source, result.text, language, provider, context);
-      }
-      return result.cached;
-    }
-    const contextualParts = core.parseContextTranslation(result.text, job.parts.length);
-    if (contextualParts) {
-      for (let index = 0; index < job.parts.length; index += 1) {
-        const part = job.parts[index];
-        if (part.node.isConnected && sourceForNode(part.node) === part.source) {
-          rememberTranslation(part.node, part.source, contextualParts[index], language, provider, context, job.source);
+    if (job.batchParts) {
+      // Stage passage updates until every paragraph is ready, including cache hits.
+      if (job.kind !== "control") context = { ...context, deferred: [] };
+      try {
+        const cached = await applyBatchTranslation(job, language, provider, signal, onRetry, context);
+        if (context.deferred) {
+          const current = job.batchParts.every(part => (part.contextual
+            ? part.parts : part.nodes.map(node => ({ node, source: part.source })))
+            .every(({ node, source }) => node.isConnected && sourceForNode(node) === source));
+          const updates = context.deferred;
+          context.deferred = null;
+          if (current) for (const update of updates) {
+            update[5] = { ...update[5], deferred: null };
+            rememberTranslation(...update);
+          }
         }
+        return cached;
+      } catch (error) {
+        if (context.deferred) error.failedJobs = job.batchParts;
+        throw error;
       }
-      return result.cached;
     }
+    const result = await translateText(job.source, language, provider, signal, onRetry, context);
+    if (applyResolvedTranslation(job, result.text, language, provider, context)) return result.cached;
     let allCached = true;
     for (const part of job.parts) {
       const fallback = await translateText(part.source, language, provider, signal, onRetry, context);
@@ -1097,7 +1139,7 @@
     }
 
     const originalJobCount = jobs.length;
-    if (providerUsesOpenAICompatible(settings.provider)) jobs = core.batchShortJobs(jobs);
+    if (providerUsesOpenAICompatible(settings.provider)) jobs = core.batchScreenJobs(jobs, PROVIDERS[settings.provider].contextLimit);
     running = true;
     autoBlockedVariant = null;
     const runVariant = translationVariant();

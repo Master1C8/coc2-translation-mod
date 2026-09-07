@@ -43,6 +43,7 @@ node --check tests/runtime/smoke-report.js
 node --check tests/runtime/smoke-setup.js
 node --check tests/runtime/smoke-scenario.js
 node --check tests/runtime/optimization-scenario.js
+node --check tests/runtime/screen-block-scenario.js
 [[ -s "$ROOT/$ICON_PNG" && -s "$ROOT/$ICON_ICNS" ]]
 python3 scripts/generate-game-config.py "$GAME_MANIFEST" "$ROOT/.build/game-config.js"
 node --check "$ROOT/.build/game-config.js"

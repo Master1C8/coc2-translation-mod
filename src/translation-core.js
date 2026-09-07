@@ -279,29 +279,35 @@
     )).join("\n").trim();
   }
 
-  function batchShortJobs(jobs, limit = 12) {
-    limit = Math.max(2, Math.min(12, Math.floor(Number(limit)) || 12));
+  function jobTextParts(job) {
+    return job.contextual ? job.parts.map(part => part.source) : [job.source];
+  }
+
+  function batchScreenJobs(jobs, maxBytes = 6000) {
     const result = [];
-    const groups = new Map();
+    let pending = [];
+    const flush = () => {
+      if (pending.length) result.push(pending.length === 1 ? pending[0] : {
+        kind: pending[0].kind, batchParts: pending, nodes: pending.flatMap(part => part.nodes)
+      });
+      pending = [];
+    };
     for (const job of jobs) {
-      if (job.contextual || !["control", "ui"].includes(job.kind)
-          || job.source.length > 80 || /[\r\n]|VRCTXSEP\d+X/.test(job.source)) {
+      const sources = jobTextParts(job);
+      if (!["story", "control", "ui"].includes(job.kind)
+          || sources.some(source => /VRCTXSEP\d+X/.test(source))) {
+        flush();
         result.push(job);
         continue;
       }
-      if (!groups.has(job.kind)) groups.set(job.kind, []);
-      groups.get(job.kind).push(job);
+      const combined = [...pending, job].flatMap(jobTextParts);
+      if (pending.length && (pending[0].kind !== job.kind
+          || pending[0].batchRegion !== job.batchRegion || pending.length >= 12
+          || combined.length > 48 || utf8Length(buildContextSource(combined)) > maxBytes)) flush();
+      pending.push(job);
     }
-    for (const [kind, parts] of groups) {
-      for (let offset = 0; offset < parts.length; offset += limit) {
-        const batch = parts.slice(offset, offset + limit);
-        result.push(batch.length === 1 ? batch[0] : {
-          kind, batchParts: batch, nodes: batch.flatMap((part) => part.nodes)
-        });
-      }
-    }
-    const priority = { story: 0, control: 1, tooltip: 2, ui: 3 };
-    return result.sort((a, b) => priority[a.kind] - priority[b.kind]);
+    flush();
+    return result;
   }
 
   function parseContextTranslation(value, count) {
@@ -380,7 +386,8 @@
     buildContextSource,
     parseContextTranslation,
     selectGlossary,
-    batchShortJobs,
+    batchScreenJobs,
+    jobTextParts,
     makeCacheKey,
     cacheKeyLanguage,
     cacheKeyProvider,

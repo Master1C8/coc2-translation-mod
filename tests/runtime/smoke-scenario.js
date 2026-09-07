@@ -494,6 +494,7 @@
   })();
 
   const optimization = await window.runOptimizationSmoke(shadow);
+  const screenBlocks = await window.runScreenBlockSmoke(shadow);
 
   // Keep each expectation once; the reporter lists failed names only.
   window.smokeReport({
@@ -527,6 +528,7 @@
     stableTranslationFeedback,
     ...retryLifecycle,
     ...optimization,
+    ...screenBlocks,
     reasoningModelCompatibility,
     gameThemeApplied,
     russianInterfacePresetApplied,
