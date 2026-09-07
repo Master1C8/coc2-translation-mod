@@ -152,6 +152,31 @@
         && !shadow.querySelector(".settings .language")
         && shadow.querySelector(".quickLanguage").nextElementSibling?.classList.contains("row")
         && getComputedStyle(shadow.querySelector(".quickLanguage")).display !== "none";
+      const interfaceTranslationCheckbox = shadow.querySelector(".interfaceTranslation");
+      const interfaceToggleIsRightOfLanguage = interfaceTranslationCheckbox.checked === false
+        && interfaceTranslationCheckbox.closest(".interfaceTranslationToggle")
+          === shadow.querySelector(".language").nextElementSibling
+        && interfaceTranslationCheckbox.closest(".quickLanguage") === shadow.querySelector(".quickLanguage");
+      const requestsBeforeInterfacePreset = window.fetchCalls.length + window.localHelperCalls.length;
+      shadow.querySelector(".language").value = "ru";
+      shadow.querySelector(".language").dispatchEvent(new Event("change"));
+      interfaceTranslationCheckbox.checked = true;
+      interfaceTranslationCheckbox.dispatchEvent(new Event("change"));
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      const russianInterfacePresetApplied = shadow.querySelector(".quickLanguageLabel").textContent === "Язык"
+        && shadow.querySelector(".translationServiceLabel").textContent === "Сервис перевода"
+        && shadow.querySelector(".autoTitle").textContent === "Автоперевод"
+        && shadow.querySelector(".cacheStats").textContent.startsWith("Кэш:")
+        && shadow.querySelector(".translateAction").textContent === "Перевести"
+        && window.__vnRevivalTranslator.settings().translateInterface === true
+        && window.fetchCalls.length + window.localHelperCalls.length === requestsBeforeInterfacePreset;
+      interfaceTranslationCheckbox.checked = false;
+      interfaceTranslationCheckbox.dispatchEvent(new Event("change"));
+      shadow.querySelector(".language").value = "en";
+      shadow.querySelector(".language").dispatchEvent(new Event("change"));
+      const englishInterfaceRestored = shadow.querySelector(".quickLanguageLabel").textContent === "Language"
+        && shadow.querySelector(".translationServiceLabel").textContent === "Translation service"
+        && window.__vnRevivalTranslator.settings().translateInterface === false;
       const providerOptions = Array.from(shadow.querySelector(".provider").options)
         .map((option) => [option.value, option.textContent]);
       const shortcutInsideMainButton = shadow.querySelector(".translate .translateShortcut")?.textContent === "Ctrl+Shift+T"
@@ -461,6 +486,9 @@
         && defaultAutoTranslate
         && autoModeHidesTranslate
         && languageIsTopLevel
+        && interfaceToggleIsRightOfLanguage
+        && russianInterfacePresetApplied
+        && englishInterfaceRestored
         && languageOptions.length === 30
         && JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
           ["zh", "Chinese (Simplified) (中文（简体）)"],
@@ -534,6 +562,9 @@
         defaultAutoTranslate,
         autoModeHidesTranslate,
         languageIsTopLevel,
+        interfaceToggleIsRightOfLanguage,
+        russianInterfacePresetApplied,
+        englishInterfaceRestored,
         languageOptions,
         providerOptions,
         openAIKeyIsPasswordOnly,

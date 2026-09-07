@@ -48,6 +48,70 @@
     lmstudio: Object.freeze({ name: "LM Studio", baseURL: "http://127.0.0.1:1234/v1", requiresKey: false }),
     custom: Object.freeze({ name: "Custom", baseURL: "", requiresKey: false })
   });
+  const INTERFACE_PRESETS = Object.freeze({
+    en: Object.freeze({
+      language: "Language", translate: "Translate", cancel: "Cancel",
+      autoHint: "If translation glitches, turn off Auto translate below.", retryFailed: "Retry failed",
+      privacyText: "Visible game text is sent to the selected translation service. Save slots and input fields are excluded.",
+      allowAuto: "Allow auto-translate", manualOnly: "Manual only", translationService: "Translation service",
+      modelParameters: "Model parameters", reasoningEffort: "Reasoning effort", parallelRequests: "Parallel requests",
+      providerDefault: "Provider default", none: "None", minimal: "Minimal", low: "Low", medium: "Medium",
+      high: "High", extraHigh: "Extra high", maximum: "Maximum", advanced: "Advanced",
+      hideAdvanced: "Hide advanced", cacheNotice: "After making changes, delete the cache below to retranslate text that was already translated.",
+      systemPrompt: "System prompt", hideSystemPrompt: "Hide system prompt", restoreDefault: "Restore default",
+      glossary: "Glossary", hideGlossary: "Hide glossary", glossaryPlaceholder: "One entry per line: source = translation",
+      autoTranslate: "Auto translate", on: "On", off: "Off", cache: "Cache", delete: "Delete",
+      projectWebsite: "Project website:", collapse: "Collapse translator", expand: "Expand translator",
+      interfaceToggleTitle: "Translate this panel using a built-in preset for the selected language.",
+      presetTitle: "Select a provider profile, or Custom for your own endpoint.",
+      baseURLTitle: "API endpoint used to list models and send translation requests.",
+      keyTitle: "Saved securely for this Base URL and never stored in the game.",
+      modelTitle: "Open the list to refresh available models, or choose manual entry.",
+      reasoningTitle: "Controls how much reasoning the model may use. Higher values can be slower.",
+      parallelTitle: "Number of translation requests sent at once. Higher is faster but may hit rate limits.",
+      advancedTitle: "Show system prompt and glossary settings.",
+      promptTitle: "Edit the instructions sent to the AI before each text fragment.",
+      resetTitle: "Replace the custom prompt with the built-in default.",
+      promptInputTitle: "Instructions sent to the AI before each text fragment.",
+      glossaryTitle: "Set preferred translations that are appended to the system prompt.",
+      glossaryInputTitle: "Add one source-to-translation mapping per line.",
+      autoTitle: "Translate newly visible or changed game text automatically.",
+      cacheDeleteTitle: "Delete all cached translations. Other settings stay unchanged.",
+      chooseModel: "Choose a model…", freeModel: "Free", customModel: "Custom", enterModel: "Enter model ID manually…",
+      deleteConfirm: "Delete all cached translations?", cacheDeleted: "Cache deleted", cacheDeleteFailed: "Could not delete cache"
+    }),
+    ru: Object.freeze({
+      language: "Язык", translate: "Перевести", cancel: "Отменить",
+      autoHint: "Если перевод работает с ошибками, отключите автоперевод ниже.", retryFailed: "Повторить ошибки",
+      privacyText: "Видимый текст игры отправляется выбранному сервису перевода. Слоты сохранения и поля ввода исключены.",
+      allowAuto: "Разрешить автоперевод", manualOnly: "Только вручную", translationService: "Сервис перевода",
+      modelParameters: "Параметры модели", reasoningEffort: "Глубина рассуждений", parallelRequests: "Параллельные запросы",
+      providerDefault: "Как у провайдера", none: "Нет", minimal: "Минимальная", low: "Низкая", medium: "Средняя",
+      high: "Высокая", extraHigh: "Очень высокая", maximum: "Максимальная", advanced: "Дополнительно",
+      hideAdvanced: "Скрыть дополнительные", cacheNotice: "После изменений удалите кэш ниже, чтобы уже переведённый текст перевёлся заново.",
+      systemPrompt: "Системный промт", hideSystemPrompt: "Скрыть системный промт", restoreDefault: "Вернуть стандартный",
+      glossary: "Словарь", hideGlossary: "Скрыть словарь", glossaryPlaceholder: "Одна строка: исходник = перевод",
+      autoTranslate: "Автоперевод", on: "Вкл.", off: "Выкл.", cache: "Кэш", delete: "Удалить",
+      projectWebsite: "Сайт проекта:", collapse: "Свернуть переводчик", expand: "Развернуть переводчик",
+      interfaceToggleTitle: "Переводить эту панель встроенным пресетом выбранного языка.",
+      presetTitle: "Выберите профиль провайдера или Custom для своего endpoint.",
+      baseURLTitle: "API endpoint для получения моделей и отправки запросов перевода.",
+      keyTitle: "Безопасно хранится для этого Base URL и не сохраняется в игре.",
+      modelTitle: "Откройте список для обновления моделей или выберите ручной ввод.",
+      reasoningTitle: "Определяет объём рассуждений модели. Высокие значения могут работать медленнее.",
+      parallelTitle: "Число одновременных запросов. Больше — быстрее, но возможен rate limit.",
+      advancedTitle: "Показать системный промт и настройки словаря.",
+      promptTitle: "Изменить инструкции, отправляемые ИИ перед каждым фрагментом.",
+      resetTitle: "Заменить изменённый промт встроенным стандартным.",
+      promptInputTitle: "Инструкции, отправляемые ИИ перед каждым фрагментом.",
+      glossaryTitle: "Задать предпочтительные переводы, добавляемые к системному промту.",
+      glossaryInputTitle: "Добавьте по одной паре исходник–перевод в строке.",
+      autoTitle: "Автоматически переводить новый или изменённый видимый текст игры.",
+      cacheDeleteTitle: "Удалить все кэшированные переводы. Остальные настройки сохранятся.",
+      chooseModel: "Выберите модель…", freeModel: "Бесплатно", customModel: "Другая", enterModel: "Ввести ID модели вручную…",
+      deleteConfirm: "Удалить все кэшированные переводы?", cacheDeleted: "Кэш удалён", cacheDeleteFailed: "Не удалось удалить кэш"
+    })
+  });
   const SETTINGS_KEY = `${game.storageNamespace}.settings.v2`;
   const LEGACY_SETTINGS_KEY = `${game.storageNamespace}.settings.v1`;
   const CACHE_META_KEY = `${game.storageNamespace}.cache-meta.v1`;
@@ -73,6 +137,7 @@
     : null;
   const defaults = {
     language: "en",
+    translateInterface: false,
     provider: "google",
     autoTranslate: true,
     privacyAccepted: false,
@@ -210,6 +275,7 @@
       && source.openAICompatibleBaseURL.length <= 2048 ? source.openAICompatibleBaseURL.trim() : "";
     return {
       language: LANGUAGES.some(([code]) => code === source.language) ? source.language : defaults.language,
+      translateInterface: typeof source.translateInterface === "boolean" ? source.translateInterface : defaults.translateInterface,
       provider: PROVIDERS[source.provider] ? source.provider : defaults.provider,
       autoTranslate: typeof source.autoTranslate === "boolean" ? source.autoTranslate : defaults.autoTranslate,
       privacyAccepted: typeof source.privacyAccepted === "boolean" ? source.privacyAccepted : migratedLegacy,
@@ -1212,16 +1278,17 @@
 
   async function refreshCacheStats() {
     const stats = await cacheStats();
-    cacheStatsElement.textContent = `Cache: ${formatBytes(stats.bytes)}`;
+    cacheStatsElement.textContent = `${interfacePreset().cache}: ${formatBytes(stats.bytes)}`;
   }
 
   async function deleteTranslationCache() {
-    if (!confirm("Delete all cached translations?")) return;
+    const text = interfacePreset();
+    if (!confirm(text.deleteConfirm)) return;
     cacheDeleteButton.disabled = true;
     try {
       const deleted = await clearAllCache();
       await refreshCacheStats();
-      setStatus(deleted ? "Cache deleted" : "Could not delete cache");
+      setStatus(deleted ? text.cacheDeleted : text.cacheDeleteFailed);
     } finally {
       cacheDeleteButton.disabled = false;
     }
@@ -1387,6 +1454,7 @@
     localStorage.removeItem(CACHE_DIRTY_KEY);
     settings = Object.assign({}, defaults);
     languageSelect.value = settings.language;
+    interfaceTranslationCheckbox.checked = settings.translateInterface;
     providerSelect.value = settings.provider;
     autoCheckbox.checked = settings.autoTranslate;
     syncTranslateTrigger();
@@ -1394,6 +1462,7 @@
     syncOpenAICompatibleInputs();
     privacyBox.hidden = false;
     updateProviderHint();
+    applyInterfacePreset();
     await refreshCacheStats();
     setStatus("All translator data deleted");
   }
@@ -1404,26 +1473,26 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.quickLanguage{display:flex;align-items:center;gap:8px;padding:7px 7px 0}.quickLanguageLabel{flex:0 0 auto;color:#d4bdac;font-size:11px;font-weight:600}.quickLanguage select{min-width:0;flex:1;border:1px solid #927047;border-radius:5px;background:#20131c;color:#fff;padding:5px 6px;font:inherit}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.translate{display:flex;align-items:center;justify-content:center;gap:6px}.translateShortcut{padding:2px 4px;border:1px solid #c69b5588;border-radius:4px;color:#f4d18f;background:#412436;font-size:9px;font-weight:600;line-height:1;white-space:nowrap}.status{min-height:23px;padding:0 9px 5px;color:#ddd;font-size:12px}.status:empty{display:none}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:block;padding:0 8px 9px;border-top:1px solid #6e4d56;max-height:calc(100vh - 190px);overflow-y:auto}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input:not([type="checkbox"]),.settings textarea{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px;font:inherit}.providerHint,.cacheStats{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.providerHint:empty{display:none}.openAICompatibleBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.cacheBox{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 7px;border:1px solid #6e4d56;border-radius:6px}.cacheStats{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cacheDelete{flex:0 0 auto;padding:4px 7px;font-size:11px}.openAICompatiblePreset,.openAICompatibleBaseURL,.openAICompatibleModel,.openAICompatibleKey{margin-top:6px}.openAICompatibleParameterTitle{margin-top:8px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatibleParameters{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px}.openAICompatibleParameters label{display:block;min-width:0;color:#bdaeb6;font-size:10px}.openAICompatibleParameters label span{display:block;margin-bottom:2px}.openAICompatibleParameters select,.openAICompatibleParameters input{min-width:0;padding:5px}.openAICompatiblePromptLabel{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatiblePrompt{min-height:116px;margin-top:4px;resize:vertical;line-height:1.3}.openAICompatiblePromptReset{padding:3px 6px;font-size:10px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.privacyActions button{flex:1;min-width:82px}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover{text-decoration:underline}.hidden{display:none!important}
+      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.quickLanguage{display:flex;align-items:center;gap:8px;padding:7px 7px 0}.quickLanguageLabel{flex:0 0 auto;color:#d4bdac;font-size:11px;font-weight:600}.quickLanguage select{min-width:0;flex:1;border:1px solid #927047;border-radius:5px;background:#20131c;color:#fff;padding:5px 6px;font:inherit}.interfaceTranslationToggle{display:flex;flex:0 0 auto;align-items:center;gap:3px;color:#d4bdac;font-size:11px;font-weight:600;cursor:pointer}.interfaceTranslationToggle input{margin:0}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.translate{display:flex;align-items:center;justify-content:center;gap:6px}.translateShortcut{padding:2px 4px;border:1px solid #c69b5588;border-radius:4px;color:#f4d18f;background:#412436;font-size:9px;font-weight:600;line-height:1;white-space:nowrap}.status{min-height:23px;padding:0 9px 5px;color:#ddd;font-size:12px}.status:empty{display:none}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:block;padding:0 8px 9px;border-top:1px solid #6e4d56;max-height:calc(100vh - 190px);overflow-y:auto}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input:not([type="checkbox"]),.settings textarea{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px;font:inherit}.providerHint,.cacheStats{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.providerHint:empty{display:none}.openAICompatibleBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.cacheBox{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 7px;border:1px solid #6e4d56;border-radius:6px}.cacheStats{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cacheDelete{flex:0 0 auto;padding:4px 7px;font-size:11px}.openAICompatiblePreset,.openAICompatibleBaseURL,.openAICompatibleModel,.openAICompatibleKey{margin-top:6px}.openAICompatibleParameterTitle{margin-top:8px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatibleParameters{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px}.openAICompatibleParameters label{display:block;min-width:0;color:#bdaeb6;font-size:10px}.openAICompatibleParameters label span{display:block;margin-bottom:2px}.openAICompatibleParameters select,.openAICompatibleParameters input{min-width:0;padding:5px}.openAICompatiblePromptLabel{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatiblePrompt{min-height:116px;margin-top:4px;resize:vertical;line-height:1.3}.openAICompatiblePromptReset{padding:3px 6px;font-size:10px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.privacyActions button{flex:1;min-width:82px}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover{text-decoration:underline}.hidden{display:none!important}
       .translate[hidden],.autoTranslateHint[hidden]{display:none!important}.autoTranslateHint{flex:1;padding:4px 6px;color:#c9bac1;text-align:center;font-size:11px;line-height:1.35}
       .openAICompatibleAdvancedToggle,.openAICompatiblePromptToggle,.openAICompatibleGlossaryToggle{width:100%;margin-top:7px;text-align:left}.openAICompatibleAdvanced[hidden],.openAICompatiblePromptEditor[hidden],.openAICompatibleGlossaryEditor[hidden]{display:none!important}.openAICompatibleAdvanced{padding:0 4px 2px;border-left:1px solid #6e4d56}.openAICompatibleAdvancedNotice{margin:7px 2px 0;color:#d7c1a7;font-size:11px;line-height:1.3}.openAICompatibleGlossary{min-height:90px;margin-top:4px;resize:vertical;line-height:1.3}
       .bar{display:flex;align-items:center;justify-content:flex-end;min-height:34px}.collapseToggle{width:24px;height:22px;padding:0;border:1px solid #c69b55;border-radius:5px;background:#6b344f;color:#fff;cursor:pointer;font:700 16px/18px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}.collapseToggle:hover{background:#7b405d}.panel.collapsed{width:36px}.panel.collapsed>:not(.bar){display:none!important}.panel.collapsed .bar{min-height:32px;padding:5px}
-      .autoToggle{position:relative;display:flex;align-items:center;gap:9px;margin:8px 0;padding:8px 9px;border:1px solid #6e4d56;border-radius:7px;background:#2c1b26;cursor:pointer;user-select:none;transition:border-color .15s,background .15s}.autoToggle:hover{border-color:#927047;background:#34202d}.autoToggle .auto{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.autoCopy{display:flex;flex:1;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}.autoTitle{color:#f4e8df;font-weight:600}.autoState{color:#9f9299;font-size:11px}.autoState::after{content:"Off"}.autoTrack{position:relative;flex:0 0 34px;width:34px;height:19px;border:1px solid #755663;border-radius:10px;background:#1b1118;box-shadow:inset 0 1px 2px #0008;transition:border-color .15s,background .15s}.autoThumb{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#a7989f;box-shadow:0 1px 2px #0009;transition:left .15s,background .15s}.auto:checked~.autoCopy .autoState{color:#f4d18f}.auto:checked~.autoCopy .autoState::after{content:"On"}.auto:checked~.autoTrack{border-color:#c69b55;background:#6b344f}.auto:checked~.autoTrack .autoThumb{left:17px;background:#ffe4a9}.auto:focus~.autoTrack{outline:2px solid #f4d18f;outline-offset:2px}
+      .autoToggle{position:relative;display:flex;align-items:center;gap:9px;margin:8px 0;padding:8px 9px;border:1px solid #6e4d56;border-radius:7px;background:#2c1b26;cursor:pointer;user-select:none;transition:border-color .15s,background .15s}.autoToggle:hover{border-color:#927047;background:#34202d}.autoToggle .auto{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.autoCopy{display:flex;flex:1;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}.autoTitle{color:#f4e8df;font-weight:600}.autoState{color:#9f9299;font-size:11px}.autoState::after{content:attr(data-off)}.autoTrack{position:relative;flex:0 0 34px;width:34px;height:19px;border:1px solid #755663;border-radius:10px;background:#1b1118;box-shadow:inset 0 1px 2px #0008;transition:border-color .15s,background .15s}.autoThumb{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#a7989f;box-shadow:0 1px 2px #0009;transition:left .15s,background .15s}.auto:checked~.autoCopy .autoState{color:#f4d18f}.auto:checked~.autoCopy .autoState::after{content:attr(data-on)}.auto:checked~.autoTrack{border-color:#c69b55;background:#6b344f}.auto:checked~.autoTrack .autoThumb{left:17px;background:#ffe4a9}.auto:focus~.autoTrack{outline:2px solid #f4d18f;outline-offset:2px}
       .site{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}.siteLabel{white-space:nowrap}.contacts{display:inline-flex;align-items:center;gap:5px}.site .contactIcon{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;border:1px solid #6e4d56;border-radius:6px;background:#2c1b26;text-decoration:none}.site .contactIcon:hover{border-color:#c69b55;background:#412436;text-decoration:none}.contactIcon svg{display:block;width:15px;height:15px;fill:currentColor}.site .discord{color:#8c9eff}.site .telegram{color:#55bde9}.site .email{color:#9b87f5}
     </style>
     <div class="panel">
       <div class="bar"><button class="collapseToggle" type="button" title="Collapse translator" aria-label="Collapse translator">−</button></div>
-      <label class="quickLanguage"><span class="quickLanguageLabel">Language</span><select class="language" aria-label="Translation language"></select></label>
+      <div class="quickLanguage"><span class="quickLanguageLabel">Language</span><select class="language" aria-label="Translation language"></select><label class="interfaceTranslationToggle" title="Translate this panel using a built-in preset for the selected language."><input type="checkbox" class="interfaceTranslation" aria-label="Translate translator interface"><span>UI</span></label></div>
       <div class="row"><button class="primary translate" aria-label="Translate (Ctrl+Shift+T)"><span class="translateAction">Translate</span><span class="translateShortcut" aria-hidden="true">Ctrl+Shift+T</span></button><div class="autoTranslateHint" hidden>If translation glitches, turn off Auto translate below.</div></div>
       <div class="status"></div>
       <button class="secondary retry" hidden>Retry failed</button>
       <div class="compat" hidden></div>
       <div class="privacy" hidden>
-        Visible game text is sent to the selected translation service. Save slots and input fields are excluded.
+        <span class="privacyText">Visible game text is sent to the selected translation service. Save slots and input fields are excluded.</span>
         <div class="privacyActions"><button class="primary allowAuto">Allow auto-translate</button><button class="secondary manualOnly">Manual only</button></div>
       </div>
       <div class="settings">
-        <label class="title">Translation service</label><select class="provider"></select>
+        <label class="title translationServiceLabel">Translation service</label><select class="provider"></select>
         <div class="providerHint"></div>
         <div class="openAICompatibleBox" hidden>
           <select class="openAICompatiblePreset" aria-label="OpenAI-compatible preset" title="Select a provider profile, or Custom for your own endpoint.">
@@ -1441,15 +1510,15 @@
           </select>
           <div class="openAICompatibleParameterTitle">Model parameters</div>
           <div class="openAICompatibleParameters">
-            <label><span>Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort" title="Controls how much reasoning the model may use. Higher values can be slower."><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
-            <label><span>Parallel requests</span><select class="openAICompatibleConcurrency" aria-label="Parallel requests" title="Number of translation requests sent at once. Higher is faster but may hit rate limits."><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label>
+            <label><span class="reasoningEffortLabel">Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort" title="Controls how much reasoning the model may use. Higher values can be slower."><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
+            <label><span class="parallelRequestsLabel">Parallel requests</span><select class="openAICompatibleConcurrency" aria-label="Parallel requests" title="Number of translation requests sent at once. Higher is faster but may hit rate limits."><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label>
           </div>
           <button class="secondary openAICompatibleAdvancedToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleAdvanced" title="Show system prompt and glossary settings.">Advanced</button>
           <div id="openAICompatibleAdvanced" class="openAICompatibleAdvanced" hidden>
             <div class="openAICompatibleAdvancedNotice">After making changes, delete the cache below to retranslate text that was already translated.</div>
             <button class="secondary openAICompatiblePromptToggle" type="button" aria-expanded="false" aria-controls="openAICompatiblePromptEditor" title="Edit the instructions sent to the AI before each text fragment.">System prompt</button>
             <div id="openAICompatiblePromptEditor" class="openAICompatiblePromptEditor" hidden>
-              <div class="openAICompatiblePromptLabel"><label for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button" title="Replace the custom prompt with the built-in default.">Restore default</button></div>
+              <div class="openAICompatiblePromptLabel"><label class="systemPromptLabel" for="openAICompatiblePrompt">System prompt</label><button class="secondary openAICompatiblePromptReset" type="button" title="Replace the custom prompt with the built-in default.">Restore default</button></div>
               <textarea id="openAICompatiblePrompt" class="openAICompatiblePrompt" maxlength="${OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS}" spellcheck="false" aria-label="OpenAI-compatible system prompt" title="Instructions sent to the AI before each text fragment."></textarea>
             </div>
             <button class="secondary openAICompatibleGlossaryToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleGlossaryEditor" title="Set preferred translations that are appended to the system prompt.">Glossary</button>
@@ -1460,7 +1529,7 @@
         </div>
         <label class="autoToggle" title="Translate newly visible or changed game text automatically.">
           <input type="checkbox" class="auto" aria-label="Automatically translate new screens">
-          <span class="autoCopy"><span class="autoTitle">Auto translate</span><span class="autoState" aria-hidden="true"></span></span>
+          <span class="autoCopy"><span class="autoTitle">Auto translate</span><span class="autoState" data-off="Off" data-on="On" aria-hidden="true"></span></span>
           <span class="autoTrack" aria-hidden="true"><span class="autoThumb"></span></span>
         </label>
         <div class="cacheBox">
@@ -1469,7 +1538,7 @@
         </div>
       </div>
       <div class="site">
-        <span class="siteLabel">Project website: <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer">${SITE_NAME}</a></span>
+        <span class="siteLabel"><span class="siteLabelText">Project website:</span> <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer">${SITE_NAME}</a></span>
         <span class="contacts" aria-label="VN Revival contacts">
           <a class="contactIcon discord" href="https://discord.gg/QgyeWW3Jg" target="_blank" rel="noopener noreferrer" title="Discord" aria-label="VN Revival on Discord">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.1 6.2A15 15 0 0 1 10 5.3l.4.8a10 10 0 0 1 3.2 0l.4-.8a15 15 0 0 1 2.9.9c1.8 2.5 2.3 4.9 2 7.2a12 12 0 0 1-3.6 1.8l-.9-1.2c.7-.3 1.3-.6 1.8-1.1-3.4 1.6-7.2 1.6-10.5 0 .5.5 1.1.8 1.8 1.1l-.9 1.2A12 12 0 0 1 3 13.4c-.3-2.3.2-4.7 2-7.2.7-.3 1.4-.6 2.1-.8v.8Zm2.1 6.1c.8 0 1.4-.8 1.4-1.8S10 8.7 9.2 8.7s-1.4.8-1.4 1.8.6 1.8 1.4 1.8Zm5.6 0c.8 0 1.4-.8 1.4-1.8s-.6-1.8-1.4-1.8-1.4.8-1.4 1.8.6 1.8 1.4 1.8Z"/></svg>
@@ -1493,6 +1562,7 @@
   const retryButton = shadow.querySelector(".retry");
   const statusElement = shadow.querySelector(".status");
   const languageSelect = shadow.querySelector(".language");
+  const interfaceTranslationCheckbox = shadow.querySelector(".interfaceTranslation");
   const providerSelect = shadow.querySelector(".provider");
   const providerHint = shadow.querySelector(".providerHint");
   const openAICompatibleBox = shadow.querySelector(".openAICompatibleBox");
@@ -1525,6 +1595,7 @@
   }
   providerSelect.value = settings.provider;
   populateLanguageOptions(settings.provider, settings.language);
+  interfaceTranslationCheckbox.checked = settings.translateInterface;
   autoCheckbox.checked = settings.autoTranslate;
   syncTranslateTrigger();
   privacyBox.hidden = settings.privacyAccepted || !providerRequiresPrivacy(settings.provider);
@@ -1536,10 +1607,71 @@
     host.style.right = "auto";
   }
 
+  function interfacePreset() {
+    if (!settings.translateInterface) return INTERFACE_PRESETS.en;
+    return INTERFACE_PRESETS[settings.language] || INTERFACE_PRESETS.en;
+  }
+  function applyInterfacePreset() {
+    const text = interfacePreset();
+    const presetLocale = settings.translateInterface && INTERFACE_PRESETS[settings.language]
+      ? settings.language : "en";
+    panel.lang = presetLocale;
+    panel.dir = ["ar", "fa", "he"].includes(presetLocale) ? "rtl" : "ltr";
+    shadow.querySelector(".quickLanguageLabel").textContent = text.language;
+    interfaceTranslationCheckbox.title = text.interfaceToggleTitle;
+    setMainButton(running ? "Cancel" : "Translate");
+    autoTranslateHint.textContent = text.autoHint;
+    retryButton.textContent = text.retryFailed;
+    shadow.querySelector(".privacyText").textContent = text.privacyText;
+    shadow.querySelector(".allowAuto").textContent = text.allowAuto;
+    shadow.querySelector(".manualOnly").textContent = text.manualOnly;
+    shadow.querySelector(".translationServiceLabel").textContent = text.translationService;
+    shadow.querySelector(".openAICompatibleParameterTitle").textContent = text.modelParameters;
+    shadow.querySelector(".reasoningEffortLabel").textContent = text.reasoningEffort;
+    shadow.querySelector(".parallelRequestsLabel").textContent = text.parallelRequests;
+    const reasoningLabels = {
+      "": text.providerDefault, none: text.none, minimal: text.minimal, low: text.low,
+      medium: text.medium, high: text.high, xhigh: text.extraHigh, max: text.maximum
+    };
+    for (const option of openAICompatibleReasoningEffortSelect.options) {
+      option.textContent = reasoningLabels[option.value] || option.textContent;
+    }
+    openAICompatibleAdvancedToggleButton.textContent = openAICompatibleAdvanced.hidden ? text.advanced : text.hideAdvanced;
+    shadow.querySelector(".openAICompatibleAdvancedNotice").textContent = text.cacheNotice;
+    openAICompatiblePromptToggleButton.textContent = openAICompatiblePromptEditor.hidden ? text.systemPrompt : text.hideSystemPrompt;
+    shadow.querySelector(".systemPromptLabel").textContent = text.systemPrompt;
+    openAICompatiblePromptResetButton.textContent = text.restoreDefault;
+    openAICompatibleGlossaryToggleButton.textContent = openAICompatibleGlossaryEditor.hidden ? text.glossary : text.hideGlossary;
+    openAICompatibleGlossaryInput.placeholder = text.glossaryPlaceholder;
+    shadow.querySelector(".autoTitle").textContent = text.autoTranslate;
+    const autoState = shadow.querySelector(".autoState");
+    autoState.dataset.on = text.on;
+    autoState.dataset.off = text.off;
+    cacheDeleteButton.textContent = text.delete;
+    shadow.querySelector(".siteLabelText").textContent = text.projectWebsite;
+    openAICompatiblePresetSelect.title = text.presetTitle;
+    openAICompatibleBaseURLInput.title = text.baseURLTitle;
+    openAICompatibleKeyInput.title = text.keyTitle;
+    openAICompatibleModelSelect.title = text.modelTitle;
+    openAICompatibleReasoningEffortSelect.title = text.reasoningTitle;
+    openAICompatibleConcurrencySelect.title = text.parallelTitle;
+    openAICompatibleAdvancedToggleButton.title = text.advancedTitle;
+    openAICompatiblePromptToggleButton.title = text.promptTitle;
+    openAICompatiblePromptResetButton.title = text.resetTitle;
+    openAICompatiblePromptInput.title = text.promptInputTitle;
+    openAICompatibleGlossaryToggleButton.title = text.glossaryTitle;
+    openAICompatibleGlossaryInput.title = text.glossaryInputTitle;
+    shadow.querySelector(".autoToggle").title = text.autoTitle;
+    cacheDeleteButton.title = text.cacheDeleteTitle;
+    populateOpenAICompatibleModelOptions(openAICompatibleModels, openAICompatibleConnection().model);
+    updateCollapsedState();
+  }
   function setStatus(text) { statusElement.textContent = text; }
   function setMainButton(text) {
-    mainButtonAction.textContent = text;
-    mainButton.setAttribute("aria-label", `${text} (Ctrl+Shift+T)`);
+    const preset = interfacePreset();
+    const localized = text === "Cancel" ? preset.cancel : preset.translate;
+    mainButtonAction.textContent = localized;
+    mainButton.setAttribute("aria-label", `${localized} (Ctrl+Shift+T)`);
   }
   function syncTranslateTrigger() {
     mainButton.hidden = autoCheckbox.checked;
@@ -1548,7 +1680,8 @@
   function updateCollapsedState() {
     panel.classList.toggle("collapsed", settings.collapsed);
     collapseButton.textContent = settings.collapsed ? "+" : "−";
-    collapseButton.title = settings.collapsed ? "Expand translator" : "Collapse translator";
+    const preset = interfacePreset();
+    collapseButton.title = settings.collapsed ? preset.expand : preset.collapse;
     collapseButton.setAttribute("aria-label", collapseButton.title);
     collapseButton.setAttribute("aria-expanded", String(!settings.collapsed));
   }
@@ -1577,6 +1710,7 @@
     const languageChanged = settings.language !== languageSelect.value;
     const providerChanged = settings.provider !== providerSelect.value;
     settings.language = languageSelect.value;
+    settings.translateInterface = interfaceTranslationCheckbox.checked;
     settings.provider = providerSelect.value;
     settings.autoTranslate = autoCheckbox.checked;
     syncTranslateTrigger();
@@ -1618,23 +1752,24 @@
     openAICompatibleModelSelect.replaceChildren();
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "Choose a model…";
+    const interfaceText = interfacePreset();
+    placeholder.textContent = interfaceText.chooseModel;
     openAICompatibleModelSelect.appendChild(placeholder);
     for (const model of sortedModels) {
       const option = document.createElement("option");
       option.value = model;
-      option.textContent = isFreeOpenAICompatibleModel(model) ? `Free · ${model}` : model;
+      option.textContent = isFreeOpenAICompatibleModel(model) ? `${interfaceText.freeModel} · ${model}` : model;
       openAICompatibleModelSelect.appendChild(option);
     }
     if (selected && !sortedModels.includes(selected)) {
       const customOption = document.createElement("option");
       customOption.value = selected;
-      customOption.textContent = `Custom · ${selected}`;
+      customOption.textContent = `${interfaceText.customModel} · ${selected}`;
       openAICompatibleModelSelect.appendChild(customOption);
     }
     const manualOption = document.createElement("option");
     manualOption.value = OPENAI_COMPATIBLE_MANUAL_MODEL_VALUE;
-    manualOption.textContent = "Enter model ID manually…";
+    manualOption.textContent = interfaceText.enterModel;
     openAICompatibleModelSelect.appendChild(manualOption);
     openAICompatibleModelSelect.value = selected || "";
   }
@@ -1743,6 +1878,7 @@
   }
 
   updateProviderHint();
+  applyInterfacePreset();
   refreshCacheStats();
 
   mainButton.addEventListener("click", () => translateScreen(true));
@@ -1755,9 +1891,19 @@
   providerSelect.addEventListener("change", () => {
     updateProviderHint();
     persistControlSettings();
+    applyInterfacePreset();
+    refreshCacheStats();
   });
   languageSelect.addEventListener("change", () => {
     persistControlSettings();
+    applyInterfacePreset();
+    refreshCacheStats();
+  });
+  interfaceTranslationCheckbox.addEventListener("change", () => {
+    settings.translateInterface = interfaceTranslationCheckbox.checked;
+    saveSettings();
+    applyInterfacePreset();
+    refreshCacheStats();
   });
   autoCheckbox.addEventListener("change", () => {
     persistControlSettings();
@@ -1824,19 +1970,22 @@
   openAICompatibleAdvancedToggleButton.addEventListener("click", () => {
     const expanded = openAICompatibleAdvanced.hidden;
     openAICompatibleAdvanced.hidden = !expanded;
-    openAICompatibleAdvancedToggleButton.textContent = expanded ? "Hide advanced" : "Advanced";
+    const text = interfacePreset();
+    openAICompatibleAdvancedToggleButton.textContent = expanded ? text.hideAdvanced : text.advanced;
     openAICompatibleAdvancedToggleButton.setAttribute("aria-expanded", String(expanded));
   });
   openAICompatiblePromptToggleButton.addEventListener("click", () => {
     const expanded = openAICompatiblePromptEditor.hidden;
     openAICompatiblePromptEditor.hidden = !expanded;
-    openAICompatiblePromptToggleButton.textContent = expanded ? "Hide system prompt" : "System prompt";
+    const text = interfacePreset();
+    openAICompatiblePromptToggleButton.textContent = expanded ? text.hideSystemPrompt : text.systemPrompt;
     openAICompatiblePromptToggleButton.setAttribute("aria-expanded", String(expanded));
   });
   openAICompatibleGlossaryToggleButton.addEventListener("click", () => {
     const expanded = openAICompatibleGlossaryEditor.hidden;
     openAICompatibleGlossaryEditor.hidden = !expanded;
-    openAICompatibleGlossaryToggleButton.textContent = expanded ? "Hide glossary" : "Glossary";
+    const text = interfacePreset();
+    openAICompatibleGlossaryToggleButton.textContent = expanded ? text.hideGlossary : text.glossary;
     openAICompatibleGlossaryToggleButton.setAttribute("aria-expanded", String(expanded));
   });
   openAICompatibleGlossaryInput.addEventListener("change", () => {

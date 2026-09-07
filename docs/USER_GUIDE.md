@@ -16,6 +16,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 
 - With auto-translate off, `Translate / Cancel` starts or stops the current screen pass. With auto-translate on, a short troubleshooting hint replaces the button.
 - The `Language` selector remains visible at the top of the panel.
+- The `UI` checkbox to its right localizes the translator panel with a bundled preset for the selected language. It never sends panel text to Google or AI; unsupported presets fall back to English. English and Russian presets are currently bundled.
 - `Ctrl+Shift+T`, displayed inside the main button, performs the same translate/cancel action.
 - Provider, auto-translate, and cache controls are always visible while the panel is expanded.
 - Hold the pointer over a complex setting to see its short explanation.
@@ -105,6 +106,7 @@ advanced launches can select Parallels with
 
 - При выключенном автопереводе `Translate / Cancel` запускает или отменяет перевод текущего экрана. При включённом автопереводе вместо кнопки показывается короткая подсказка об отключении автоматического режима при сбоях.
 - Список `Language` постоянно виден в верхней части панели.
+- Галочка `UI` справа переводит панель встроенным пресетом выбранного языка. Текст панели никогда не отправляется Google или ИИ; при отсутствии пресета используется английский. Сейчас встроены английский и русский пресеты.
 - `Ctrl+Shift+T`, указанная внутри основной кнопки, выполняет то же действие перевода/отмены.
 - Провайдер, автоперевод и кэш всегда видны в развёрнутой панели.
 - Задержите курсор над сложной настройкой, чтобы увидеть её краткое пояснение.

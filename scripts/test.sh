@@ -70,11 +70,16 @@ if grep -RIniE "coc2|corruption of champions" \
 fi
 
 if grep -RInE '[А-Яа-яЁё]' \
-  src/translator-runtime.js src/local_service.py \
+  src/local_service.py \
   src/providers.js launcher/macos/launch.sh launcher/windows/launcher.c launcher/windows/README-Windows.txt "src/games/$GAME_ID/adapter.js"; then
-  echo "The mod interface must remain English-only" >&2
+  echo "Found unexpected localized text outside the built-in interface presets" >&2
   exit 1
 fi
+
+grep -Fq 'INTERFACE_PRESETS' src/translator-runtime.js || {
+  echo "Missing built-in interface localization presets" >&2
+  exit 1
+}
 
 for REQUIRED in 'autoTranslate' 'showOriginal' 'showTranslations' 'exportCache' 'importCache' 'clearCacheForLanguage' 'privacyAccepted' 'collapsed' 'collapseToggle' 'updateCollapsedState' 'applyLanguageFormatting' 'restoreLanguageFormatting' 'applyJobTranslation' 'populateLanguageOptions' 'MEMORY_CACHE_LIMIT' 'CACHE_META_KEY' 'CACHE_DIRTY_KEY' 'IntersectionObserver' 'visibilitychange' 'createCacheExportStream' 'importJsonLinesCache' 'providerRegistry'; do
   grep -Fq "$REQUIRED" src/translator-runtime.js || {
