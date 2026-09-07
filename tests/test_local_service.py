@@ -521,6 +521,29 @@ class LocalServiceTests(unittest.TestCase):
                 "requested\n",
             )
 
+    def test_log_status_read_and_clear(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory)
+            log_path = Path(directory) / "local-service.log"
+            self.assertEqual(bridge.log_status()["bytes"], 0)
+            log_path.write_text("first line\nsecond line\n", encoding="utf-8")
+            result = bridge.read_log()
+            self.assertEqual(result["bytes"], log_path.stat().st_size)
+            self.assertEqual(result["content"], "first line\nsecond line\n")
+            self.assertFalse(result["truncated"])
+            self.assertEqual(bridge.clear_log()["bytes"], 0)
+            self.assertEqual(log_path.read_bytes(), b"")
+
+    def test_log_copy_is_bounded_to_the_latest_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory)
+            log_path = Path(directory) / "local-service.log"
+            log_path.write_bytes(b"a" * (local_service.MAX_LOG_COPY_BYTES + 10))
+            result = bridge.read_log()
+            self.assertTrue(result["truncated"])
+            self.assertEqual(result["bytes"], local_service.MAX_LOG_COPY_BYTES + 10)
+            self.assertEqual(len(result["content"]), local_service.MAX_LOG_COPY_BYTES)
+
     def test_request_logging_is_safe_without_console(self):
         handler = object.__new__(local_service.LocalServiceRequestHandler)
         with mock.patch.object(local_service.sys, "stderr", None):

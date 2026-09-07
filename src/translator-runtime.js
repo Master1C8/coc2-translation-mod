@@ -60,7 +60,7 @@
       hideAdvanced: "Hide advanced", cacheNotice: "After making changes, delete the cache below to retranslate text that was already translated.",
       systemPrompt: "System prompt", hideSystemPrompt: "Hide system prompt", restoreDefault: "Restore default",
       glossary: "Glossary", hideGlossary: "Hide glossary", glossaryPlaceholder: "One entry per line: source = translation",
-      autoTranslate: "Auto translate", on: "On", off: "Off", cache: "Cache", delete: "Delete",
+      autoTranslate: "Auto translate", on: "On", off: "Off", cache: "Cache", log: "Log", delete: "Delete", copyLog: "Copy log",
       projectWebsite: "Project website:", collapse: "Collapse translator", expand: "Expand translator",
       interfaceToggleTitle: "Translate this panel using a built-in preset for the selected language.",
       presetTitle: "Select a provider profile, or Custom for your own endpoint.",
@@ -76,9 +76,11 @@
       glossaryTitle: "Set preferred translations that are appended to the system prompt.",
       glossaryInputTitle: "Add one source-to-translation mapping per line.",
       autoTitle: "Translate newly visible or changed game text automatically.",
-      cacheDeleteTitle: "Delete all cached translations. Other settings stay unchanged.",
+      cacheDeleteTitle: "Delete all cached translations and the local service log. Other settings stay unchanged.",
+      copyLogTitle: "Copy the local service log to the clipboard.",
       chooseModel: "Choose a model…", freeModel: "Free", customModel: "Custom", enterModel: "Enter model ID manually…",
-      deleteConfirm: "Delete all cached translations?", cacheDeleted: "Cache deleted", cacheDeleteFailed: "Could not delete cache"
+      deleteConfirm: "Delete all cached translations and the local service log?", cacheDeleted: "Cache and log deleted", cacheDeleteFailed: "Could not completely delete cache and log",
+      logCopied: "Log copied", logTailCopied: "Latest 2 MB of log copied", logCopyFailed: "Could not copy log"
     }),
     ru: Object.freeze({
       language: "Язык", translate: "Перевести", cancel: "Отменить",
@@ -91,7 +93,7 @@
       hideAdvanced: "Скрыть дополнительные", cacheNotice: "После изменений удалите кэш ниже, чтобы уже переведённый текст перевёлся заново.",
       systemPrompt: "Системный промт", hideSystemPrompt: "Скрыть системный промт", restoreDefault: "Вернуть стандартный",
       glossary: "Словарь", hideGlossary: "Скрыть словарь", glossaryPlaceholder: "Одна строка: исходник = перевод",
-      autoTranslate: "Автоперевод", on: "Вкл.", off: "Выкл.", cache: "Кэш", delete: "Удалить",
+      autoTranslate: "Автоперевод", on: "Вкл.", off: "Выкл.", cache: "Кэш", log: "Лог", delete: "Удалить", copyLog: "Копировать лог",
       projectWebsite: "Сайт проекта:", collapse: "Свернуть переводчик", expand: "Развернуть переводчик",
       interfaceToggleTitle: "Переводить эту панель встроенным пресетом выбранного языка.",
       presetTitle: "Выберите профиль провайдера или Custom для своего endpoint.",
@@ -107,9 +109,11 @@
       glossaryTitle: "Задать предпочтительные переводы, добавляемые к системному промту.",
       glossaryInputTitle: "Добавьте по одной паре исходник–перевод в строке.",
       autoTitle: "Автоматически переводить новый или изменённый видимый текст игры.",
-      cacheDeleteTitle: "Удалить все кэшированные переводы. Остальные настройки сохранятся.",
+      cacheDeleteTitle: "Удалить все кэшированные переводы и лог локального сервиса. Остальные настройки сохранятся.",
+      copyLogTitle: "Скопировать лог локального сервиса в буфер обмена.",
       chooseModel: "Выберите модель…", freeModel: "Бесплатно", customModel: "Другая", enterModel: "Ввести ID модели вручную…",
-      deleteConfirm: "Удалить все кэшированные переводы?", cacheDeleted: "Кэш удалён", cacheDeleteFailed: "Не удалось удалить кэш"
+      deleteConfirm: "Удалить все кэшированные переводы и лог локального сервиса?", cacheDeleted: "Кэш и лог удалены", cacheDeleteFailed: "Не удалось полностью удалить кэш и лог",
+      logCopied: "Лог скопирован", logTailCopied: "Скопированы последние 2 МБ лога", logCopyFailed: "Не удалось скопировать лог"
     })
   });
   const SETTINGS_KEY = `${game.storageNamespace}.settings.v2`;
@@ -186,6 +190,7 @@
   let cacheMetadataPromise = null;
   let cacheMetadataVerified = false;
   let cacheMetadataSaveTimer = 0;
+  let localLogBytes = null;
   let openAICompatibleStatus = null;
   let openAICompatibleBusy = false;
   let openAICompatibleModels = [];
@@ -1276,21 +1281,90 @@
     return (value / (1024 * 1024)).toFixed(1) + " MB";
   }
 
-  async function refreshCacheStats() {
+  function renderStorageStats(cacheBytes) {
+    const text = interfacePreset();
+    const logSize = localLogBytes === null ? "—" : formatBytes(localLogBytes);
+    cacheStatsElement.textContent = `${text.cache}: ${formatBytes(cacheBytes)} · ${text.log}: ${logSize}`;
+    cacheCopyButton.disabled = !LOCAL_BRIDGE || !(localLogBytes > 0);
+  }
+
+  async function refreshCacheStats(refreshLog) {
+    const logRequest = refreshLog !== false && LOCAL_BRIDGE
+      ? requestLocalHelper("/v1/log/status", { body: {} })
+      : null;
     const stats = await cacheStats();
-    cacheStatsElement.textContent = `${interfacePreset().cache}: ${formatBytes(stats.bytes)}`;
+    if (logRequest) {
+      try {
+        const log = await logRequest;
+        localLogBytes = Number.isFinite(log.bytes) ? Math.max(0, log.bytes) : null;
+      } catch (_) {
+        localLogBytes = null;
+      }
+    }
+    renderStorageStats(stats.bytes);
+  }
+
+  async function copyTextToClipboard(value) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      try {
+        await navigator.clipboard.writeText(value);
+        return true;
+      } catch (_) {}
+    }
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "");
+    input.style.cssText = "position:fixed;left:-9999px;top:0";
+    document.documentElement.appendChild(input);
+    input.select();
+    let copied = false;
+    try { copied = document.execCommand("copy"); } catch (_) {}
+    input.remove();
+    return copied;
+  }
+
+  async function copyLocalLog() {
+    const text = interfacePreset();
+    if (!LOCAL_BRIDGE) {
+      setStatus(text.logCopyFailed);
+      return;
+    }
+    cacheCopyButton.disabled = true;
+    try {
+      const log = await requestLocalHelper("/v1/log/read", { body: {} });
+      localLogBytes = Number.isFinite(log.bytes) ? Math.max(0, log.bytes) : localLogBytes;
+      const copied = await copyTextToClipboard(String(log.content || ""));
+      renderStorageStats((await cacheStats()).bytes);
+      setStatus(copied ? (log.truncated ? text.logTailCopied : text.logCopied) : text.logCopyFailed);
+    } catch (_) {
+      setStatus(text.logCopyFailed);
+    } finally {
+      cacheCopyButton.disabled = !LOCAL_BRIDGE || !(localLogBytes > 0);
+    }
   }
 
   async function deleteTranslationCache() {
     const text = interfacePreset();
     if (!confirm(text.deleteConfirm)) return;
     cacheDeleteButton.disabled = true;
+    cacheCopyButton.disabled = true;
     try {
-      const deleted = await clearAllCache();
+      const cacheDeleted = await clearAllCache();
+      let logDeleted = !LOCAL_BRIDGE;
+      if (LOCAL_BRIDGE) {
+        try {
+          await requestLocalHelper("/v1/log/clear", { body: { accepted: true } });
+          localLogBytes = 0;
+          logDeleted = true;
+        } catch (_) {
+          localLogBytes = null;
+        }
+      }
       await refreshCacheStats();
-      setStatus(deleted ? text.cacheDeleted : text.cacheDeleteFailed);
+      setStatus(cacheDeleted && logDeleted ? text.cacheDeleted : text.cacheDeleteFailed);
     } finally {
       cacheDeleteButton.disabled = false;
+      cacheCopyButton.disabled = !LOCAL_BRIDGE || !(localLogBytes > 0);
     }
   }
 
@@ -1473,7 +1547,8 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.quickLanguage{display:flex;align-items:center;gap:8px;padding:7px 7px 0}.quickLanguageLabel{flex:0 0 auto;color:#d4bdac;font-size:11px;font-weight:600}.quickLanguage select{min-width:0;flex:1;border:1px solid #927047;border-radius:5px;background:#20131c;color:#fff;padding:5px 6px;font:inherit}.interfaceTranslationToggle{display:flex;flex:0 0 auto;align-items:center;gap:3px;color:#d4bdac;font-size:11px;font-weight:600;cursor:pointer}.interfaceTranslationToggle input{margin:0}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.translate{display:flex;align-items:center;justify-content:center;gap:6px}.translateShortcut{padding:2px 4px;border:1px solid #c69b5588;border-radius:4px;color:#f4d18f;background:#412436;font-size:9px;font-weight:600;line-height:1;white-space:nowrap}.status{min-height:23px;padding:0 9px 5px;color:#ddd;font-size:12px}.status:empty{display:none}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:block;padding:0 8px 9px;border-top:1px solid #6e4d56;max-height:calc(100vh - 190px);overflow-y:auto}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input:not([type="checkbox"]),.settings textarea{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px;font:inherit}.providerHint,.cacheStats{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.providerHint:empty{display:none}.openAICompatibleBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.cacheBox{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 7px;border:1px solid #6e4d56;border-radius:6px}.cacheStats{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cacheDelete{flex:0 0 auto;padding:4px 7px;font-size:11px}.openAICompatiblePreset,.openAICompatibleBaseURL,.openAICompatibleModel,.openAICompatibleKey{margin-top:6px}.openAICompatibleParameterTitle{margin-top:8px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatibleParameters{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px}.openAICompatibleParameters label{display:block;min-width:0;color:#bdaeb6;font-size:10px}.openAICompatibleParameters label span{display:block;margin-bottom:2px}.openAICompatibleParameters select,.openAICompatibleParameters input{min-width:0;padding:5px}.openAICompatiblePromptLabel{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatiblePrompt{min-height:116px;margin-top:4px;resize:vertical;line-height:1.3}.openAICompatiblePromptReset{padding:3px 6px;font-size:10px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.privacyActions button{flex:1;min-width:82px}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover{text-decoration:underline}.hidden{display:none!important}
+      :host{all:initial}*{box-sizing:border-box}.panel{width:306px;color:#fff;background:rgba(32,19,28,.97);border:1px solid #c69b55;border-radius:9px;box-shadow:0 5px 18px #0008;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}.bar{cursor:move;padding:7px 9px;color:#f4d18f;background:#412436;font-weight:700;user-select:none}.quickLanguage{display:flex;align-items:center;gap:8px;padding:7px 7px 0}.quickLanguageLabel{flex:0 0 auto;color:#d4bdac;font-size:11px;font-weight:600}.quickLanguage select{min-width:0;flex:1;border:1px solid #927047;border-radius:5px;background:#20131c;color:#fff;padding:5px 6px;font:inherit}.interfaceTranslationToggle{display:flex;flex:0 0 auto;align-items:center;gap:3px;color:#d4bdac;font-size:11px;font-weight:600;cursor:pointer}.interfaceTranslationToggle input{margin:0}.row{display:flex;gap:6px;padding:7px}.primary,.secondary,.danger{border:1px solid #c69b55;border-radius:6px;background:#6b344f;color:#fff;padding:7px 9px;cursor:pointer;font:inherit}.primary{flex:1;font-weight:700}.secondary{background:#442b39}.translate{display:flex;align-items:center;justify-content:center;gap:6px}.translateShortcut{padding:2px 4px;border:1px solid #c69b5588;border-radius:4px;color:#f4d18f;background:#412436;font-size:9px;font-weight:600;line-height:1;white-space:nowrap}.status{min-height:23px;padding:0 9px 5px;color:#ddd;font-size:12px}.status:empty{display:none}.retry{margin:0 8px 7px;width:calc(100% - 16px)}.settings{display:block;padding:0 8px 9px;border-top:1px solid #6e4d56;max-height:calc(100vh - 190px);overflow-y:auto}.settings label.title{display:block;margin:7px 0 3px}.settings select,.settings input:not([type="checkbox"]),.settings textarea{width:100%;border:1px solid #927047;border-radius:4px;background:#20131c;color:#fff;padding:6px;font:inherit}.providerHint,.cacheStats{color:#bdaeb6;font-size:11px;line-height:1.3}.providerHint{margin-top:4px}.providerHint:empty{display:none}.openAICompatibleBox{margin-top:8px;padding:7px;border:1px solid #6e4d56;border-radius:6px}.cacheBox{display:flex;align-items:center;gap:5px;margin-top:8px;padding:6px 7px;border:1px solid #6e4d56;border-radius:6px}.cacheStats{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cacheCopy,.cacheDelete{flex:0 0 auto;padding:4px 6px;font-size:10px}.openAICompatiblePreset,.openAICompatibleBaseURL,.openAICompatibleModel,.openAICompatibleKey{margin-top:6px}.openAICompatibleParameterTitle{margin-top:8px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatibleParameters{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px}.openAICompatibleParameters label{display:block;min-width:0;color:#bdaeb6;font-size:10px}.openAICompatibleParameters label span{display:block;margin-bottom:2px}.openAICompatibleParameters select,.openAICompatibleParameters input{min-width:0;padding:5px}.openAICompatiblePromptLabel{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;color:#d4bdac;font-size:11px;font-weight:600}.openAICompatiblePrompt{min-height:116px;margin-top:4px;resize:vertical;line-height:1.3}.openAICompatiblePromptReset{padding:3px 6px;font-size:10px}.primary:disabled,.secondary:disabled,.danger:disabled{opacity:.55;cursor:default}.danger{background:#71313a}.privacyActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.privacyActions button{flex:1;min-width:82px}.privacy{margin:0 8px 8px;padding:8px;border:1px solid #d19a44;border-radius:6px;background:#38291f;color:#f8e5bf;font-size:12px}.compat{margin:0 8px 7px;padding:6px;border-radius:5px;background:#71431f;color:#ffe6be;font-size:11px}.site{padding:7px 9px;border-top:1px solid #6e4d56;text-align:center;color:#bdaeb6;font-size:11px}.site a{color:#f4d18f;font-weight:700;text-decoration:none}.site a:hover{text-decoration:underline}.hidden{display:none!important}
+      .cacheBox{display:grid;grid-template-columns:1fr auto}.cacheStats{grid-column:1/-1;white-space:nowrap;overflow:visible;text-overflow:clip}.cacheCopy,.cacheDelete{padding:4px 6px;font-size:10px}.cacheCopy{justify-self:start}
       .translate[hidden],.autoTranslateHint[hidden]{display:none!important}.autoTranslateHint{flex:1;padding:4px 6px;color:#c9bac1;text-align:center;font-size:11px;line-height:1.35}
       .openAICompatibleAdvancedToggle,.openAICompatiblePromptToggle,.openAICompatibleGlossaryToggle{width:100%;margin-top:7px;text-align:left}.openAICompatibleAdvanced[hidden],.openAICompatiblePromptEditor[hidden],.openAICompatibleGlossaryEditor[hidden]{display:none!important}.openAICompatibleAdvanced{padding:0 4px 2px;border-left:1px solid #6e4d56}.openAICompatibleAdvancedNotice{margin:7px 2px 0;color:#d7c1a7;font-size:11px;line-height:1.3}.openAICompatibleGlossary{min-height:90px;margin-top:4px;resize:vertical;line-height:1.3}
       .bar{display:flex;align-items:center;justify-content:flex-end;min-height:34px}.collapseToggle{width:24px;height:22px;padding:0;border:1px solid #c69b55;border-radius:5px;background:#6b344f;color:#fff;cursor:pointer;font:700 16px/18px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}.collapseToggle:hover{background:#7b405d}.panel.collapsed{width:36px}.panel.collapsed>:not(.bar){display:none!important}.panel.collapsed .bar{min-height:32px;padding:5px}
@@ -1533,8 +1608,9 @@
           <span class="autoTrack" aria-hidden="true"><span class="autoThumb"></span></span>
         </label>
         <div class="cacheBox">
-          <div class="cacheStats">Cache: …</div>
-          <button class="danger cacheDelete" type="button" title="Delete all cached translations. Other settings stay unchanged.">Delete</button>
+          <div class="cacheStats">Cache: … · Log: …</div>
+          <button class="secondary cacheCopy" type="button" title="Copy the local service log to the clipboard." disabled>Copy log</button>
+          <button class="danger cacheDelete" type="button" title="Delete all cached translations and the local service log. Other settings stay unchanged.">Delete</button>
         </div>
       </div>
       <div class="site">
@@ -1583,6 +1659,7 @@
   const openAICompatibleKeyInput = shadow.querySelector(".openAICompatibleKey");
   const autoCheckbox = shadow.querySelector(".auto");
   const cacheStatsElement = shadow.querySelector(".cacheStats");
+  const cacheCopyButton = shadow.querySelector(".cacheCopy");
   const cacheDeleteButton = shadow.querySelector(".cacheDelete");
   const privacyBox = shadow.querySelector(".privacy");
   const compatibilityBox = shadow.querySelector(".compat");
@@ -1647,6 +1724,7 @@
     const autoState = shadow.querySelector(".autoState");
     autoState.dataset.on = text.on;
     autoState.dataset.off = text.off;
+    cacheCopyButton.textContent = text.copyLog;
     cacheDeleteButton.textContent = text.delete;
     shadow.querySelector(".siteLabelText").textContent = text.projectWebsite;
     openAICompatiblePresetSelect.title = text.presetTitle;
@@ -1662,6 +1740,7 @@
     openAICompatibleGlossaryToggleButton.title = text.glossaryTitle;
     openAICompatibleGlossaryInput.title = text.glossaryInputTitle;
     shadow.querySelector(".autoToggle").title = text.autoTitle;
+    cacheCopyButton.title = text.copyLogTitle;
     cacheDeleteButton.title = text.cacheDeleteTitle;
     populateOpenAICompatibleModelOptions(openAICompatibleModels, openAICompatibleConnection().model);
     updateCollapsedState();
@@ -1897,18 +1976,19 @@
   languageSelect.addEventListener("change", () => {
     persistControlSettings();
     applyInterfacePreset();
-    refreshCacheStats();
+    refreshCacheStats(false);
   });
   interfaceTranslationCheckbox.addEventListener("change", () => {
     settings.translateInterface = interfaceTranslationCheckbox.checked;
     saveSettings();
     applyInterfacePreset();
-    refreshCacheStats();
+    refreshCacheStats(false);
   });
   autoCheckbox.addEventListener("change", () => {
     persistControlSettings();
     privacyBox.hidden = settings.privacyAccepted || !providerRequiresPrivacy(settings.provider);
   });
+  cacheCopyButton.addEventListener("click", copyLocalLog);
   cacheDeleteButton.addEventListener("click", deleteTranslationCache);
   openAICompatiblePresetSelect.addEventListener("change", async () => {
     const preset = openAICompatiblePresetSelect.value;

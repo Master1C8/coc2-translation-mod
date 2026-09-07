@@ -97,6 +97,11 @@
     })();
     window.fetchCalls = [];
     window.localHelperCalls = [];
+    window.smokeLogBytes = 2048;
+    window.smokeClipboard = "";
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+      writeText: async (value) => { window.smokeClipboard = value; }
+    } });
     window.fetch = async function (input) {
       const url = new URL(String(input));
       if (url.hostname === "127.0.0.1") {
@@ -110,6 +115,16 @@
             message: "Add the OpenCode Go API key first",
             credentialStorage: "test credential vault", promptVersion: "vnrevival-openai-compatible-v2"
           }) };
+        }
+        if (url.pathname === "/v1/log/status") {
+          return { ok: true, json: async () => ({ ok: true, bytes: window.smokeLogBytes }) };
+        }
+        if (url.pathname === "/v1/log/read") {
+          return { ok: true, json: async () => ({ ok: true, bytes: window.smokeLogBytes, content: "smoke log\n", truncated: false }) };
+        }
+        if (url.pathname === "/v1/log/clear") {
+          window.smokeLogBytes = 0;
+          return { ok: true, json: async () => ({ ok: true, bytes: 0 }) };
         }
         return { ok: true, json: async () => ({ ok: true, reselectOnNextLaunch: true }) };
       }
@@ -163,13 +178,14 @@
       interfaceTranslationCheckbox.checked = true;
       interfaceTranslationCheckbox.dispatchEvent(new Event("change"));
       await new Promise((resolve) => setTimeout(resolve, 30));
-      const russianInterfacePresetApplied = shadow.querySelector(".quickLanguageLabel").textContent === "Язык"
+      const russianInterfacePresetTextApplied = shadow.querySelector(".quickLanguageLabel").textContent === "Язык"
         && shadow.querySelector(".translationServiceLabel").textContent === "Сервис перевода"
         && shadow.querySelector(".autoTitle").textContent === "Автоперевод"
         && shadow.querySelector(".cacheStats").textContent.startsWith("Кэш:")
         && shadow.querySelector(".translateAction").textContent === "Перевести"
-        && window.__vnRevivalTranslator.settings().translateInterface === true
-        && window.fetchCalls.length + window.localHelperCalls.length === requestsBeforeInterfacePreset;
+        && window.__vnRevivalTranslator.settings().translateInterface === true;
+      const interfacePresetMadeNoRequests = window.fetchCalls.length + window.localHelperCalls.length === requestsBeforeInterfacePreset;
+      const russianInterfacePresetApplied = russianInterfacePresetTextApplied && interfacePresetMadeNoRequests;
       interfaceTranslationCheckbox.checked = false;
       interfaceTranslationCheckbox.dispatchEvent(new Event("change"));
       shadow.querySelector(".language").value = "en";
@@ -433,17 +449,26 @@
       const repairedMetadata = JSON.parse(localStorage.getItem("coc2-translator.cache-meta.v1") || "null");
       const metadataDirty = localStorage.getItem("coc2-translator.cache-meta-dirty.v1");
       const cacheBox = shadow.querySelector(".cacheBox");
+      const cacheCopyButton = shadow.querySelector(".cacheCopy");
       const cacheDeleteButton = shadow.querySelector(".cacheDelete");
-      const compactCacheRow = getComputedStyle(cacheBox).display === "flex"
-        && cacheBox.children.length === 2
-        && /^Cache: \d+(?:\.\d+)? (?:B|KB|MB)$/.test(shadow.querySelector(".cacheStats").textContent)
+      const compactCacheRow = getComputedStyle(cacheBox).display === "grid"
+        && cacheBox.children.length === 3
+        && /^Cache: \d+(?:\.\d+)? (?:B|KB|MB) · Log: 2\.0 KB$/.test(shadow.querySelector(".cacheStats").textContent)
+        && cacheCopyButton.textContent === "Copy log"
         && cacheDeleteButton.textContent === "Delete";
+      cacheCopyButton.click();
+      for (let attempt = 0; attempt < 50 && window.smokeClipboard !== "smoke log\n"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      const logCopied = window.smokeClipboard === "smoke log\n";
       cacheDeleteButton.click();
-      for (let attempt = 0; attempt < 50 && shadow.querySelector(".cacheStats").textContent !== "Cache: 0 B"; attempt += 1) {
+      for (let attempt = 0; attempt < 50 && shadow.querySelector(".cacheStats").textContent !== "Cache: 0 B · Log: 0 B"; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
       const cacheDeleted = window.smokeCache.size === 0
-        && shadow.querySelector(".cacheStats").textContent === "Cache: 0 B"
+        && window.smokeLogBytes === 0
+        && shadow.querySelector(".cacheStats").textContent === "Cache: 0 B · Log: 0 B"
+        && cacheCopyButton.disabled === true
         && cacheDeleteButton.disabled === false;
       const originalButtonRemoved = !shadow.querySelector(".mode");
 
@@ -473,6 +498,7 @@
         && scrolledTranslation === "ترجمة"
         && repairedMetadata.records === 5
         && compactCacheRow
+        && logCopied
         && cacheDeleted
         && originalButtonRemoved
         && metadataDirty === null
@@ -550,6 +576,7 @@
         scrolledTranslation,
         repairedMetadata,
         compactCacheRow,
+        logCopied,
         cacheDeleted,
         metadataDirty,
         legacyMigrated,
@@ -564,6 +591,8 @@
         languageIsTopLevel,
         interfaceToggleIsRightOfLanguage,
         russianInterfacePresetApplied,
+        russianInterfacePresetTextApplied,
+        interfacePresetMadeNoRequests,
         englishInterfaceRestored,
         languageOptions,
         providerOptions,

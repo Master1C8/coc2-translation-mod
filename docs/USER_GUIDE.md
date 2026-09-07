@@ -69,7 +69,7 @@ The helper validates response structure and context markers before applying text
 
 ### Cache and layout
 
-Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, model parameters, prompt version, the complete system prompt, and the glossary. Changing the prompt, glossary, or parameters therefore does not reuse results produced with an older configuration. Old Google cache entries are migrated lazily. Settings show the total cache size and a `Delete` button on one line; deletion clears all cached translations after confirmation without resetting other settings.
+Translations are cached automatically. OpenAI-compatible cache entries are separated by preset, Base URL, model, model parameters, prompt version, the complete system prompt, and the glossary. Changing the prompt, glossary, or parameters therefore does not reuse results produced with an older configuration. Old Google cache entries are migrated lazily. The maintenance block shows both cache and local-service log sizes. `Copy log` copies the log to the clipboard for diagnostics (the latest 2 MB when it is larger). After confirmation, `Delete` clears both the translation cache and log without resetting other settings.
 
 RTL direction, language tags, font fallback, wrapping, and button sizing are applied only to translated text and restored before retranslation after a language or configuration change. Existing HTML elements and click handlers remain in place.
 
@@ -159,7 +159,7 @@ Helper проверяет структуру ответа и контекстн�
 
 ### Кэш и оформление
 
-Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, параметрам модели, версии, полному тексту системной инструкции и словарю. Поэтому после изменения prompt, словаря или параметров не используются ответы, созданные с прежней конфигурацией. Старые Google-записи мигрируют лениво. В настройках общий размер кэша и кнопка `Delete` находятся в одной строке; после подтверждения удаляются все кэшированные переводы, остальные настройки сохраняются.
+Переводы кэшируются автоматически. Записи OpenAI-compatible разделены по preset, Base URL, модели, параметрам модели, версии, полному тексту системной инструкции и словарю. Поэтому после изменения prompt, словаря или параметров не используются ответы, созданные с прежней конфигурацией. Старые Google-записи мигрируют лениво. В блоке обслуживания показываются размеры кэша и лога локального сервиса. `Copy log` копирует лог в буфер обмена для диагностики (последние 2 МБ, если он больше). После подтверждения `Delete` очищает и кэш переводов, и лог, не сбрасывая остальные настройки.
 
 RTL, `lang`, шрифтовые fallback, переносы и размер кнопок применяются только к переводу и восстанавливаются перед повторным переводом при смене языка или конфигурации. Существующие HTML-элементы и обработчики кликов не заменяются.
 

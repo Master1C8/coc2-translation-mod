@@ -104,6 +104,7 @@ OPENAI_COMPATIBLE_PRESETS = {
 }
 MAX_REQUEST_BYTES = 1_048_576
 MAX_TEXT_CHARS = 12_000
+MAX_LOG_COPY_BYTES = 2 * 1024 * 1024
 
 
 class BridgeError(Exception):
@@ -284,6 +285,40 @@ class LocalServiceBridge:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.credential_id = credential_id
         self._injected_credential_store = credential_store
+
+    @property
+    def log_path(self) -> Path:
+        return self.data_dir / "local-service.log"
+
+    def log_status(self) -> dict[str, Any]:
+        try:
+            size = self.log_path.stat().st_size
+        except FileNotFoundError:
+            size = 0
+        except OSError as error:
+            raise BridgeError("log_status_failed", "Could not read the log size", 500) from error
+        return {"ok": True, "bytes": size}
+
+    def read_log(self) -> dict[str, Any]:
+        try:
+            size = self.log_path.stat().st_size
+            with self.log_path.open("rb") as handle:
+                truncated = size > MAX_LOG_COPY_BYTES
+                if truncated:
+                    handle.seek(-MAX_LOG_COPY_BYTES, os.SEEK_END)
+                content = handle.read().decode("utf-8", errors="replace")
+        except FileNotFoundError:
+            size, truncated, content = 0, False, ""
+        except OSError as error:
+            raise BridgeError("log_read_failed", "Could not read the log", 500) from error
+        return {"ok": True, "bytes": size, "content": content, "truncated": truncated}
+
+    def clear_log(self) -> dict[str, Any]:
+        try:
+            self.log_path.write_bytes(b"")
+        except OSError as error:
+            raise BridgeError("log_clear_failed", "Could not delete the log", 500) from error
+        return {"ok": True, "bytes": 0}
 
     @staticmethod
     def _connection(preset: Any, base_url: Any) -> dict[str, Any]:
@@ -779,6 +814,8 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
         return self.server.bridge
 
     def log_message(self, fmt: str, *args: Any) -> None:
+        if getattr(self, "path", "").startswith("/v1/log/"):
+            return
         if sys.stderr is not None:
             super().log_message(fmt, *args)
 
@@ -841,6 +878,14 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json()
             if self.path == "/v1/openai-compatible/status":
                 result = self.bridge.openai_status(payload.get("preset"), payload.get("baseURL"))
+            elif self.path == "/v1/log/status":
+                result = self.bridge.log_status()
+            elif self.path == "/v1/log/read":
+                result = self.bridge.read_log()
+            elif self.path == "/v1/log/clear":
+                if payload.get("accepted") is not True:
+                    raise BridgeError("confirmation_required", "Explicit confirmation is required", 400)
+                result = self.bridge.clear_log()
             elif self.path == "/v1/openai-compatible/key":
                 result = self.bridge.set_openai_key(
                     payload.get("preset"), payload.get("baseURL"), payload.get("apiKey")

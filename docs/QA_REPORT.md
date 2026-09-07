@@ -24,7 +24,7 @@
 - provider cache v4 разделяет preset, Base URL, model ID, параметры модели и версию prompt;
 - каталог языков точно совпадает с 30 локалями VN Revival, а чистый первый запуск выбирает английский и `Auto translate: On`;
 - выбор языка постоянно находится в верхней части панели, вне скрываемых настроек;
-- общий размер кэша и подтверждаемая кнопка его полного удаления находятся в одной строке;
+- размеры кэша и service log показаны вместе; лог можно скопировать, а подтверждаемое удаление очищает оба хранилища;
 - длинные информационные подписи Google Translate и OpenAI-compatible отсутствуют и не оставляют пустого отступа;
 - автоперевод оформлен как доступный компактный toggle с явными состояниями On/Off;
 - при включённом автопереводе кнопка `Translate` заменяется короткой подсказкой, а при выключении появляется снова;
@@ -69,7 +69,7 @@
 - 22 Node.js tests: точный каталог языков, provider registry, Google/OpenAI-compatible requests,
   cache isolation/migration, UTF-8 splitting, context markers and launcher
   lifecycle contracts;
-- 35 Python tests: manifest/launcher contracts и local helper, включая preset,
+- 37 Python tests: manifest/launcher contracts и local helper, включая preset,
   URL policy, credential vault, model discovery, Chat Completions, structured
   response/model-parameter fallback, marker validation и safe errors;
 - source verification: 30 языков из общего каталога сайта;
