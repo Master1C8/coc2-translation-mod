@@ -196,6 +196,19 @@
       const openAIModelSelectionSaved = openAIModelSelect.value === "model-b"
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null")
           ?.openAICompatibleModel === "model-b";
+      const openAIAdvancedToggle = shadow.querySelector(".openAICompatibleAdvancedToggle");
+      const openAIAdvanced = shadow.querySelector(".openAICompatibleAdvanced");
+      const openAIAdvancedInitiallyCollapsed = openAIAdvanced.hidden
+        && getComputedStyle(openAIAdvanced).display === "none"
+        && openAIAdvancedToggle.textContent === "Advanced"
+        && openAIAdvancedToggle.getAttribute("aria-expanded") === "false"
+        && openAIAdvanced.contains(shadow.querySelector(".openAICompatiblePromptToggle"))
+        && openAIAdvanced.contains(shadow.querySelector(".openAICompatibleGlossaryToggle"));
+      openAIAdvancedToggle.click();
+      const openAIAdvancedOpenedByButton = !openAIAdvanced.hidden
+        && getComputedStyle(openAIAdvanced).display !== "none"
+        && openAIAdvancedToggle.textContent === "Hide advanced"
+        && openAIAdvancedToggle.getAttribute("aria-expanded") === "true";
       const openAIPromptToggle = shadow.querySelector(".openAICompatiblePromptToggle");
       const openAIPromptEditor = shadow.querySelector(".openAICompatiblePromptEditor");
       const openAIPromptInitiallyCollapsed = openAIPromptEditor.hidden
@@ -244,6 +257,11 @@
         && getComputedStyle(openAIGlossaryEditor).display === "none"
         && openAIGlossaryToggle.textContent === "Glossary"
         && openAIGlossaryToggle.getAttribute("aria-expanded") === "false";
+      openAIAdvancedToggle.click();
+      const openAIAdvancedClosedByButton = openAIAdvanced.hidden
+        && getComputedStyle(openAIAdvanced).display === "none"
+        && openAIAdvancedToggle.textContent === "Advanced"
+        && openAIAdvancedToggle.getAttribute("aria-expanded") === "false";
       const reasoningEffortInput = shadow.querySelector(".openAICompatibleReasoningEffort");
       const verbosityInput = shadow.querySelector(".openAICompatibleVerbosity");
       const concurrencyInput = shadow.querySelector(".openAICompatibleConcurrency");
@@ -450,6 +468,9 @@
         && safeOpenAIModelPicker
         && modelListRefreshesOnOpen
         && openAIModelSelectionSaved
+        && openAIAdvancedInitiallyCollapsed
+        && openAIAdvancedOpenedByButton
+        && openAIAdvancedClosedByButton
         && openAIPromptInitiallyCollapsed
         && openAIPromptOpenedByButton
         && openAIPromptEditable
@@ -513,6 +534,9 @@
         safeOpenAIModelPicker,
         modelListRefreshesOnOpen,
         openAIModelSelectionSaved,
+        openAIAdvancedInitiallyCollapsed,
+        openAIAdvancedOpenedByButton,
+        openAIAdvancedClosedByButton,
         openAIPromptInitiallyCollapsed,
         openAIPromptOpenedByButton,
         openAIPromptEditable,
