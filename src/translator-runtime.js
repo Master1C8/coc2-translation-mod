@@ -266,6 +266,8 @@
   function openAICompatibleConnection() {
     const preset = hasOwn(OPENAI_COMPATIBLE_PRESETS, settings.openAICompatiblePreset)
       ? settings.openAICompatiblePreset : defaults.openAICompatiblePreset;
+    const model = String(settings.openAICompatibleModel || "").trim();
+    const supportedEfforts = OPENAI_CONFIG.modelReasoningEfforts[preset]?.[model];
     const systemPrompt = String(settings.openAICompatibleSystemPrompt || defaults.openAICompatibleSystemPrompt).trim();
     const glossary = String(settings.openAICompatibleGlossary || "").trim();
     const requestSystemPrompt = glossary
@@ -276,7 +278,7 @@
       baseURL: preset === "custom"
         ? String(settings.openAICompatibleBaseURL || "").trim()
         : OPENAI_COMPATIBLE_PRESETS[preset].baseURL,
-      model: String(settings.openAICompatibleModel || "").trim(),
+      model,
       systemPrompt,
       glossary,
       requestSystemPrompt,
@@ -284,8 +286,8 @@
       modelParameters: {
         reasoningEffort: normalizedOpenAICompatibleChoice(
           settings.openAICompatibleReasoningEffort,
-          OPENAI_COMPATIBLE_REASONING_EFFORTS,
-          defaults.openAICompatibleReasoningEffort
+          supportedEfforts ? ["", ...supportedEfforts] : OPENAI_COMPATIBLE_REASONING_EFFORTS,
+          supportedEfforts ? supportedEfforts[0] : defaults.openAICompatibleReasoningEffort
         ),
         verbosity: OPENAI_COMPATIBLE_TRANSLATION_VERBOSITY
       }
@@ -1038,7 +1040,7 @@
           if (lastErrorCode === "openai_rate_limited"
               || lastErrorCode === "openai_key_invalid"
               || lastErrorCode === "openai_model_unavailable"
-              || ["openai_billing_required", "openai_endpoint_mismatch", "openai_stream_required", "openai_message_format_rejected"].includes(lastErrorCode)
+              || ["openai_billing_required", "openai_endpoint_mismatch", "openai_stream_required", "openai_message_format_rejected", "openai_reasoning_unsupported"].includes(lastErrorCode)
               || (lastErrorCode === "openai_request_failed" && Number.isInteger(error.providerStatus)
                 && error.providerStatus < 500)) {
             queueStopped = true;
@@ -1364,7 +1366,7 @@
     openAICompatibleBaseURLInput.title = text.baseURLTitle;
     openAICompatibleKeyInput.title = text.keyTitle;
     openAICompatibleModelSelect.title = text.modelTitle;
-    openAICompatibleReasoningEffortSelect.title = text.reasoningTitle;
+    syncReasoningEffortOptions();
     openAICompatibleConcurrencySelect.title = text.parallelTitle;
     openAICompatibleAdvancedToggleButton.title = text.advancedTitle;
     openAICompatiblePromptToggleButton.title = text.promptTitle;
@@ -1388,6 +1390,7 @@
   }
   function translationErrorText(error, text) {
     const key = {
+      openai_reasoning_unsupported: "reasoningUnsupported",
       openai_rate_limited: "rateLimited", openai_key_invalid: "keyRejected",
       openai_model_unavailable: "modelUnavailable", openai_billing_required: "billingRequired",
       openai_format_invalid: "formatInvalid", openai_invalid_response: "formatInvalid",
@@ -1479,6 +1482,21 @@
     keyEditButton.disabled = openAICompatibleBusy || !LOCAL_BRIDGE;
     openAICompatibleKeyInput.hidden = configured && !editingOpenAIKey;
   }
+  function syncReasoningEffortOptions(connection = openAICompatibleConnection()) {
+    const supported = OPENAI_CONFIG.modelReasoningEfforts[connection.preset]?.[connection.model];
+    for (const option of openAICompatibleReasoningEffortSelect.options) {
+      const unavailable = !!(supported && option.value && !supported.includes(option.value));
+      option.hidden = unavailable;
+      option.disabled = unavailable;
+    }
+    const effective = connection.modelParameters.reasoningEffort;
+    openAICompatibleReasoningEffortSelect.value = effective;
+    openAICompatibleReasoningEffortSelect.title = supported ? interfacePreset().reasoningRequiredTitle : interfacePreset().reasoningTitle;
+    if (settings.openAICompatibleReasoningEffort !== effective) {
+      settings.openAICompatibleReasoningEffort = effective;
+      saveSettings();
+    }
+  }
   function syncOpenAICompatibleInputs() {
     const connection = openAICompatibleConnection();
     openAICompatiblePresetSelect.value = connection.preset;
@@ -1491,7 +1509,7 @@
     openAICompatibleBaseURLInput.value = connection.baseURL;
     openAICompatibleBaseURLInput.disabled = openAICompatibleBusy || !LOCAL_BRIDGE || connection.preset !== "custom";
     populateOpenAICompatibleModelOptions(openAICompatibleModels, connection.model);
-    openAICompatibleReasoningEffortSelect.value = connection.modelParameters.reasoningEffort;
+    syncReasoningEffortOptions(connection);
     openAICompatibleConcurrencySelect.value = String(connection.concurrency);
     openAICompatiblePromptInput.value = connection.systemPrompt;
     openAICompatibleGlossaryInput.value = connection.glossary;

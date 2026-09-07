@@ -397,6 +397,34 @@
     buttonWrap: button.style.getPropertyValue("white-space")
   };
 
+  const reasoningModelCompatibility = await (async () => {
+    const change = (element, value) => { element.value = value; element.dispatchEvent(new Event("change")); };
+    autoCheckbox.checked = false;
+    autoCheckbox.dispatchEvent(new Event("change"));
+    change(shadow.querySelector(".provider"), "openai-compatible");
+    change(shadow.querySelector(".openAICompatiblePreset"), "opencode-go");
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    const model = shadow.querySelector(".openAICompatibleModel");
+    const effort = shadow.querySelector(".openAICompatibleReasoningEffort");
+    change(model, "model-b");
+    change(effort, "minimal");
+    model.add(new Option("glm-5.3-flash", "glm-5.3-flash"));
+    change(model, "glm-5.3-flash");
+    const migrated = effort.value === "low"
+      && window.__vnRevivalTranslator.settings().openAICompatibleReasoningEffort === "low"
+      && JSON.parse(localStorage.getItem("coc2-translator.settings.v2")).openAICompatibleReasoningEffort === "low";
+    const supported = Array.from(effort.options).filter((option) => !option.hidden && !option.disabled).map((option) => option.value);
+    const preserved = ["high", "max", ""].every((value) => {
+      change(effort, value);
+      return effort.value === value;
+    });
+    change(model, "model-b");
+    change(effort, "minimal");
+    const otherModelsUnchanged = effort.value === "minimal" && Array.from(effort.options).every((option) => !option.hidden && !option.disabled);
+    return migrated && JSON.stringify(supported) === JSON.stringify(["", "low", "high", "max"])
+      && preserved && otherModelsUnchanged;
+  })();
+
   const retryLifecycle = await (async () => {
     const originalFetch = window.fetch;
     const retry = shadow.querySelector(".retry");
@@ -496,6 +524,7 @@
     compactGooglePanel,
     stableTranslationFeedback,
     ...retryLifecycle,
+    reasoningModelCompatibility,
     gameThemeApplied,
     russianInterfacePresetApplied,
     englishInterfaceRestored,

@@ -6,6 +6,9 @@
   "minConcurrency": 1,
   "maxConcurrency": 8,
   "reasoningEfforts": ["", "none", "minimal", "low", "medium", "high", "xhigh", "max"],
+  "modelReasoningEfforts": {
+    "opencode-go": {"glm-5.3-flash": ["low", "high", "max"]}
+  },
   "verbosities": ["low", "medium", "high"],
   "translationVerbosity": "low",
   "manualModelValue": "__vnrevival_manual_model__",

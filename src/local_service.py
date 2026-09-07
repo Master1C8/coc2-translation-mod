@@ -423,6 +423,12 @@ class LocalServiceBridge:
                     provider_status=status,
                 )
         if status == 400:
+            if re.search(r"thinking.{0,80}cannot be disabled|reasoning.{0,80}(?:unsupported|not supported)", normalized):
+                return BridgeError(
+                    "openai_reasoning_unsupported",
+                    "The model does not support this reasoning effort; select a supported level",
+                    409, provider_status=status,
+                )
             if re.search(r"(?:use|requires?|only supports?).{0,40}/?responses\b", normalized):
                 return BridgeError(
                     "openai_endpoint_mismatch",
@@ -740,6 +746,12 @@ class LocalServiceBridge:
             "{targetName}", target_name.strip()
         ).replace("{target}", target)
         request_model_parameters = self._model_parameters(model_parameters)
+        allowed_efforts = OPENAI_COMPATIBLE_CONFIG["modelReasoningEfforts"].get(connection["preset"], {}).get(model.strip())
+        requested_effort = request_model_parameters.get("reasoning_effort")
+        if allowed_efforts and requested_effort is not None and requested_effort not in allowed_efforts:
+            request_model_parameters["reasoning_effort"] = allowed_efforts[0]
+            self.log_event("provider.parameter_adjusted", parameter="reasoning_effort",
+                           requested=requested_effort, effective=allowed_efforts[0], reason="model_supported_values")
         body = {
             "model": model.strip(),
             "messages": [

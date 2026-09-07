@@ -82,6 +82,33 @@ class LocalServiceTests(unittest.TestCase):
                     bridge.openai_status(preset, base_url)
             self.assertTrue(all(call.args[0].get_header("X-opencode-session") is None for call in urlopen.call_args_list))
 
+    def test_glm_flash_uses_supported_reasoning_without_a_failed_paid_attempt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "test-key")
+            with mock.patch.object(local_service.urllib.request, "urlopen",
+                                   return_value=FakeHTTPResponse({"choices": [{"message": {"content": "Hello"}}]})) as urlopen:
+                for requested, expected in (("none", "low"), ("minimal", "low"), ("medium", "low"), ("xhigh", "low"), ("low", "low"), ("high", "high"), ("max", "max"), ("", None)):
+                    bridge.openai_translate("en", "English", "Hello", "glm-5.3-flash", "opencode-go", "",
+                                            model_parameters={"reasoningEffort": requested})
+                    self.assertEqual(json.loads(urlopen.call_args.args[0].data).get("reasoning_effort"), expected)
+                self.assertEqual(urlopen.call_count, 8)
+                for model, preset in (("other-model", "opencode-go"), ("glm-5.3-flash", "opencode-zen")):
+                    bridge.openai_translate("en", "English", "Hello", model, preset, "",
+                                            model_parameters={"reasoningEffort": "minimal"})
+                    self.assertEqual(json.loads(urlopen.call_args.args[0].data)["reasoning_effort"], "minimal")
+            events = [json.loads(line) for line in bridge.log_path.read_text().splitlines()]
+            adjustments = [event for event in events if event["event"] == "provider.parameter_adjusted"]
+            self.assertEqual(len(adjustments), 4)
+            self.assertTrue(all(event["effective"] == "low" for event in adjustments))
+
+    def test_reasoning_rejection_is_classified_without_raw_provider_detail(self):
+        error = local_service.LocalServiceBridge._classified_provider_error(400,
+            "Error from provider (Console Go): Upstream request failed: [1210] This model always engages "
+            "in thinking and cannot be disabled; please use low, high, or max PRIVATE-DETAIL")
+        self.assertEqual(error.code, "openai_reasoning_unsupported")
+        self.assertEqual(error.provider_status, 400)
+        self.assertNotIn("PRIVATE", str(error))
+
     def test_presets_cover_the_supported_openai_compatible_endpoints(self):
         self.assertEqual(list(local_service.OPENAI_COMPATIBLE_PRESETS), [
             "opencode-go", "opencode-zen", "openrouter", "deepseek", "lmstudio", "custom"
