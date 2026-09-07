@@ -31,7 +31,7 @@
   const OPENAI_COMPATIBLE_MIN_CONCURRENCY = 1;
   const OPENAI_COMPATIBLE_MAX_CONCURRENCY = 8;
   const OPENAI_COMPATIBLE_REASONING_EFFORTS = Object.freeze(["", "none", "minimal", "low", "medium", "high", "xhigh", "max"]);
-  const OPENAI_COMPATIBLE_VERBOSITIES = Object.freeze(["", "low", "medium", "high"]);
+  const OPENAI_COMPATIBLE_TRANSLATION_VERBOSITY = "low";
   const OPENAI_COMPATIBLE_MANUAL_MODEL_VALUE = "__vnrevival_manual_model__";
   const OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT = [
     "Translate player-visible English text from the running game into {targetName} ({target}).",
@@ -83,7 +83,6 @@
     openAICompatibleSystemPrompt: OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT,
     openAICompatibleGlossary: "",
     openAICompatibleReasoningEffort: "",
-    openAICompatibleVerbosity: "",
     openAICompatibleConcurrency: 4,
     collapsed: false,
     x: null,
@@ -232,11 +231,6 @@
         OPENAI_COMPATIBLE_REASONING_EFFORTS,
         defaults.openAICompatibleReasoningEffort
       ),
-      openAICompatibleVerbosity: normalizedOpenAICompatibleChoice(
-        source.openAICompatibleVerbosity,
-        OPENAI_COMPATIBLE_VERBOSITIES,
-        defaults.openAICompatibleVerbosity
-      ),
       openAICompatibleConcurrency: normalizedOpenAICompatibleConcurrency(source.openAICompatibleConcurrency),
       collapsed: typeof source.collapsed === "boolean" ? source.collapsed : defaults.collapsed,
       x: Number.isFinite(source.x) ? source.x : null,
@@ -294,11 +288,7 @@
           OPENAI_COMPATIBLE_REASONING_EFFORTS,
           defaults.openAICompatibleReasoningEffort
         ),
-        verbosity: normalizedOpenAICompatibleChoice(
-          settings.openAICompatibleVerbosity,
-          OPENAI_COMPATIBLE_VERBOSITIES,
-          defaults.openAICompatibleVerbosity
-        )
+        verbosity: OPENAI_COMPATIBLE_TRANSLATION_VERBOSITY
       }
     };
   }
@@ -1452,7 +1442,6 @@
           <div class="openAICompatibleParameterTitle">Model parameters</div>
           <div class="openAICompatibleParameters">
             <label><span>Reasoning effort</span><select class="openAICompatibleReasoningEffort" aria-label="Reasoning effort" title="Controls how much reasoning the model may use. Higher values can be slower."><option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
-            <label><span>Verbosity</span><select class="openAICompatibleVerbosity" aria-label="Output verbosity" title="Controls the requested detail level of the model output."><option value="">Provider default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
             <label><span>Parallel requests</span><select class="openAICompatibleConcurrency" aria-label="Parallel requests" title="Number of translation requests sent at once. Higher is faster but may hit rate limits."><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label>
           </div>
           <button class="secondary openAICompatibleAdvancedToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleAdvanced" title="Show system prompt and glossary settings.">Advanced</button>
@@ -1510,7 +1499,6 @@
   const openAICompatibleBaseURLInput = shadow.querySelector(".openAICompatibleBaseURL");
   const openAICompatibleModelSelect = shadow.querySelector(".openAICompatibleModel");
   const openAICompatibleReasoningEffortSelect = shadow.querySelector(".openAICompatibleReasoningEffort");
-  const openAICompatibleVerbositySelect = shadow.querySelector(".openAICompatibleVerbosity");
   const openAICompatibleConcurrencySelect = shadow.querySelector(".openAICompatibleConcurrency");
   const openAICompatibleAdvancedToggleButton = shadow.querySelector(".openAICompatibleAdvancedToggle");
   const openAICompatibleAdvanced = shadow.querySelector(".openAICompatibleAdvanced");
@@ -1601,7 +1589,7 @@
     openAICompatibleBusy = busy;
     for (const control of [
       openAICompatiblePresetSelect, openAICompatibleBaseURLInput,
-      openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect,
+      openAICompatibleReasoningEffortSelect,
       openAICompatibleConcurrencySelect,
       openAICompatibleKeyInput
     ]) control.disabled = busy || !LOCAL_BRIDGE;
@@ -1619,7 +1607,6 @@
     openAICompatibleBaseURLInput.disabled = openAICompatibleBusy || !LOCAL_BRIDGE || connection.preset !== "custom";
     populateOpenAICompatibleModelOptions(openAICompatibleModels, connection.model);
     openAICompatibleReasoningEffortSelect.value = connection.modelParameters.reasoningEffort;
-    openAICompatibleVerbositySelect.value = connection.modelParameters.verbosity;
     openAICompatibleConcurrencySelect.value = String(connection.concurrency);
     openAICompatiblePromptInput.value = connection.systemPrompt;
     openAICompatibleGlossaryInput.value = connection.glossary;
@@ -1689,15 +1676,8 @@
       OPENAI_COMPATIBLE_REASONING_EFFORTS,
       settings.openAICompatibleReasoningEffort
     );
-    const verbosity = normalizedOpenAICompatibleChoice(
-      next.verbosity,
-      OPENAI_COMPATIBLE_VERBOSITIES,
-      settings.openAICompatibleVerbosity
-    );
-    const changed = settings.openAICompatibleReasoningEffort !== reasoningEffort
-      || settings.openAICompatibleVerbosity !== verbosity;
+    const changed = settings.openAICompatibleReasoningEffort !== reasoningEffort;
     settings.openAICompatibleReasoningEffort = reasoningEffort;
-    settings.openAICompatibleVerbosity = verbosity;
     if (changed) {
       invalidateAppliedTranslations();
       saveSettings();
@@ -1830,17 +1810,12 @@
     });
     setStatus("OpenAI-compatible system prompt saved");
   });
-  for (const control of [
-    openAICompatibleReasoningEffortSelect, openAICompatibleVerbositySelect
-  ]) {
-    control.addEventListener("change", () => {
-      applyOpenAICompatibleModelParameters({
-        reasoningEffort: openAICompatibleReasoningEffortSelect.value,
-        verbosity: openAICompatibleVerbositySelect.value
-      });
-      setStatus("OpenAI-compatible model parameters saved");
+  openAICompatibleReasoningEffortSelect.addEventListener("change", () => {
+    applyOpenAICompatibleModelParameters({
+      reasoningEffort: openAICompatibleReasoningEffortSelect.value
     });
-  }
+    setStatus("OpenAI-compatible model parameters saved");
+  });
   openAICompatibleConcurrencySelect.addEventListener("change", () => {
     applyOpenAICompatibleConcurrency(openAICompatibleConcurrencySelect.value);
     setStatus("");
