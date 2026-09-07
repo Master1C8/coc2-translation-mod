@@ -196,6 +196,17 @@
       const openAIModelSelectionSaved = openAIModelSelect.value === "model-b"
         && JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null")
           ?.openAICompatibleModel === "model-b";
+      const openAIPromptToggle = shadow.querySelector(".openAICompatiblePromptToggle");
+      const openAIPromptEditor = shadow.querySelector(".openAICompatiblePromptEditor");
+      const openAIPromptInitiallyCollapsed = openAIPromptEditor.hidden
+        && getComputedStyle(openAIPromptEditor).display === "none"
+        && openAIPromptToggle.textContent === "System prompt"
+        && openAIPromptToggle.getAttribute("aria-expanded") === "false";
+      openAIPromptToggle.click();
+      const openAIPromptOpenedByButton = !openAIPromptEditor.hidden
+        && getComputedStyle(openAIPromptEditor).display !== "none"
+        && openAIPromptToggle.textContent === "Hide system prompt"
+        && openAIPromptToggle.getAttribute("aria-expanded") === "true";
       const openAIPromptInput = shadow.querySelector(".openAICompatiblePrompt");
       const openAIPromptEditable = openAIPromptInput.value.includes("{targetName}")
         && openAIPromptInput.value.includes("VRCTXSEP<number>X")
@@ -204,6 +215,11 @@
       openAIPromptInput.dispatchEvent(new Event("change"));
       const openAIPromptSaved = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null")
         ?.openAICompatibleSystemPrompt === openAIPromptInput.value;
+      openAIPromptToggle.click();
+      const openAIPromptClosedByButton = openAIPromptEditor.hidden
+        && getComputedStyle(openAIPromptEditor).display === "none"
+        && openAIPromptToggle.textContent === "System prompt"
+        && openAIPromptToggle.getAttribute("aria-expanded") === "false";
       const reasoningEffortInput = shadow.querySelector(".openAICompatibleReasoningEffort");
       const verbosityInput = shadow.querySelector(".openAICompatibleVerbosity");
       const concurrencyInput = shadow.querySelector(".openAICompatibleConcurrency");
@@ -410,8 +426,11 @@
         && safeOpenAIModelPicker
         && modelListRefreshesOnOpen
         && openAIModelSelectionSaved
+        && openAIPromptInitiallyCollapsed
+        && openAIPromptOpenedByButton
         && openAIPromptEditable
         && openAIPromptSaved
+        && openAIPromptClosedByButton
         && openAIModelParametersVisible
         && openAIModelParametersSaved
         && openAIHintRemoved
@@ -466,8 +485,11 @@
         safeOpenAIModelPicker,
         modelListRefreshesOnOpen,
         openAIModelSelectionSaved,
+        openAIPromptInitiallyCollapsed,
+        openAIPromptOpenedByButton,
         openAIPromptEditable,
         openAIPromptSaved,
+        openAIPromptClosedByButton,
         openAIModelParametersVisible,
         openAIModelParametersSaved,
         openAIHintRemoved,
