@@ -294,9 +294,15 @@
     };
   }
 
-  function providerCacheVariant(provider) {
+  function connectionForSource(source, connection = openAICompatibleConnection()) {
+    const glossary = core.selectGlossary(source, connection.glossary);
+    return { ...connection, glossary, requestSystemPrompt: glossary
+      ? `${connection.systemPrompt}\n\nUser translation glossary. Apply these mappings consistently whenever the source term occurs:\n${glossary}`
+      : connection.systemPrompt };
+  }
+
+  function providerCacheVariant(provider, connection = openAICompatibleConnection()) {
     if (!providerUsesOpenAICompatible(provider)) return "";
-    const connection = openAICompatibleConnection();
     return [
       connection.preset, connection.baseURL, connection.model,
       OPENAI_COMPATIBLE_PROMPT_VERSION, connection.systemPrompt, connection.glossary,
@@ -533,24 +539,36 @@
     return PROVIDERS[provider].delay;
   }
 
-  async function requestChunk(provider, text, language, signal, onRetry) {
+  async function requestChunk(provider, text, language, signal, onRetry, context = {}) {
     const selectedProvider = PROVIDERS[provider];
     if (!selectedProvider) throw new Error("Unknown translation service");
     let lastError = null;
     const retries = Math.max(1, Number(selectedProvider.retries) || 1);
     for (let attempt = 0; attempt < retries; attempt += 1) {
       try {
+        signal.throwIfAborted();
+        if (context.variant && context.variant !== translationVariant()) throw new DOMException("Configuration changed", "AbortError");
+        if (context.metrics) {
+          context.metrics.helper_requests += 1;
+          if (context.batchSize > 1) context.metrics.batch_requests += 1;
+        }
         return await selectedProvider.translateChunk({
           text, language, sourceLanguage: SOURCE_LANGUAGE, signal,
-          openAICompatible: providerUsesOpenAICompatible(provider) ? openAICompatibleConnection() : null,
+          openAICompatible: providerUsesOpenAICompatible(provider) ? (context.connection || connectionForSource(text)) : null,
           languageName: (LANGUAGES.find(([code]) => code === language) || [null, language])[1],
           fetch: (input, init) => fetch(input, init),
-          localRequest: requestLocalHelper,
+          localRequest: (path, options) => requestLocalHelper(path, {
+            ...options, body: { ...options.body, diagnostics: context.metrics ? {
+              screen_id: context.metrics.screen_id, batch_size: context.batchSize || 1,
+              kind: context.kind || "ui"
+            } : undefined }
+          }),
           decodeHtmlEntities
         });
       } catch (error) {
         if (error && error.name === "AbortError") throw error;
         lastError = error;
+        if (context.batchSize > 1 && batchFormatError(error)) break;
         if (attempt + 1 < retries && retryableProviderError(provider, error)) {
           const delay = providerRetryDelay(error, attempt);
           if (typeof onRetry === "function") onRetry(error, delay, attempt + 2, retries);
@@ -563,8 +581,14 @@
     throw lastError || new Error("Translation failed");
   }
 
-  async function translateText(source, language, provider, signal, onRetry) {
-    const key = core.makeCacheKey(source, language, provider, game.id, providerCacheVariant(provider));
+  function translationCacheKey(source, language, provider, connection) {
+    return core.makeCacheKey(source, language, provider, game.id,
+      providerCacheVariant(provider, connectionForSource(source, connection)));
+  }
+
+  async function translateText(source, language, provider, signal, onRetry, context = {}) {
+    const connection = connectionForSource(source, context.connection);
+    const key = translationCacheKey(source, language, provider, connection);
     let cached = await cacheGet(key);
     if (!cached && provider === "google") {
       const legacyKey = core.makeCacheKey(source, language, provider);
@@ -573,13 +597,16 @@
         if (await cachePut(key, cached)) await cacheDelete(legacyKey);
       }
     }
-    if (cached) return { text: cached, cached: true };
+    if (cached) {
+      if (context.metrics) context.metrics.cache_hits += 1;
+      return { text: cached, cached: true };
+    }
     const selectedProvider = PROVIDERS[provider];
     if (!selectedProvider) throw new Error("Unknown translation service");
     const chunks = selectedProvider.splitText(source);
     const parts = [];
     for (const chunk of chunks) {
-      parts.push(await requestChunk(provider, chunk, language, signal, onRetry));
+      parts.push(await requestChunk(provider, chunk, language, signal, onRetry, { ...context, connection }));
       await sleep(providerRequestDelay(provider), signal);
     }
     const translated = parts.join(" ").replace(/ +\n/g, "\n").trim();
@@ -827,13 +854,19 @@
     }
   }
 
-  function rememberTranslation(node, source, translation, language, provider) {
-    if (!node || !node.isConnected || !translation) return;
-    applied.set(node, { source, translation, language, provider });
+  function rememberTranslation(node, source, translation, language, provider, context = {}, dependencySource = source) {
+    if (!node || !node.isConnected || !translation || context.signal?.aborted
+        || (context.variant && context.variant !== translationVariant())) return;
+    applied.set(node, { source, translation, language, provider, dependencySource });
     appliedNodes.add(node);
     if (settings.mode === "translated") {
       writeNode(node, translation);
       applyLanguageFormatting(node, language);
+      if (context.metrics) {
+        const elapsed = Math.round(performance.now() - context.started);
+        context.metrics.first_apply_ms ??= elapsed;
+        if (context.kind === "story") context.metrics.first_story_ms ??= elapsed;
+      }
     }
   }
 
@@ -938,11 +971,71 @@
     return jobs.sort((a, b) => priority[a.kind] - priority[b.kind]);
   }
 
-  async function applyJobTranslation(job, language, provider, signal, onRetry) {
-    const result = await translateText(job.source, language, provider, signal, onRetry);
+  function batchFormatError(error) {
+    return ["openai_format_invalid", "openai_invalid_response", "openai_empty_translation"].includes(error?.code);
+  }
+
+  async function applyBatchTranslation(job, language, provider, signal, onRetry, context) {
+    const missing = [];
+    for (const part of job.batchParts) {
+      signal.throwIfAborted();
+      const key = translationCacheKey(part.source, language, provider, context.connection);
+      const cached = await cacheGet(key);
+      if (cached) {
+        context.metrics.cache_hits += 1;
+        for (const node of part.nodes) {
+          if (sourceForNode(node) === part.source) rememberTranslation(node, part.source, cached, language, provider, context);
+        }
+      } else missing.push({ ...part, key });
+    }
+    if (!missing.length) return true;
+    if (missing.length > 1) {
+      const source = core.buildContextSource(missing.map(part => part.source));
+      const connection = connectionForSource(source, context.connection);
+      connection.requestSystemPrompt += "\nThese are independent interface labels. Translate each separately; preserve every VRCTXSEP marker and its order.";
+      let parts;
+      try {
+        const translated = await requestChunk(provider, source, language, signal, onRetry,
+          { ...context, connection, batchSize: missing.length });
+        parts = core.parseContextTranslation(translated, missing.length);
+      } catch (error) {
+        if (!batchFormatError(error)) {
+          error.failedJobs = missing;
+          throw error;
+        }
+      }
+      if (parts) {
+        for (let index = 0; index < missing.length; index += 1) {
+          const part = missing[index];
+          await cachePut(part.key, parts[index]);
+          for (const node of part.nodes) {
+            if (sourceForNode(node) === part.source) rememberTranslation(node, part.source, parts[index], language, provider, context);
+          }
+        }
+        await sleep(providerRequestDelay(provider), signal);
+        return false;
+      }
+      context.metrics.batch_fallbacks += 1;
+    }
+    // A malformed batch never enters the cache. Retry its missing labels individually.
+    for (let index = 0; index < missing.length; index += 1) {
+      try {
+        await applyJobTranslation(missing[index], language, provider, signal, onRetry, context);
+      } catch (error) {
+        error.failedJobs = missing.slice(index);
+        throw error;
+      }
+    }
+    return false;
+  }
+
+  async function applyJobTranslation(job, language, provider, signal, onRetry, context = {}) {
+    context = { ...context, kind: job.kind };
+    if (job.batchParts) return applyBatchTranslation(job, language, provider, signal, onRetry, context);
+    const result = await translateText(job.source, language, provider, signal, onRetry, context);
     if (!job.contextual) {
       for (const node of job.nodes) {
-        if (node.isConnected && sourceForNode(node) === job.source) rememberTranslation(node, job.source, result.text, language, provider);
+        if (node.isConnected && sourceForNode(node) === job.source) rememberTranslation(node, job.source, result.text, language, provider, context);
       }
       return result.cached;
     }
@@ -951,17 +1044,17 @@
       for (let index = 0; index < job.parts.length; index += 1) {
         const part = job.parts[index];
         if (part.node.isConnected && sourceForNode(part.node) === part.source) {
-          rememberTranslation(part.node, part.source, contextualParts[index], language, provider);
+          rememberTranslation(part.node, part.source, contextualParts[index], language, provider, context, job.source);
         }
       }
       return result.cached;
     }
     let allCached = true;
     for (const part of job.parts) {
-      const fallback = await translateText(part.source, language, provider, signal, onRetry);
+      const fallback = await translateText(part.source, language, provider, signal, onRetry, context);
       allCached = allCached && fallback.cached;
       if (part.node.isConnected && sourceForNode(part.node) === part.source) {
-        rememberTranslation(part.node, part.source, fallback.text, language, provider);
+        rememberTranslation(part.node, part.source, fallback.text, language, provider, context);
       }
     }
     return allCached;
@@ -1003,11 +1096,27 @@
       return;
     }
 
+    const originalJobCount = jobs.length;
+    if (providerUsesOpenAICompatible(settings.provider)) jobs = core.batchShortJobs(jobs);
     running = true;
     autoBlockedVariant = null;
     const runVariant = translationVariant();
     let queueStopped = false;
     abortController = new AbortController();
+    const started = performance.now();
+    const metrics = {
+      screen_id: crypto.randomUUID().replace(/-/g, ""), mode: manual ? "manual" : "auto",
+      jobs: originalJobCount, requests_planned: jobs.length, helper_requests: 0,
+      batch_requests: 0, batch_fallbacks: 0, cache_hits: 0, max_queue_wait_ms: 0,
+      first_apply_ms: null, first_story_ms: null
+    };
+    const context = { metrics, started, signal: abortController.signal,
+      connection: openAICompatibleConnection(), variant: runVariant };
+    const measureOpenAI = providerUsesOpenAICompatible(settings.provider);
+    const report = (phase, extra = {}) => measureOpenAI
+      && requestLocalHelper("/v1/translation-metrics", { body: { phase, ...metrics, ...extra } }).catch(() => {});
+    report("start");
+    let outcome = "complete";
     setMainButton("Cancel");
     retryButton.disabled = true;
     setTranslationStatus((text) => formatMessage(text.progress, { done: 0, total: jobs.length }));
@@ -1021,22 +1130,24 @@
 
     async function worker() {
       while (!queueStopped) {
+        if (runVariant !== translationVariant()) return;
         const index = nextIndex;
         nextIndex += 1;
         if (index >= jobs.length) return;
         const job = jobs[index];
+        metrics.max_queue_wait_ms = Math.max(metrics.max_queue_wait_ms, Math.round(performance.now() - started));
         try {
-          await applyJobTranslation(job, language, provider, abortController.signal, (error, delay, nextAttempt, attempts) => {
+          await applyJobTranslation(job, language, provider, context.signal, (error, delay, nextAttempt, attempts) => {
             if (!queueStopped) setTranslationStatus((text) => formatMessage(text.retryWaiting, {
               reason: translationErrorText(error, text), seconds: Math.ceil(delay / 1000),
               attempt: nextAttempt, attempts
             }));
-          });
+          }, context);
         } catch (error) {
           if (error && error.name === "AbortError") throw error;
           lastErrorCode = error && error.code ? error.code : lastErrorCode;
           if (!queueStopped) lastError = error;
-          lastFailedJobs.push(job);
+          lastFailedJobs.push(...(error.failedJobs || [job]));
           if (lastErrorCode === "openai_rate_limited"
               || lastErrorCode === "openai_key_invalid"
               || lastErrorCode === "openai_model_unavailable"
@@ -1059,12 +1170,15 @@
 
     try {
       const concurrency = providerUsesOpenAICompatible(provider)
-        ? openAICompatibleConnection().concurrency
+        ? context.connection.concurrency
         : PROVIDERS[provider].concurrency;
       const count = Math.min(concurrency, jobs.length);
-      await Promise.all(Array.from({ length: count }, () => worker()));
+      const workers = await Promise.allSettled(Array.from({ length: count }, () => worker()));
+      const rejected = workers.find(result => result.status === "rejected");
+      if (rejected) throw rejected.reason;
       if (lastFailedJobs.length) {
-        const failedCount = lastFailedJobs.length;
+        outcome = "failed";
+        const failedCount = lastFailedJobs.reduce((count, job) => count + (job.batchParts?.length || 1), 0);
         setTranslationStatus((text) => formatMessage(text.translationFailed, {
           reason: translationErrorText(lastError, text), count: failedCount
         }) + (queueStopped ? " " + text.autoPaused : ""));
@@ -1072,8 +1186,12 @@
         setStatus("");
       }
     } catch (error) {
+      outcome = error?.name === "AbortError" ? "cancelled" : "failed";
       setTranslationStatus((text) => error && error.name === "AbortError" ? text.translationCancelled : text.connectionFailed);
     } finally {
+      if (runVariant !== translationVariant()) outcome = "superseded";
+      report("result", { outcome, duration_ms: Math.round(performance.now() - started),
+        failed_jobs: lastFailedJobs.reduce((count, job) => count + (job.batchParts?.length || 1), 0) });
       running = false;
       abortController = null;
       setMainButton("Translate");
@@ -1573,8 +1691,22 @@
   function applyOpenAICompatibleGlossary(value) {
     const glossary = String(value || "").trim().slice(0, OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS);
     if (settings.openAICompatibleGlossary === glossary) return;
+    const previous = settings.openAICompatibleGlossary;
     settings.openAICompatibleGlossary = glossary;
-    invalidateAppliedTranslations();
+    pruneAppliedNodes();
+    for (const node of appliedNodes) {
+      sourceForNode(node); // Discard a record if the game has already changed this node.
+      const record = applied.get(node);
+      if (!record) continue;
+      const source = record.dependencySource || record.source;
+      if (providerUsesOpenAICompatible(record.provider)
+          && core.selectGlossary(source, previous) !== core.selectGlossary(source, glossary)) {
+        writeNode(node, record.source);
+        applied.delete(node);
+        appliedNodes.delete(node);
+      }
+    }
+    refreshLanguageFormatting();
     saveSettings();
     syncOpenAICompatibleInputs();
   }

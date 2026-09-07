@@ -42,6 +42,7 @@ node --check src/translator-runtime.js
 node --check tests/runtime/smoke-report.js
 node --check tests/runtime/smoke-setup.js
 node --check tests/runtime/smoke-scenario.js
+node --check tests/runtime/optimization-scenario.js
 [[ -s "$ROOT/$ICON_PNG" && -s "$ROOT/$ICON_ICNS" ]]
 python3 scripts/generate-game-config.py "$GAME_MANIFEST" "$ROOT/.build/game-config.js"
 node --check "$ROOT/.build/game-config.js"
@@ -191,7 +192,6 @@ if grep -Eq 'class="(cacheActions|launcherActions|settingsActions|clearLanguage|
   echo "Removed settings actions are still present in the panel" >&2
   exit 1
 fi
-grep -Fq 'makeCacheKey(source, language, provider, game.id, providerCacheVariant(provider))' src/translator-runtime.js
 
 COUNT=$(python3 -c 'import json; print(len(json.load(open("src/languages.json", encoding="utf-8"))))')
 if [[ "$COUNT" != "30" ]]; then

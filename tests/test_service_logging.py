@@ -169,3 +169,52 @@ class ServiceLoggingTests(unittest.TestCase):
         with mock.patch.object(Path, "open", side_effect=OSError("PRIVATE-ERROR")), \
                 mock.patch.object(local_service.urllib.request, "urlopen", return_value=self.response()):
             self.assertTrue(self.translate()["ok"])
+
+    def test_screen_metrics_correlate_requests_and_reject_arbitrary_content(self):
+        screen_id = "a" * 32
+        diagnostics = {"screen_id": screen_id, "batch_size": 12, "kind": "control"}
+        with mock.patch.object(local_service.urllib.request, "urlopen", return_value=self.response()):
+            self.translate(diagnostics=diagnostics)
+        event = next(event for event in self.events() if event["event"] == "translation.start")
+        self.assertEqual({key: event[key] for key in diagnostics}, diagnostics)
+        for bad in ({**diagnostics, "text": "PRIVATE"}, {**diagnostics, "screen_id": "PRIVATE"},
+                    {**diagnostics, "batch_size": True}, {**diagnostics, "batch_size": 13},
+                    {**diagnostics, "kind": "PRIVATE"}, "PRIVATE"):
+            with self.subTest(bad=bad), self.assertRaises(local_service.BridgeError):
+                self.translate(diagnostics=bad)
+        self.events()
+
+    def test_screen_metrics_endpoint_validates_before_logging(self):
+        payload = {
+            "phase": "result", "screen_id": "b" * 32, "mode": "auto", "jobs": 12,
+            "requests_planned": 1, "helper_requests": 1, "batch_requests": 1,
+            "batch_fallbacks": 0, "cache_hits": 0, "max_queue_wait_ms": 2,
+            "first_apply_ms": 123, "first_story_ms": None,
+            "outcome": "complete", "duration_ms": 150, "failed_jobs": 0,
+        }
+        handler = object.__new__(local_service.LocalServiceRequestHandler)
+        handler.server = SimpleNamespace(bridge=self.bridge)
+        handler.path = "/v1/translation-metrics"
+        handler._require_auth = mock.Mock()
+        handler._read_json = mock.Mock(return_value=payload)
+        handler._write_json = mock.Mock()
+        handler.do_POST()
+        handler._require_auth.assert_called_once()
+        handler._write_json.assert_called_once_with({"ok": True})
+        event = self.events()[-1]
+        self.assertEqual(event["event"], "screen.result")
+        self.assertEqual(event["first_apply_ms"], 123)
+        self.assertIsNone(event["first_story_ms"])
+        for key, value in (("text", "PRIVATE"), ("duration_ms", "PRIVATE"), ("cache_hits", True),
+                           ("first_apply_ms", -1), ("outcome", "PRIVATE"), ("phase", "PRIVATE")):
+            handler._read_json.return_value = {**payload, key: value}
+            handler._write_json.reset_mock()
+            handler.do_POST()
+            self.assertEqual(handler._write_json.call_args.args[1], 400)
+            self.assertEqual(self.events()[-1], event)
+        denied = local_service.BridgeError("unauthorized", "Invalid local helper token", 401)
+        handler._require_auth.side_effect = denied
+        handler._read_json.reset_mock()
+        handler.do_POST()
+        handler._read_json.assert_not_called()
+        self.assertEqual(handler._write_json.call_args.args[1], 401)

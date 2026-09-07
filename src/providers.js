@@ -67,7 +67,9 @@
           signal: context.signal
         });
         if (typeof payload.translatedText !== "string" || !payload.translatedText.trim()) {
-          throw new Error("The OpenAI-compatible provider returned an empty translation");
+          const error = new Error("The OpenAI-compatible provider returned an empty translation");
+          error.code = "openai_empty_translation";
+          throw error;
         }
         return payload.translatedText;
       }

@@ -158,7 +158,7 @@
     && openAIAdvancedToggle.textContent === "Hide advanced"
     && openAIAdvancedToggle.getAttribute("aria-expanded") === "true";
   const openAIAdvancedCacheNotice = openAIAdvanced.querySelector(".openAICompatibleAdvancedNotice")
-    ?.textContent === "After making changes, delete the cache below to retranslate text that was already translated."
+    ?.textContent === "Changes apply on the next translation. Unaffected cached translations are kept."
     && getComputedStyle(openAIAdvanced.querySelector(".openAICompatibleAdvancedNotice")).display !== "none";
   const openAIPromptToggle = shadow.querySelector(".openAICompatiblePromptToggle");
   const openAIPromptEditor = shadow.querySelector(".openAICompatiblePromptEditor");
@@ -493,6 +493,8 @@
     }
   })();
 
+  const optimization = await window.runOptimizationSmoke(shadow);
+
   // Keep each expectation once; the reporter lists failed names only.
   window.smokeReport({
     translatedText: translated.text === "ترى امرأة جميلة بالقرب من الباب.",
@@ -524,6 +526,7 @@
     compactGooglePanel,
     stableTranslationFeedback,
     ...retryLifecycle,
+    ...optimization,
     reasoningModelCompatibility,
     gameThemeApplied,
     russianInterfacePresetApplied,

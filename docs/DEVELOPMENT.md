@@ -44,6 +44,7 @@ then expand to shared setup and callers as needed. Anchors avoid stale line numb
 
 | Area | Source anchors | Test anchors |
 |---|---|---|
+| Batching, scoped glossary, screen timing | core `batchShortJobs`, `selectGlossary`; runtime `applyBatchTranslation`, `runJobs`; helper `screen_metrics` | `tests/runtime/optimization-scenario.js`, `tests/test_service_logging.py` |
 | Cache | runtime `emptyCacheMetadata`, `openDb` through `clearAllCache` | smoke scenario `repairedMetadata`, `legacyMigrated`, `cacheDeleted` |
 | Logs | runtime `refreshCacheStats`, `copyLocalLog`, `deleteTranslationCache`; helper `log_event` through `clear_log`, `openai_translate`, `do_GET`, `do_POST` | `tests/test_service_logging.py`; helper tests `test_log_status_read_and_clear`, `test_log_copy_is_bounded`; smoke `compactCacheRow` through `cacheDeleted` |
 | Provider settings/models | runtime `openAICompatibleConnection`, `providerCacheVariant`, `populateOpenAICompatibleModelOptions`, `refreshOpenAICompatibleStatus`; helper `_connection`, `_models`, `openai_status` | helper `test_status_`, `test_opencode_`; smoke `safeOpenAIModelPicker`, `modelListRefreshesOnOpen` |

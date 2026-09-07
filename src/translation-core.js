@@ -266,6 +266,44 @@
       : part).join(" ");
   }
 
+  function selectGlossary(source, glossary) {
+    const full = String(glossary || "").trim();
+    if (!full) return "";
+    const lines = full.split(/\r?\n/).filter((line) => line.trim());
+    // Free-form instructions may apply globally; never silently remove them.
+    if (lines.some((line) => !/^[^=\n]+=[^=\n]+$/.test(line)
+        || !line.split("=")[0].trim() || !line.split("=")[1].trim())) return full;
+    const normalized = normalizeText(String(source || "")).normalize("NFKC").toLowerCase();
+    return lines.filter((line) => normalized.includes(
+      normalizeText(line.split("=")[0]).normalize("NFKC").toLowerCase()
+    )).join("\n").trim();
+  }
+
+  function batchShortJobs(jobs, limit = 12) {
+    limit = Math.max(2, Math.min(12, Math.floor(Number(limit)) || 12));
+    const result = [];
+    const groups = new Map();
+    for (const job of jobs) {
+      if (job.contextual || !["control", "ui"].includes(job.kind)
+          || job.source.length > 80 || /[\r\n]|VRCTXSEP\d+X/.test(job.source)) {
+        result.push(job);
+        continue;
+      }
+      if (!groups.has(job.kind)) groups.set(job.kind, []);
+      groups.get(job.kind).push(job);
+    }
+    for (const [kind, parts] of groups) {
+      for (let offset = 0; offset < parts.length; offset += limit) {
+        const batch = parts.slice(offset, offset + limit);
+        result.push(batch.length === 1 ? batch[0] : {
+          kind, batchParts: batch, nodes: batch.flatMap((part) => part.nodes)
+        });
+      }
+    }
+    const priority = { story: 0, control: 1, tooltip: 2, ui: 3 };
+    return result.sort((a, b) => priority[a.kind] - priority[b.kind]);
+  }
+
   function parseContextTranslation(value, count) {
     const expected = Number(count) || 0;
     if (expected < 2) return null;
@@ -341,6 +379,8 @@
     parseGoogleResponse,
     buildContextSource,
     parseContextTranslation,
+    selectGlossary,
+    batchShortJobs,
     makeCacheKey,
     cacheKeyLanguage,
     cacheKeyProvider,

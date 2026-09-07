@@ -132,3 +132,31 @@ test("v3 cache keys isolate games and expose their owning adapter", () => {
   assert.equal(core.cacheKeyProvider(coc2), "google");
   assert.equal(core.cacheKeyGame(core.makeCacheKey("Hello", "ru", "google")), "");
 });
+
+test("selects relevant glossary mappings conservatively and preserves free-form instructions", () => {
+  const glossary = "Sword = Меч\nInn = Таверна\nSilver coin = Серебряная монета";
+  assert.equal(core.selectGlossary("A SWORD and a silver\u00a0coin", glossary), "Sword = Меч\nSilver coin = Серебряная монета");
+  assert.equal(core.selectGlossary("Nothing relevant", glossary), "");
+  assert.equal(core.selectGlossary("Ｓｗｏｒｄ", glossary), "Sword = Меч");
+  for (const instructions of ["Use formal address", "Sword = Меч\nUse formal address", "Sword == Меч", " = Меч", "Sword = "]) {
+    assert.equal(core.selectGlossary("Nothing relevant", instructions), instructions.trim());
+  }
+});
+
+test("batches bounded independent labels while preserving story and context jobs", () => {
+  const labels = Array.from({ length: 25 }, (_, i) => ({ source: `Label ${i}`, kind: "control", nodes: [i] }));
+  const preserved = [
+    { source: "A short story", kind: "story", nodes: [30] },
+    { source: "Context", kind: "control", contextual: true, nodes: [31] },
+    { source: "Long ".repeat(20), kind: "ui", nodes: [32] },
+    { source: "Tooltip", kind: "tooltip", nodes: [33] },
+    { source: "First\nSecond", kind: "ui", nodes: [34] },
+    { source: "First VRCTXSEP1X Second", kind: "ui", nodes: [35] },
+  ];
+  const batches = core.batchShortJobs([...labels, ...preserved]);
+  assert.equal(batches[0], preserved[0]);
+  assert.deepEqual(batches.filter(job => job.batchParts).map(job => job.batchParts.length), [12, 12]);
+  assert.ok(preserved.every(job => batches.includes(job)));
+  assert.deepEqual(batches.flatMap(job => job.nodes).sort((a, b) => a - b), [...labels, ...preserved].flatMap(job => job.nodes));
+  assert.equal(core.batchShortJobs(labels, 0).length, 3);
+});

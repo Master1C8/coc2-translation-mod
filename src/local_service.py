@@ -52,6 +52,36 @@ _LOG_ROUTES = {
 }
 
 
+def translation_diagnostics(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if (not isinstance(value, dict) or set(value) != {"screen_id", "batch_size", "kind"}
+            or not isinstance(value["screen_id"], str) or not re.fullmatch(r"[0-9a-f]{32}", value["screen_id"])
+            or type(value["batch_size"]) is not int or not 1 <= value["batch_size"] <= 12
+            or value["kind"] not in ("story", "control", "tooltip", "ui")):
+        raise BridgeError("invalid_metrics", "Invalid translation metrics", 400)
+    return dict(value)
+
+
+def screen_metrics(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise BridgeError("invalid_metrics", "Invalid screen metrics", 400)
+    counters = {"jobs", "requests_planned", "helper_requests", "batch_requests", "batch_fallbacks", "cache_hits", "max_queue_wait_ms"}
+    nullable = {"first_apply_ms", "first_story_ms"}
+    fields = {"phase", "screen_id", "mode"} | counters | nullable
+    if value.get("phase") == "result":
+        fields |= {"outcome", "duration_ms", "failed_jobs"}
+        counters |= {"duration_ms", "failed_jobs"}
+    valid = (set(value) == fields and value.get("phase") in ("start", "result")
+             and isinstance(value.get("screen_id"), str) and re.fullmatch(r"[0-9a-f]{32}", value["screen_id"])
+             and value.get("mode") in ("manual", "auto")
+             and ("outcome" not in value or value["outcome"] in ("complete", "failed", "cancelled", "superseded")))
+    if not valid or any(type(value[key]) is not int or not 0 <= value[key] <= 1_000_000_000 for key in counters) \
+            or any(value[key] is not None and (type(value[key]) is not int or not 0 <= value[key] <= 1_000_000_000) for key in nullable):
+        raise BridgeError("invalid_metrics", "Invalid screen metrics", 400)
+    return {key: item for key, item in value.items() if key != "phase"}
+
+
 def safe_exception_kind(error: BaseException) -> str:
     allowed = (KeyError, ValueError, TypeError, AttributeError, OSError, RuntimeError)
     return type(error).__name__ if type(error) in allowed else "Exception"
@@ -678,15 +708,16 @@ class LocalServiceBridge:
     def openai_translate(
         self, target: Any, target_name: Any, text: Any, model: Any, preset: Any,
         base_url: Any, system_prompt: Any = None, model_parameters: Any = None,
-        *, request_id: str | None = None,
+        *, request_id: str | None = None, diagnostics: Any = None,
     ) -> dict[str, Any]:
+        diagnostics = translation_diagnostics(diagnostics)
         token = _TRACE_ID.set(request_id or uuid.uuid4().hex)
         started = time.monotonic()
         def fingerprint(value: Any) -> str:
             return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True).encode()).hexdigest()[:24]
         try:
             known_models = set().union(*OPENCODE_CHAT_MODELS.values())
-            self.log_event("translation.start",
+            self.log_event("translation.start", **diagnostics,
                            source_id=fingerprint(text), config_id=fingerprint([target, model, preset, base_url, system_prompt, model_parameters]),
                            model=model if isinstance(model, str) and model in known_models else "custom",
                            model_id=fingerprint(model), preset=preset if isinstance(preset, str) and preset in OPENAI_COMPATIBLE_PRESETS else "invalid",
@@ -899,7 +930,7 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _write_json(self, payload: dict[str, Any], status: int = 200) -> None:
-        if not self.path.startswith("/v1/log/"):
+        if not self.path.startswith("/v1/log/") and self.path != "/v1/translation-metrics":
             self.bridge.log_event("http.response", request_id=getattr(self, "request_id", None),
                                   route=self.path if self.path in _LOG_ROUTES else "other", helper_status=status,
                                   error=payload.get("error"), provider_status=payload.get("providerStatus"))
@@ -961,6 +992,10 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json()
             if self.path == "/v1/openai-compatible/status":
                 result = self.bridge.openai_status(payload.get("preset"), payload.get("baseURL"))
+            elif self.path == "/v1/translation-metrics":
+                measured = screen_metrics(payload)
+                self.bridge.log_event("screen." + payload["phase"], **measured)
+                result = {"ok": True}
             elif self.path == "/v1/log/status":
                 result = self.bridge.log_status()
             elif self.path == "/v1/log/read":
@@ -982,7 +1017,7 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                     payload.get("target"), payload.get("targetName"), payload.get("text"),
                     payload.get("model"), payload.get("preset"), payload.get("baseURL"),
                     payload.get("systemPrompt"), payload.get("modelParameters"),
-                    request_id=self.request_id,
+                    request_id=self.request_id, diagnostics=payload.get("diagnostics"),
                 )
             elif self.path == "/v1/launcher/reselect-executable":
                 if payload.get("accepted") is not True:
