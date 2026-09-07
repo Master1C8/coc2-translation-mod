@@ -21,6 +21,7 @@
   <script>
     (function () {
       localStorage.removeItem("coc2-translator.settings.v2");
+      localStorage.removeItem("coc2-translator.settings.v1");
       localStorage.setItem("coc2-translator.cache-meta.v1", JSON.stringify({ version: 1, records: 99, bytes: 99, languages: { ar: { records: 99, bytes: 99 } } }));
       localStorage.setItem("coc2-translator.cache-meta-dirty.v1", "1");
       function request(result) {
@@ -138,6 +139,13 @@
       const autoCheckbox = shadow.querySelector(".auto");
       const defaultAutoTranslate = autoCheckbox.checked === true
         && window.__vnRevivalTranslator.settings().autoTranslate === true;
+      const mainButton = shadow.querySelector(".translate");
+      const autoTranslateHint = shadow.querySelector(".autoTranslateHint");
+      const autoModeHidesTranslate = mainButton.hidden
+        && !autoTranslateHint.hidden
+        && getComputedStyle(mainButton).display === "none"
+        && getComputedStyle(autoTranslateHint).display !== "none"
+        && autoTranslateHint.textContent === "If translation glitches, turn off Auto translate below.";
       const languageOptions = Array.from(shadow.querySelector(".language").options)
         .map((option) => [option.value, option.textContent]);
       const languageIsTopLevel = !!shadow.querySelector(".panel > .quickLanguage > .language")
@@ -241,7 +249,22 @@
       autoCheckbox.closest(".autoToggle").click();
       const savedAfterAutoChange = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null");
       const autoChangeSaved = savedAfterAutoChange && savedAfterAutoChange.autoTranslate === false;
+      const manualModeShowsTranslate = !mainButton.hidden && autoTranslateHint.hidden
+        && getComputedStyle(mainButton).display === "flex"
+        && getComputedStyle(autoTranslateHint).display === "none";
       shadow.querySelector(".allowAuto").click();
+      for (let attempt = 0; attempt < 100
+          && document.getElementById("prefetched-tooltip").textContent.trim() !== "ترجمة"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      for (let attempt = 0; attempt < 100
+          && shadow.querySelector(".translateAction").textContent === "Cancel"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const restoredAutoModeHidesTranslate = mainButton.hidden && !autoTranslateHint.hidden
+        && getComputedStyle(mainButton).display === "none"
+        && getComputedStyle(autoTranslateHint).display !== "none";
       const autosavedSettings = JSON.parse(localStorage.getItem("coc2-translator.settings.v2") || "null");
       const removedSettingsButtons = !shadow.querySelector(
         ".cacheActions,.launcherActions,.settingsActions,.save,.reset,.clearLanguage,.export,.import,.changeExecutable"
@@ -269,6 +292,11 @@
       const contactLinksPresent = shadow.querySelector('.contactIcon.discord')?.href === "https://discord.gg/QgyeWW3Jg"
         && shadow.querySelector('.contactIcon.telegram')?.href === "https://t.me/VnRevival"
         && shadow.querySelector('.contactIcon.email')?.getAttribute("href") === "mailto:master1c8@proton.me";
+      autoCheckbox.closest(".autoToggle").click();
+      for (let attempt = 0; attempt < 100
+          && shadow.querySelector(".translateAction").textContent === "Cancel"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
       window.__vnRevivalTranslator.showTranslations();
       const translationPromise = Promise.resolve(window.__vnRevivalTranslator.translateScreen());
       const cancelStateKeepsShortcut = shadow.querySelector(".translate .translateAction")?.textContent === "Cancel"
@@ -302,6 +330,7 @@
       const hiddenTooltipPrefetched = prefetchedTooltip.textContent.trim() === "ترجمة"
         && getComputedStyle(prefetchedTooltip.closest(".tooltip")).display === "none";
 
+      autoCheckbox.closest(".autoToggle").click();
       const later = document.getElementById("later");
       later.scrollIntoView();
       window.smokeIntersectionObservers.forEach((observer) => observer.trigger());
@@ -365,6 +394,7 @@
         && routineSuccessStatusHidden
         && defaultLanguage === "en"
         && defaultAutoTranslate
+        && autoModeHidesTranslate
         && languageIsTopLevel
         && languageOptions.length === 30
         && JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
@@ -389,6 +419,8 @@
         && googleHintRemoved
         && organicAutoToggle
         && autoChangeSaved
+        && manualModeShowsTranslate
+        && restoredAutoModeHidesTranslate
         && autosavedSettings.language === "ar"
         && autosavedSettings.provider === "google"
         && autosavedSettings.autoTranslate === true
@@ -423,6 +455,7 @@
         routineSuccessStatusHidden,
         defaultLanguage,
         defaultAutoTranslate,
+        autoModeHidesTranslate,
         languageIsTopLevel,
         languageOptions,
         providerOptions,
@@ -442,6 +475,8 @@
         googleHintRemoved,
         organicAutoToggle,
         autoChangeSaved,
+        manualModeShowsTranslate,
+        restoredAutoModeHidesTranslate,
         autosavedSettings,
         removedSettingsButtons,
         removedBottomHint,
