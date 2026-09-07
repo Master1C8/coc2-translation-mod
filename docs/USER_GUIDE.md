@@ -23,7 +23,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 - `− / +` collapses the panel to a single `+` button or expands it completely.
 - Drag the space around the language controls in the top row to move the panel.
 
-The panel has only two states: expanded or collapsed. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel. Progress, errors, and the retry button use a fixed-height area so translation updates do not resize the panel or move its controls. Long error messages scroll within that area.
+The panel has only two states: expanded or collapsed. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel. Progress, errors, and the retry button use a fixed-height area so translation updates do not resize the panel or move its controls. Long error messages scroll within that area. `Retry translation` stays in a separate fixed row and is disabled during translation and when there are no failed fragments. It retries only failed fragments still present on the current screen.
 
 Automatic translation processes visible, newly visible, or changed blocks and pre-translates tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
@@ -65,7 +65,7 @@ The key field is cleared and hidden after confirmed saving; `Key saved` and `Cha
 
 LM Studio is part of this same provider. Start its local server and load a model first; no key is required by the preset. If `/models` is unavailable but Chat Completions works, enter the model ID manually.
 
-The helper validates response structure and context markers before applying text. If an endpoint explicitly rejects an optional model parameter, the helper retries without it. Provider HTTP 400/401 responses that identify an unavailable or unsupported model are reported as a model problem without exposing the raw upstream message. Temporary failures and rate limits are retried with a delay and `Retry-After`; the panel shows the safe final error, and an exhausted rate limit stops the remaining queue. This is not editorial review, and the result is not an approved localization.
+The helper validates response structure and context markers before applying text. If an endpoint explicitly rejects an optional model parameter, the helper retries without it. Provider HTTP 400/401 responses that identify an unavailable or unsupported model are reported as a model problem without exposing the raw upstream message. Temporary failures and rate limits are retried with a delay and `Retry-After`; the panel shows the safe final error, and an exhausted rate limit stops the remaining queue. Permanent provider rejections also stop the queue and pause automatic translation for the current settings until a manual retry, a change of translation settings or key, or toggling auto-translate. OpenCode Go requests include a stable routing session ID for the lifetime of the local service, shared across concurrent requests and format fallbacks; the client identifies itself as VN Revival Translator. This is not editorial review, and the result is not an approved localization.
 
 ### Cache and layout
 
@@ -115,7 +115,7 @@ advanced launches can select Parallels with
 - `− / +` сворачивает панель до одной кнопки `+` или полностью разворачивает её.
 - Свободное место в верхней строке с языком позволяет перемещать панель.
 
-У панели два состояния: развёрнутое и свёрнутое. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели. Прогресс, ошибки и кнопка повтора занимают область постоянной высоты: обновления перевода не меняют размер панели и не сдвигают элементы управления. Длинные сообщения об ошибках прокручиваются внутри этой области.
+У панели два состояния: развёрнутое и свёрнутое. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели. Прогресс, ошибки и кнопка повтора занимают область постоянной высоты: обновления перевода не меняют размер панели и не сдвигают элементы управления. Длинные сообщения об ошибках прокручиваются внутри этой области. «Повторить перевод» постоянно занимает отдельную строку и недоступна во время перевода и при отсутствии ошибок. Кнопка повторяет только непереведённые фрагменты, которые ещё находятся на текущем экране.
 
 Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки и заранее переводит уже присутствующие в DOM tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
@@ -157,7 +157,7 @@ Base URL preset:
 
 LM Studio входит в этот же провайдер. Сначала запустите local server и загрузите модель; preset не требует ключа. Если `/models` недоступен, но Chat Completions работает, введите model ID вручную.
 
-Helper проверяет структуру ответа и контекстные маркеры перед применением. Если endpoint явно отклоняет optional model-параметр, helper повторяет запрос без него. HTTP 400/401, в котором provider сообщает о недоступной или неподдерживаемой модели, показывается как проблема модели без вывода сырого upstream message. Временные ошибки и rate limit автоматически повторяются с задержкой и `Retry-After`; панель показывает безопасную итоговую причину, а исчерпанный лимит останавливает оставшуюся очередь. Эта проверка не является редактурой, а результат не становится одобренной локализацией.
+Helper проверяет структуру ответа и контекстные маркеры перед применением. Если endpoint явно отклоняет optional model-параметр, helper повторяет запрос без него. HTTP 400/401, в котором provider сообщает о недоступной или неподдерживаемой модели, показывается как проблема модели без вывода сырого upstream message. Временные ошибки и rate limit автоматически повторяются с задержкой и `Retry-After`; панель показывает безопасную итоговую причину, а исчерпанный лимит останавливает оставшуюся очередь. Постоянные отказы провайдера также останавливают очередь и приостанавливают автоперевод с текущими настройками до ручного повтора, изменения настроек перевода или ключа либо переключения автоперевода. Запросы OpenCode Go передают единый идентификатор сессии маршрутизации на время работы локального сервиса, включая параллельные запросы и смену формата; клиент обозначает себя как VN Revival Translator. Эта проверка не является редактурой, а результат не становится одобренной локализацией.
 
 ### Кэш и оформление
 

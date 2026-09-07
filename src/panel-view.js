@@ -60,10 +60,10 @@
         .row{margin-bottom:10px}
         .translate{display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
         .translateShortcut{font-size:10px;font-weight:400;opacity:.8}
-        .translationFeedback{height:48px;margin:8px 0;display:flex;align-items:center;gap:8px}
-        .status{flex:1;min-width:0;max-height:100%;overflow:auto;color:var(--warning);font-size:12px;overflow-wrap:anywhere}
-        .status:empty,.providerHint:empty{display:none}
-        .retry{flex:0 0 96px;max-height:100%;overflow:auto}
+        .translationFeedback{height:70px;margin:8px 0;display:grid;grid-template-rows:32px 32px;gap:6px}
+        .status{min-width:0;min-height:0;overflow:auto;color:var(--warning);font-size:12px;overflow-wrap:anywhere}
+        .providerHint:empty{display:none}
+        .retry{width:100%;height:32px;min-height:32px;max-height:32px;padding:0 8px;white-space:nowrap;overflow:hidden}
         .compat,.privacy{padding:8px;margin:8px 0;border:1px solid var(--border);border-radius:6px;color:var(--warning);font-size:12px}
         .privacyActions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
         .privacyActions button{flex:1}
@@ -113,7 +113,7 @@
           <div class="row" hidden><button class="primary translate" aria-label="Translate (Ctrl+Shift+T)"><span class="translateAction">Translate</span><span class="translateShortcut" aria-hidden="true">Ctrl+Shift+T</span></button></div>
         <div class="translationFeedback">
           <div class="status" role="status" aria-live="polite" tabindex="0"></div>
-          <button class="secondary retry" hidden>Retry failed</button>
+          <button class="secondary retry" type="button" disabled>Retry translation</button>
         </div>
         <div class="compat" hidden></div>
         <div class="privacy" hidden>

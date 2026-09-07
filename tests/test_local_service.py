@@ -50,6 +50,38 @@ class LocalServiceTests(unittest.TestCase):
             Path(directory), credential_id="coc2", credential_store=FakeCredentialStore(key)
         )
 
+    def test_opencode_session_survives_fallback_and_separate_requests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "test-key")
+            requests = []
+
+            def fake_open(request, timeout):
+                requests.append(request)
+                if len(requests) == 1:
+                    raise urllib.error.HTTPError(request.full_url, 400, "unsupported", {},
+                        io.BytesIO(b'{"error":{"message":"json_schema response_format is unsupported"}}'))
+                return FakeHTTPResponse({"choices": [{"message": {"content": "Hello"}}]})
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
+                for _ in range(2):
+                    bridge.openai_translate("en", "English", "Test", "glm-5.3-flash", "opencode-go", "ignored")
+            sessions = [request.get_header("X-opencode-session") for request in requests]
+            self.assertEqual(len(requests), 3)
+            self.assertEqual(len(set(sessions)), 1)
+            self.assertRegex(sessions[0], r"^[a-f0-9]{32}$")
+            self.assertTrue(all(request.get_header("User-agent") == "VNRevival-Translator/1" for request in requests))
+            self.assertNotIn(sessions[0], bridge.log_path.read_text())
+            self.assertNotEqual(bridge._opencode_session, self.bridge(directory)._opencode_session)
+
+    def test_opencode_session_is_not_sent_to_other_providers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "test-key")
+            with mock.patch.object(local_service.urllib.request, "urlopen",
+                                   return_value=FakeHTTPResponse({"data": []})) as urlopen:
+                for preset, base_url in (("openrouter", "ignored"), ("custom", "https://example.test/v1")):
+                    bridge.openai_status(preset, base_url)
+            self.assertTrue(all(call.args[0].get_header("X-opencode-session") is None for call in urlopen.call_args_list))
+
     def test_presets_cover_the_supported_openai_compatible_endpoints(self):
         self.assertEqual(list(local_service.OPENAI_COMPATIBLE_PRESETS), [
             "opencode-go", "opencode-zen", "openrouter", "deepseek", "lmstudio", "custom"

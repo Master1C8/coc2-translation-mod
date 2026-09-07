@@ -257,6 +257,9 @@ class LocalServiceBridge:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.credential_id = credential_id
         self._injected_credential_store = credential_store
+        # One routing session per launcher lifetime, shared by concurrent requests
+        # and format fallbacks. This is not an auth token or a user identifier.
+        self._opencode_session = uuid.uuid4().hex
 
     def log_event(self, event: str, **fields: Any) -> None:
         # Callers supply only fixed categories, numeric metrics and fingerprints.
@@ -501,6 +504,8 @@ class LocalServiceBridge:
         if connection["preset"] == "openrouter":
             headers["HTTP-Referer"] = "https://vnrevival.fun/"
             headers["X-OpenRouter-Title"] = "VN Revival Translator"
+        if connection["preset"] == "opencode-go":
+            headers["x-opencode-session"] = self._opencode_session
         request = urllib.request.Request(
             connection["baseURL"] + path,
             data=None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8"),

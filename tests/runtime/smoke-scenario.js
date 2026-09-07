@@ -31,8 +31,8 @@
     const status = shadow.querySelector(".status");
     const retry = shadow.querySelector(".retry");
     const aiBox = shadow.querySelector(".openAICompatibleBox");
-    const saved = { status: status.textContent, retry: retry.hidden, ai: aiBox.hidden, width: panel.style.width };
-    const geometry = () => [panel, shadow.querySelector(".settings"), shadow.querySelector(".site")]
+    const saved = { status: status.textContent, retry: retry.disabled, label: retry.textContent, ai: aiBox.hidden, width: panel.style.width };
+    const geometry = () => [panel, retry, shadow.querySelector(".settings"), shadow.querySelector(".site")]
       .flatMap((element) => {
         const bounds = element.getBoundingClientRect();
         return [bounds.x, bounds.y, bounds.width, bounds.height];
@@ -44,7 +44,7 @@
         for (const aiHidden of [true, false]) {
           aiBox.hidden = aiHidden;
           status.textContent = "";
-          retry.hidden = true;
+          retry.disabled = true;
           const idle = geometry();
           for (const [message, failed] of [
             ["Translating 1/9999", false],
@@ -53,18 +53,20 @@
             ["", false],
           ]) {
             status.textContent = message;
-            retry.hidden = !failed;
+            retry.disabled = !failed;
+            retry.textContent = failed ? "Повторить перевод" : "Retry translation";
             stable = stable && geometry() === idle;
             if (failed) stable = stable && status.scrollHeight > status.clientHeight
               && getComputedStyle(status).overflowY === "auto" && status.tabIndex === 0
-              && retry.getBoundingClientRect().height > 0;
+              && retry.getBoundingClientRect().height === 32 && retry.scrollWidth === retry.clientWidth;
           }
         }
       }
       return stable;
     } finally {
       status.textContent = saved.status;
-      retry.hidden = saved.retry;
+      retry.disabled = saved.retry;
+      retry.textContent = saved.label;
       aiBox.hidden = saved.ai;
       panel.style.width = saved.width;
     }
@@ -321,7 +323,7 @@
     new Promise((resolve) => setTimeout(() => resolve("timeout"), 1500))
   ]);
   const routineSuccessStatusHidden = shadow.querySelector(".status").textContent === ""
-    && getComputedStyle(shadow.querySelector(".status")).display === "none";
+    && shadow.querySelector(".retry").disabled;
 
   const rich = document.getElementById("rich");
   const button = document.getElementById("button");
@@ -395,6 +397,74 @@
     buttonWrap: button.style.getPropertyValue("white-space")
   };
 
+  const retryLifecycle = await (async () => {
+    const originalFetch = window.fetch;
+    const retry = shadow.querySelector(".retry");
+    const status = shadow.querySelector(".status");
+    const provider = shadow.querySelector(".provider");
+    const language = shadow.querySelector(".language");
+    const change = (element, value) => { element.value = value; element.dispatchEvent(new Event("change")); };
+    let reject = true;
+    let requests = 0;
+    window.fetch = async (url, options) => {
+      if (!String(url).endsWith("/v1/openai-compatible/translate")) return originalFetch(url, options);
+      requests += 1;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return reject
+        ? { ok: false, status: 502, json: async () => ({ ok: false, error: "openai_request_failed", providerStatus: 400, message: "Provider returned HTTP 400" }) }
+        : { ok: true, json: async () => ({ ok: true, translatedText: JSON.parse(options.body).text }) };
+    };
+    try {
+      autoCheckbox.checked = false;
+      autoCheckbox.dispatchEvent(new Event("change"));
+      change(provider, "openai-compatible");
+      change(shadow.querySelector(".openAICompatiblePreset"), "opencode-go");
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      change(shadow.querySelector(".openAICompatibleModel"), "model-b");
+      change(language, "ru");
+      interfaceTranslationCheckbox.checked = true;
+      interfaceTranslationCheckbox.dispatchEvent(new Event("change"));
+      window.__vnRevivalTranslator.showTranslations();
+      autoCheckbox.checked = true;
+      autoCheckbox.dispatchEvent(new Event("change"));
+      await window.__vnRevivalTranslator.translateScreen();
+      const rejectedCount = requests;
+      const rejected = rejectedCount > 0 && !retry.disabled
+        && retry.textContent === "Повторить перевод"
+        && status.textContent.includes("Сервис отклонил запрос (HTTP 400)")
+        && status.textContent.includes("Автоперевод приостановлен");
+      const rect = () => {
+        const bounds = retry.getBoundingClientRect();
+        return [bounds.x, bounds.y, bounds.width, bounds.height].join(",");
+      };
+      const failedGeometry = rect();
+      for (const observer of window.smokeIntersectionObservers) observer.trigger();
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      const autoStopped = requests === rejectedCount && !retry.disabled;
+      interfaceTranslationCheckbox.checked = false;
+      interfaceTranslationCheckbox.dispatchEvent(new Event("change"));
+      const localized = retry.textContent === "Retry translation"
+        && status.textContent.includes("Automatic translation is paused") && rect() === failedGeometry;
+      reject = false;
+      retry.click();
+      const busy = retry.disabled && rect() === failedGeometry;
+      retry.click(); // A double click cannot cancel the retry or start another batch.
+      for (let attempt = 0; attempt < 100 && shadow.querySelector(".translateAction").textContent === "Cancel"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      const recovered = requests > rejectedCount && retry.disabled && status.textContent === ""
+        && rect() === failedGeometry;
+      const completedCount = requests;
+      retry.click();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      return { retryRejected: rejected, retryAutoStopped: autoStopped, retryLocalized: localized, retryBusy: busy, retryRecovered: recovered, retryNoDuplicate: requests === completedCount };
+    } finally {
+      autoCheckbox.checked = false;
+      autoCheckbox.dispatchEvent(new Event("change"));
+      window.fetch = originalFetch;
+    }
+  })();
+
   // Keep each expectation once; the reporter lists failed names only.
   window.smokeReport({
     translatedText: translated.text === "ترى امرأة جميلة بالقرب من الباب.",
@@ -425,6 +495,7 @@
     interfaceToggleIsClearlyLabelled,
     compactGooglePanel,
     stableTranslationFeedback,
+    ...retryLifecycle,
     gameThemeApplied,
     russianInterfacePresetApplied,
     englishInterfaceRestored,

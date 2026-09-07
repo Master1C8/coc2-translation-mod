@@ -110,6 +110,8 @@
   let pendingAutoRun = false;
   let translationVisibilityObserver = null;
   let lastFailedJobs = [];
+  let autoBlockedVariant = null;
+  let translationStatus = null;
   let dbPromise = null;
   let cacheMetadata = loadCacheMetadata();
   let cacheMetadataPromise = null;
@@ -963,8 +965,13 @@
     return allCached;
   }
 
+  function translationVariant() {
+    return [settings.provider, settings.language, providerCacheVariant(settings.provider)].join("\n");
+  }
+
   async function runJobs(jobs, options) {
     const manual = !!(options && options.manual);
+    if (!manual && autoBlockedVariant === translationVariant()) return;
     if (providerUsesOpenAICompatible(settings.provider)) {
       const connection = openAICompatibleConnection();
       if (!connection.model) {
@@ -990,45 +997,52 @@
       return;
     }
     if (!jobs.length) {
-      setStatus("Screen already translated");
+      setTranslationStatus((text) => text.alreadyTranslated);
       return;
     }
 
     running = true;
+    autoBlockedVariant = null;
+    const runVariant = translationVariant();
+    let queueStopped = false;
     abortController = new AbortController();
     setMainButton("Cancel");
-    retryButton.hidden = true;
+    retryButton.disabled = true;
+    setTranslationStatus((text) => formatMessage(text.progress, { done: 0, total: jobs.length }));
     lastFailedJobs = [];
     const language = settings.language;
     const provider = settings.provider;
     let nextIndex = 0;
     let done = 0;
     let lastErrorCode = "";
-    let lastErrorMessage = "";
+    let lastError = null;
 
     async function worker() {
-      while (true) {
+      while (!queueStopped) {
         const index = nextIndex;
         nextIndex += 1;
         if (index >= jobs.length) return;
         const job = jobs[index];
         try {
           await applyJobTranslation(job, language, provider, abortController.signal, (error, delay, nextAttempt, attempts) => {
-            const reason = error && error.code === "openai_rate_limited"
-              ? "Provider rate limit reached"
-              : (error && error.message ? error.message : "Provider request failed");
-            setStatus(`${reason} · retrying in ${Math.ceil(delay / 1000)}s (${nextAttempt}/${attempts})`);
+            if (!queueStopped) setTranslationStatus((text) => formatMessage(text.retryWaiting, {
+              reason: translationErrorText(error, text), seconds: Math.ceil(delay / 1000),
+              attempt: nextAttempt, attempts
+            }));
           });
         } catch (error) {
           if (error && error.name === "AbortError") throw error;
           lastErrorCode = error && error.code ? error.code : lastErrorCode;
-          lastErrorMessage = error && error.message ? error.message : lastErrorMessage;
+          if (!queueStopped) lastError = error;
           lastFailedJobs.push(job);
           if (lastErrorCode === "openai_rate_limited"
               || lastErrorCode === "openai_key_invalid"
               || lastErrorCode === "openai_model_unavailable"
+              || ["openai_billing_required", "openai_endpoint_mismatch", "openai_stream_required", "openai_message_format_rejected"].includes(lastErrorCode)
               || (lastErrorCode === "openai_request_failed" && Number.isInteger(error.providerStatus)
                 && error.providerStatus < 500)) {
+            queueStopped = true;
+            autoBlockedVariant = runVariant;
             while (nextIndex < jobs.length) {
               lastFailedJobs.push(jobs[nextIndex]);
               nextIndex += 1;
@@ -1037,7 +1051,7 @@
           }
         }
         done += 1;
-        setStatus(`Translating ${done}/${jobs.length}`);
+        if (!queueStopped) setTranslationStatus((text) => formatMessage(text.progress, { done, total: jobs.length }));
       }
     }
 
@@ -1048,31 +1062,31 @@
       const count = Math.min(concurrency, jobs.length);
       await Promise.all(Array.from({ length: count }, () => worker()));
       if (lastFailedJobs.length) {
-        if (lastErrorCode === "openai_rate_limited") setStatus("Provider rate limit reached · retry later");
-        else if (lastErrorCode === "openai_key_invalid") setStatus("The API key was rejected");
-        else if (lastErrorCode === "openai_model_unavailable") setStatus("The selected model is unavailable");
-        else if (lastErrorMessage) setStatus(`${lastErrorMessage} · ${lastFailedJobs.length} failed`);
-        else setStatus(`Errors: ${lastFailedJobs.length}`);
-        retryButton.hidden = false;
+        const failedCount = lastFailedJobs.length;
+        setTranslationStatus((text) => formatMessage(text.translationFailed, {
+          reason: translationErrorText(lastError, text), count: failedCount
+        }) + (queueStopped ? " " + text.autoPaused : ""));
       } else {
         setStatus("");
       }
     } catch (error) {
-      setStatus(error && error.name === "AbortError" ? "Cancelled" : "Network error");
+      setTranslationStatus((text) => error && error.name === "AbortError" ? text.translationCancelled : text.connectionFailed);
     } finally {
       running = false;
       abortController = null;
       setMainButton("Translate");
+      retryButton.disabled = !lastFailedJobs.length;
       refreshCacheStats();
       if (pendingAutoRun) {
         pendingAutoRun = false;
-        scheduleAutoTranslation(250);
+        if (autoBlockedVariant !== translationVariant()) scheduleAutoTranslation(250);
       }
     }
   }
 
   function translateScreen(manual) {
     const isManual = manual !== false;
+    if (!isManual && autoBlockedVariant === translationVariant()) return Promise.resolve();
     if (running) {
       if (isManual && abortController) abortController.abort();
       else pendingAutoRun = true;
@@ -1086,9 +1100,17 @@
   }
 
   function retryFailed() {
-    const jobs = lastFailedJobs.filter((job) => job.nodes.some((node) => node.isConnected));
-    lastFailedJobs = [];
-    return runJobs(jobs.length ? jobs : buildJobs(collectVisibleTextNodes({ includeHiddenTooltips: true })), { manual: true });
+    if (running || !lastFailedJobs.length) return;
+    // Rebuild from current nodes: a game screen may have changed after failure.
+    const nodes = lastFailedJobs.flatMap((job) => job.nodes).filter((node) => node.isConnected);
+    const jobs = buildJobs(Array.from(new Set(nodes)));
+    if (!jobs.length) {
+      lastFailedJobs = [];
+      retryButton.disabled = true;
+      setStatus("");
+      return;
+    }
+    return runJobs(jobs, { manual: true });
   }
 
   function reapplyKnownTranslations(roots) {
@@ -1309,6 +1331,8 @@
     keyEditButton.textContent = text.changeKey;
     syncKeyState();
     retryButton.textContent = text.retryFailed;
+    retryButton.title = text.retryTitle;
+    if (translationStatus) statusElement.textContent = translationStatus(text);
     shadow.querySelector(".privacyText").textContent = text.privacyText;
     shadow.querySelector(".allowAuto").textContent = text.allowAuto;
     shadow.querySelector(".manualOnly").textContent = text.manualOnly;
@@ -1354,7 +1378,27 @@
     populateOpenAICompatibleModelOptions(openAICompatibleModels, openAICompatibleConnection().model);
     updateCollapsedState();
   }
-  function setStatus(text) { statusElement.textContent = text; }
+  function setStatus(text) { translationStatus = null; statusElement.textContent = text; }
+  function setTranslationStatus(render) {
+    translationStatus = render;
+    statusElement.textContent = render(interfacePreset());
+  }
+  function formatMessage(template, values) {
+    return template.replace(/\{(\w+)\}/g, (match, key) => values[key] === undefined ? match : String(values[key]));
+  }
+  function translationErrorText(error, text) {
+    const key = {
+      openai_rate_limited: "rateLimited", openai_key_invalid: "keyRejected",
+      openai_model_unavailable: "modelUnavailable", openai_billing_required: "billingRequired",
+      openai_format_invalid: "formatInvalid", openai_invalid_response: "formatInvalid",
+      openai_empty_translation: "formatInvalid", openai_unavailable: "connectionFailed"
+    }[error && error.code];
+    if (key) return text[key];
+    if (error && Number.isInteger(error.providerStatus)) {
+      return formatMessage(text.requestRejected, { status: error.providerStatus });
+    }
+    return text.requestFailed;
+  }
   function setMainButton(text) {
     const preset = interfacePreset();
     const localized = text === "Cancel" ? preset.cancel : preset.translate;
@@ -1400,6 +1444,7 @@
     settings.language = languageSelect.value;
     settings.translateInterface = interfaceTranslationCheckbox.checked;
     settings.provider = providerSelect.value;
+    if (settings.autoTranslate !== autoCheckbox.checked) autoBlockedVariant = null;
     settings.autoTranslate = autoCheckbox.checked;
     syncTranslateTrigger();
     if (languageChanged || providerChanged) invalidateAppliedTranslations();
@@ -1727,6 +1772,7 @@
       });
       openAICompatibleKeyInput.value = "";
       editingOpenAIKey = false;
+      autoBlockedVariant = null;
       await refreshOpenAICompatibleStatus();
       setStatus(`${OPENAI_COMPATIBLE_PRESETS[connection.preset].name} API key saved securely`);
     } catch (error) {
