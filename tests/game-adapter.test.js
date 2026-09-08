@@ -19,6 +19,7 @@ test("selected game manifest supplies universal runtime identity", () => {
   assert.equal(manifest.sourceLanguage, "en");
   assert.equal(manifest.launchStrategy, "electron-cdp");
   assert.match(manifest.siteSlug, /^[a-z0-9][a-z0-9-]*$/);
+  assert.ok(manifest.supportedVersions.includes("0.9.6"));
   assert.ok(manifest.translatorName);
   assert.ok(manifest.storageNamespace);
   assert.ok(manifest.windowsExecutable.toLowerCase().endsWith(".exe"));

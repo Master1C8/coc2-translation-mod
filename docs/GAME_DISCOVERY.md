@@ -3,7 +3,7 @@
 ## Идентичность
 
 - Название: Corruption of Champions II
-- Проверенная ранее версия renderer: 0.9.3
+- Проверенные версии renderer: 0.9.3 и 0.9.6
 - Проверенный ранее Steam build ID: 24504721
 - Steam AppID: 1292690
 - Исполняемый файл: `Corruption of Champions II/CoC II.exe`
