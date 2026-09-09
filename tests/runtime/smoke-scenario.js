@@ -334,6 +334,12 @@
   const button = document.getElementById("button");
   const legacy = document.getElementById("legacy");
   const prefetchedTooltip = document.getElementById("prefetched-tooltip");
+  const nativeSelect = document.getElementById("native-select");
+  const nativeSelectOptionsTranslated = Array.from(nativeSelect.options)
+    .every((option) => option.textContent.trim() === "ترجمة");
+  const prefetchedHoverCard = document.getElementById("prefetched-hover-card");
+  const hiddenHoverCardPrefetched = prefetchedHoverCard.textContent.trim() === "ترجمة"
+    && getComputedStyle(prefetchedHoverCard.closest(".character-hover-card")).display === "none";
   const translated = {
     text: rich.textContent.replace(/\s+/g, " ").trim(),
     direction: rich.getAttribute("dir"),
@@ -350,6 +356,18 @@
     && window.smokeCache.get("v3\ncoc2\ngoogle\nar\nLegacy line") === "سطر قديم";
   const hiddenTooltipPrefetched = prefetchedTooltip.textContent.trim() === "ترجمة"
     && getComputedStyle(prefetchedTooltip.closest(".tooltip")).display === "none";
+
+  const revealedPanel = document.getElementById("revealed-panel");
+  const revealedLabel = document.getElementById("revealed-label");
+  autoCheckbox.checked = true;
+  autoCheckbox.dispatchEvent(new Event("change"));
+  revealedPanel.style.display = "block";
+  for (let attempt = 0; attempt < 100 && revealedLabel.textContent.trim() !== "ترجمة"; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  const attributeRevealTranslated = revealedLabel.textContent.trim() === "ترجمة";
+  autoCheckbox.checked = false;
+  autoCheckbox.dispatchEvent(new Event("change"));
 
   autoCheckbox.closest(".autoToggle").click();
   const later = document.getElementById("later");
@@ -483,6 +501,10 @@
     buttonHeight: button.style.getPropertyValue("height"),
     buttonWrap: button.style.getPropertyValue("white-space")
   };
+  const nativeSelectOptionsRestored = JSON.stringify(Array.from(nativeSelect.options, (option) => option.textContent.trim()))
+    === JSON.stringify(["Unkempt", "Afro Ponytail"]);
+  const revealedLabelRestored = revealedLabel.textContent.trim() === "Hair Length: 30 inches";
+  const hoverCardRestored = prefetchedHoverCard.textContent.trim() === "Use Default gender logic.";
 
   const reasoningModelCompatibility = await (async () => {
     const change = (element, value) => { element.value = value; element.dispatchEvent(new Event("change")); };
@@ -596,7 +618,7 @@
     translatedButtonHeight: translated.buttonHeight === "auto",
     translatedButtonWrap: translated.buttonWrap === "normal",
     scrolledTranslation: scrolledTranslation === "ترجمة",
-    repairedMetadataRecords: repairedMetadata.records === 5,
+    repairedMetadataRecords: repairedMetadata.records === 11,
     compactCacheRow,
     logCopied,
     cacheDeleted,
@@ -607,6 +629,9 @@
     metadataDirty: metadataDirty === null,
     legacyMigrated,
     hiddenTooltipPrefetched,
+    hiddenHoverCardPrefetched,
+    nativeSelectOptionsTranslated,
+    attributeRevealTranslated,
     legacyGlobalsScopedToCoC2,
     shortcutInsideMainButton,
     cancelStateKeepsShortcut,
@@ -681,5 +706,8 @@
     restoredFontFamily: restored.fontFamily === "",
     restoredButtonHeight: restored.buttonHeight === "",
     restoredButtonWrap: restored.buttonWrap === "",
+    nativeSelectOptionsRestored,
+    revealedLabelRestored,
+    hoverCardRestored,
   });
 })();

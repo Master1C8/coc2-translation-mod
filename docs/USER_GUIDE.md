@@ -25,7 +25,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 
 The panel has only two states: expanded or collapsed. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel. Progress, errors, and the retry button use a fixed-height area so translation updates do not resize the panel or move its controls. Long error messages scroll within that area. `Retry translation` stays in a separate fixed row and is disabled during translation and when there are no failed fragments. It retries only failed fragments still present on the current screen.
 
-Automatic translation processes visible, newly visible, or changed blocks and pre-translates tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
+Automatic translation processes visible, newly visible, or changed blocks, including native selection options, and pre-translates recognized tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
 The language selector uses the same 30 locales and order as VN Revival. English and `Auto translate: On` are selected on the first launch; later choices are preserved locally. The first network request still waits for the privacy choice.
 
@@ -36,7 +36,7 @@ The provider list contains exactly two choices:
 - `Google Translate` works without an API key.
 - `OpenAI-compatible` supports OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio, and Custom.
 
-Visible game text is sent to the selected service. Save slots, form controls, editable areas, and recognized standalone player names are excluded. A name already embedded in a full story sentence may still be sent.
+Visible game text is sent to the selected service. Native selection labels and options are included; save slots, text-entry controls, editable areas, and recognized standalone player names are excluded. A name already embedded in a full story sentence may still be sent.
 
 At first network use, select `Allow auto-translate` or `Manual only`. The choice does not certify provider output: every machine translation remains unreviewed.
 
@@ -125,7 +125,7 @@ advanced launches can select Parallels with
 
 У панели два состояния: развёрнутое и свёрнутое. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели. Прогресс, ошибки и кнопка повтора занимают область постоянной высоты: обновления перевода не меняют размер панели и не сдвигают элементы управления. Длинные сообщения об ошибках прокручиваются внутри этой области. «Повторить перевод» постоянно занимает отдельную строку и недоступна во время перевода и при отсутствии ошибок. Кнопка повторяет только непереведённые фрагменты, которые ещё находятся на текущем экране.
 
-Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки и заранее переводит уже присутствующие в DOM tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
+Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки, включая пункты нативных списков, и заранее переводит уже присутствующие в DOM распознанные tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
 Список и порядок 30 языков совпадают с каталогом VN Revival. При первом запуске выбран английский и `Auto translate: On`; последующий выбор сохраняется локально. Первый сетевой запрос всё равно ожидает выбора режима приватности.
 
@@ -136,7 +136,7 @@ advanced launches can select Parallels with
 - `Google Translate` работает без API-ключа.
 - `OpenAI-compatible` поддерживает OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio и Custom.
 
-Видимый игровой текст отправляется выбранному сервису. Слоты сохранения, формы, редактируемые области и распознанные отдельные имена игрока исключаются. Имя внутри цельного сюжетного предложения всё равно может попасть в запрос.
+Видимый игровой текст отправляется выбранному сервису. Подписи и пункты нативных списков включаются; слоты сохранения, поля текстового ввода, редактируемые области и распознанные отдельные имена игрока исключаются. Имя внутри цельного сюжетного предложения всё равно может попасть в запрос.
 
 При первом сетевом использовании выберите `Allow auto-translate` или `Manual only`. Это разрешение на режим работы, а не одобрение ответа провайдера: машинный перевод остаётся непроверенным.
 

@@ -9,13 +9,13 @@
     ]),
     categorySelectors: Object.freeze({
       story: ".scene,.story,.output,.eventText,.sceneText,.combatOutput,[class*='story' i]",
-      control: "button,[role='button'],a,.button",
-      tooltip: ".tooltip,[role='tooltip']"
+      control: "button,[role='button'],a,.button,select",
+      tooltip: ".tooltip,[role='tooltip'],[class*='tooltip' i],[class*='hover' i]"
     }),
     contextSelectors: Object.freeze([
-      "button", "[role='button']", "a", "[role='link']", "p", "li", "blockquote",
+      "button", "[role='button']", "a", "[role='link']", "select", "p", "li", "blockquote",
       "h1", "h2", "h3", "h4", "h5", "h6", ".sceneText", ".eventText",
-      ".combatOutput", ".tooltip", "[role='tooltip']"
+      ".combatOutput", ".tooltip", "[role='tooltip']", "[class*='tooltip' i]", "[class*='hover' i]"
     ]),
     getGameVersion(gameWindow) {
       return String(gameWindow && gameWindow.version || "");

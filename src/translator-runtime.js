@@ -785,7 +785,14 @@
     return !!element.closest(selectors.join(","));
   }
 
+  function visibilityElement(element) {
+    if (!(element instanceof Element)) return element;
+    if (element.matches("option,optgroup")) return element.closest("select") || element;
+    return element;
+  }
+
   function isElementOnScreen(element) {
+    element = visibilityElement(element);
     if (!(element instanceof Element) || !element.isConnected) return false;
     const style = getComputedStyle(element);
     if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
@@ -881,6 +888,7 @@
   function presentationContainerForNode(node) {
     let element = node && node.parentElement;
     const fallback = element;
+    if (element && element.matches("option,optgroup")) return element.closest("select") || element;
     while (element && element !== document.body && element !== document.documentElement) {
       if (element.matches("button,a,[role='button'],[role='link'],li,p")) return element;
       const display = getComputedStyle(element).display;
@@ -2435,6 +2443,11 @@
         if (isElementOnScreen(container)) queueTranslationContainer(container);
         changed = true;
       }
+      if (record.type === "attributes" && record.target instanceof Element) {
+        registerTranslationContainers(record.target);
+        if (isElementOnScreen(record.target)) queueTranslationContainer(record.target);
+        changed = true;
+      }
       for (const node of record.addedNodes || []) {
         registerTranslationContainers(node);
         changed = true;
@@ -2445,7 +2458,9 @@
   observer.observe(document.body, {
     subtree: true,
     childList: true,
-    characterData: true
+    characterData: true,
+    attributes: true,
+    attributeFilter: ["class", "style", "hidden", "aria-hidden", "aria-expanded"]
   });
   document.addEventListener("pointerover", (event) => {
     if (event.target instanceof Element) {
