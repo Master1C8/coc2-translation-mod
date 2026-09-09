@@ -85,6 +85,12 @@
     && shadow.querySelector(".autoTitle").textContent === "Автоперевод"
     && shadow.querySelector(".cacheStats").textContent.startsWith("Кэш:")
     && shadow.querySelector(".translateAction").textContent === "Перевести"
+    && shadow.querySelector(".modelHelpQuestion").textContent === "Не знаешь какую модель выбрать?"
+    && shadow.querySelector(".modelHelpLink").textContent === "Как это работает"
+    && shadow.querySelector(".modelHelpLink").href
+      === "https://vnrevival.fun/ru/games/corruption-of-champions-ii"
+    && shadow.querySelector(".modelHelpLink").target === "_blank"
+    && shadow.querySelector(".modelHelpLink").rel === "noopener noreferrer"
     && window.__vnRevivalTranslator.settings().translateInterface === true;
   const interfacePresetMadeNoRequests = window.fetchCalls.length + window.localHelperCalls.length === requestsBeforeInterfacePreset;
   const russianInterfacePresetApplied = russianInterfacePresetTextApplied && interfacePresetMadeNoRequests;
@@ -94,6 +100,8 @@
   shadow.querySelector(".language").dispatchEvent(new Event("change"));
   const englishInterfaceRestored = shadow.querySelector(".quickLanguageLabel").textContent === "Language"
     && shadow.querySelector(".translationServiceLabel").textContent === "Translation service"
+    && shadow.querySelector(".modelHelpQuestion").textContent === "Don't know which model to choose?"
+    && shadow.querySelector(".modelHelpLink").textContent === "How it works"
     && window.__vnRevivalTranslator.settings().translateInterface === false;
   const providerOptions = Array.from(shadow.querySelector(".provider").options)
     .map((option) => [option.value, option.textContent]);
@@ -103,7 +111,8 @@
     && !shadow.querySelector(".hotkey");
   const openAIKeyIsPasswordOnly = shadow.querySelector(".openAICompatibleKey").type === "password"
     && !Object.keys(localStorage).some((key) => /api.*key/i.test(key));
-  const modelBeforeKey = shadow.querySelector(".openAICompatibleModel").nextElementSibling.classList.contains("keyRow");
+  const modelBeforeKey = shadow.querySelector(".openAICompatibleModel").nextElementSibling.classList.contains("modelHelp")
+    && shadow.querySelector(".openAICompatibleModel").nextElementSibling.nextElementSibling.classList.contains("keyRow");
   shadow.querySelector(".provider").value = "openai-compatible";
   shadow.querySelector(".provider").dispatchEvent(new Event("change"));
   await new Promise((resolve) => setTimeout(resolve, 30));

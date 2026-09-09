@@ -30,6 +30,7 @@
   const SOURCE_LANGUAGE = game.sourceLanguage || "en";
   const SITE_NAME = "VN Revival";
   const SITE_URL = "https://vnrevival.fun/";
+  const GAME_PAGE_URL = `${SITE_URL}ru/games/${game.siteSlug}`;
   const OPENAI_CONFIG = window.VNRevivalOpenAICompatibleConfig;
   if (!OPENAI_CONFIG || !OPENAI_CONFIG.presets || !OPENAI_CONFIG.defaultSystemPrompt) {
     throw new Error("VN Revival OpenAI-compatible config is missing or incompatible");
@@ -1771,6 +1772,7 @@
   shadow.innerHTML = panelView.render({
     theme: game.theme,
     siteURL: SITE_URL,
+    gamePageURL: GAME_PAGE_URL,
     siteName: SITE_NAME,
     maxSystemPromptChars: OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS,
     maxGlossaryChars: OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS
@@ -1866,6 +1868,8 @@
     shadow.querySelector(".allowAuto").textContent = text.allowAuto;
     shadow.querySelector(".manualOnly").textContent = text.manualOnly;
     shadow.querySelector(".translationServiceLabel").textContent = text.translationService;
+    shadow.querySelector(".modelHelpQuestion").textContent = text.modelHelpQuestion;
+    shadow.querySelector(".modelHelpLink").textContent = text.howItWorks;
     shadow.querySelector(".openAICompatibleParameterTitle").textContent = text.modelParameters;
     shadow.querySelector(".reasoningEffortLabel").textContent = text.reasoningEffort;
     shadow.querySelector(".parallelRequestsLabel").textContent = text.parallelRequests;
