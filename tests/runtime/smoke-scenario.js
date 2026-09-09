@@ -605,6 +605,44 @@
   const optimization = await window.runOptimizationSmoke(shadow);
   const screenBlocks = await window.runScreenBlockSmoke(shadow);
 
+  const sourceLanguageSkipsTranslation = await (async () => {
+    const api = window.__vnRevivalTranslator;
+    const provider = shadow.querySelector(".provider");
+    const language = shadow.querySelector(".language");
+    const change = (element, value) => { element.value = value; element.dispatchEvent(new Event("change")); };
+    const probe = document.createElement("p");
+    probe.style.cssText = "position:fixed;top:20px;left:0;width:260px;height:30px";
+    probe.textContent = "The source language stays unchanged.";
+    document.body.append(probe);
+    try {
+      autoCheckbox.checked = false;
+      autoCheckbox.dispatchEvent(new Event("change"));
+      change(language, "en");
+      change(provider, "google");
+      const googleRequests = window.fetchCalls.length;
+      await api.translateScreen();
+      const manualSkipped = window.fetchCalls.length === googleRequests;
+
+      change(provider, "openai-compatible");
+      const aiRequests = window.localHelperCalls
+        .filter((path) => path === "/v1/openai-compatible/translate").length;
+      autoCheckbox.checked = true;
+      autoCheckbox.dispatchEvent(new Event("change"));
+      probe.append(document.createTextNode(" New source text."));
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const autoSkipped = window.localHelperCalls
+        .filter((path) => path === "/v1/openai-compatible/translate").length === aiRequests;
+      return manualSkipped && autoSkipped
+        && probe.textContent === "The source language stays unchanged. New source text."
+        && api.settings().language === "en"
+        && shadow.querySelector(".retry").disabled;
+    } finally {
+      autoCheckbox.checked = false;
+      autoCheckbox.dispatchEvent(new Event("change"));
+      probe.remove();
+    }
+  })();
+
   // Keep each expectation once; the reporter lists failed names only.
   window.smokeReport({
     randomUUIDFallback: window.smokeRandomUUIDUnavailable === true,
@@ -637,6 +675,7 @@
     cancelStateKeepsShortcut,
     routineSuccessStatusHidden,
     defaultLanguage: defaultLanguage === "en",
+    sourceLanguageSkipsTranslation,
     defaultAutoTranslate,
     autoModeHidesTranslate,
     languageIsTopLevel,

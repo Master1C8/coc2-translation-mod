@@ -1084,6 +1084,20 @@
     restoreLanguageFormatting();
   }
 
+  function translationTargetsSourceLanguage() {
+    return settings.language === SOURCE_LANGUAGE;
+  }
+
+  function clearSourceLanguageTranslationState() {
+    if (!translationTargetsSourceLanguage()) return false;
+    pendingAutoRun = false;
+    lastFailedJobs = [];
+    autoBlockedVariant = null;
+    retryButton.disabled = true;
+    setStatus("");
+    return true;
+  }
+
   function contextContainerForNode(node) {
     if (typeof adapter.findContextContainer === "function") {
       const container = adapter.findContextContainer(node);
@@ -1313,6 +1327,7 @@
 
   async function runJobs(jobs, options) {
     const manual = !!(options && options.manual);
+    if (clearSourceLanguageTranslationState()) return;
     if (!manual && !captureActive && autoBlockedVariant === translationVariant()) return;
     if (running) {
       if (manual && abortController) abortController.abort();
@@ -1482,6 +1497,7 @@
       abortController = null;
       setMainButton("Translate");
       retryButton.disabled = !lastFailedJobs.length;
+      clearSourceLanguageTranslationState();
       refreshCacheStats();
       if (pendingAutoRun) {
         pendingAutoRun = false;
@@ -1492,6 +1508,7 @@
 
   function translateScreen(manual) {
     const isManual = manual !== false;
+    if (clearSourceLanguageTranslationState()) return Promise.resolve();
     if (!isManual && !captureActive && autoBlockedVariant === translationVariant()) return Promise.resolve();
     if (running) {
       if (isManual && abortController) abortController.abort();
@@ -1508,6 +1525,7 @@
   }
 
   function retryFailed() {
+    if (clearSourceLanguageTranslationState()) return;
     if (running || !lastFailedJobs.length) return;
     // Rebuild from current nodes: a game screen may have changed after failure.
     const nodes = lastFailedJobs.flatMap((job) => job.nodes).filter((node) => node.isConnected);
@@ -1544,6 +1562,7 @@
     scanTimer = setTimeout(() => {
       scanTimer = 0;
       if (document.hidden) return;
+      if (clearSourceLanguageTranslationState()) return;
       const loading = document.getElementById("loading");
       if (loading && isElementOnScreen(loading)) {
         scheduleAutoTranslation(1000);
@@ -1964,6 +1983,8 @@
     settings.autoTranslate = autoCheckbox.checked;
     syncTranslateTrigger();
     if (languageChanged || providerChanged) invalidateAppliedTranslations();
+    if (languageChanged && translationTargetsSourceLanguage() && abortController) abortController.abort();
+    clearSourceLanguageTranslationState();
     saveSettings();
     if (settings.privacyAccepted && (languageChanged || providerChanged)
         && providerUsesOpenAICompatible(settings.provider)

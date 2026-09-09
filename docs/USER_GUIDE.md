@@ -29,6 +29,8 @@ Automatic translation processes visible, newly visible, or changed blocks, inclu
 
 The language selector uses the same 30 locales and order as VN Revival. English and `Auto translate: On` are selected on the first launch; later choices are preserved locally. The first network request still waits for the privacy choice.
 
+When the selected target matches the game's source language, the translator keeps the original text and creates no translation jobs or provider requests. CoC2's source language is English.
+
 ### Translation services
 
 The provider list contains exactly two choices:
@@ -128,6 +130,8 @@ advanced launches can select Parallels with
 Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки, включая пункты нативных списков, и заранее переводит уже присутствующие в DOM распознанные tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
 Список и порядок 30 языков совпадают с каталогом VN Revival. При первом запуске выбран английский и `Auto translate: On`; последующий выбор сохраняется локально. Первый сетевой запрос всё равно ожидает выбора режима приватности.
+
+Если выбранный язык перевода совпадает с исходным языком игры, переводчик сохраняет оригинальный текст и не создаёт задания или запросы к провайдеру. Исходный язык CoC2 — английский.
 
 ### Сервисы перевода
 
