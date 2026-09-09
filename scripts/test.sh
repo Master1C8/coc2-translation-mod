@@ -128,7 +128,7 @@ PROVIDER_COUNT=$(node -e 'require("./src/translation-core.js"); require("./src/p
   exit 1
 }
 
-for REQUIRED in "#define APP_ID $STEAM_APP_ID" 'WinHttpWebSocket' "$WINDOWS_EXECUTABLE" 'local_service.py' 'python.exe' '__vnRevivalLocalBridge' '--credential-id' 'GetOpenFileNameW' 'load_saved_game_path' 'consume_reselect_marker' 'debug_target_running' 'SECURITY_ATTRIBUTES' 'bInheritHandle = TRUE' 'L"NUL"'; do
+for REQUIRED in "#define APP_ID $STEAM_APP_ID" 'WinHttpWebSocket' "$WINDOWS_EXECUTABLE" 'local_service.py' 'python.exe' '__vnRevivalLocalBridge' '--credential-id' 'GetOpenFileNameW' 'load_saved_game_path' 'consume_reselect_marker' 'debug_target_running' 'is_steam_library_game_path' 'STEAM_GAME_START_TIMEOUT_MS' 'Steam did not start' 'SECURITY_ATTRIBUTES' 'bInheritHandle = TRUE' 'L"NUL"'; do
   grep -Fq -- "$REQUIRED" "$ROOT/.build/windows-launcher-smoke.c" || {
     echo "Missing Windows launcher feature: $REQUIRED" >&2
     exit 1

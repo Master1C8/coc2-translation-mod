@@ -6,6 +6,11 @@ https://vnrevival.fun/
 3. Double-click __PRODUCT_NAME__.exe.
 4. The game will start through Steam and the translator panel will appear inside it.
 
+Steam does not need to be open beforehand. The translator starts it and waits
+for the game. If Steam needs an update or sign-in, finish that step and launch
+the translator again. A Steam installation is never started by running the
+game EXE directly.
+
 If the Steam installation cannot be found, select the game's Windows EXE in
 the file dialog. The translator remembers that path for the next launch.
 

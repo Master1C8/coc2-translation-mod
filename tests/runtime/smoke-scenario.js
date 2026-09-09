@@ -3,6 +3,9 @@
   await new Promise((resolve) => requestAnimationFrame(() => resolve()));
   const host = document.getElementById("vnrevival-translator-coc2");
   const shadow = host.shadowRoot;
+  const startsExpanded = !shadow.querySelector(".panel").classList.contains("collapsed")
+    && shadow.querySelector(".collapseToggle").textContent === "−"
+    && shadow.querySelector(".collapseToggle").getAttribute("aria-expanded") === "true";
   const defaultLanguage = shadow.querySelector(".language").value;
   const autoCheckbox = shadow.querySelector(".auto");
   const defaultAutoTranslate = autoCheckbox.checked === true
@@ -675,6 +678,7 @@
     cancelStateKeepsShortcut,
     routineSuccessStatusHidden,
     defaultLanguage: defaultLanguage === "en",
+    startsExpanded,
     sourceLanguageSkipsTranslation,
     defaultAutoTranslate,
     autoModeHidesTranslate,

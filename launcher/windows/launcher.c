@@ -32,6 +32,8 @@
 #define APP_VERSION L"__VERSION__"
 #define PATH_CAP 32768
 #define HTTP_CAP (8 * 1024 * 1024)
+#define DIRECT_GAME_START_TIMEOUT_MS 10000
+#define STEAM_GAME_START_TIMEOUT_MS 120000
 
 static HANDLE g_service_process = NULL;
 static HINTERNET g_http_session = NULL;
@@ -310,6 +312,26 @@ static BOOL process_running(const WCHAR *filename)
     return found;
 }
 
+static BOOL wait_for_process(const WCHAR *filename, DWORD timeout_ms)
+{
+    DWORD start = GetTickCount();
+    while (GetTickCount() - start < timeout_ms) {
+        if (process_running(filename)) return TRUE;
+        Sleep(250);
+    }
+    return FALSE;
+}
+
+static BOOL is_steam_library_game_path(const WCHAR *path)
+{
+    static const WCHAR marker[] = L"\\steamapps\\common\\";
+    const size_t marker_length = (sizeof(marker) / sizeof(marker[0])) - 1;
+    for (const WCHAR *cursor = path; *cursor; cursor++) {
+        if (_wcsnicmp(cursor, marker, marker_length) == 0) return TRUE;
+    }
+    return FALSE;
+}
+
 static USHORT free_loopback_port(USHORT start, USHORT end)
 {
     SOCKET socket_handle;
@@ -470,11 +492,9 @@ static BOOL launch_game(const WCHAR *steam_path, const WCHAR *game_path, const W
         if (start_hidden_process(steam_command, game_dir, NULL, &process)) {
             CloseHandle(process.hThread);
             CloseHandle(process.hProcess);
-            for (int attempt = 0; attempt < 40; attempt++) {
-                if (process_running(process_name)) return TRUE;
-                Sleep(250);
-            }
+            return wait_for_process(process_name, STEAM_GAME_START_TIMEOUT_MS);
         }
+        return FALSE;
     }
     parent_dir(game_path, game_dir);
     _snwprintf(
@@ -485,11 +505,7 @@ static BOOL launch_game(const WCHAR *steam_path, const WCHAR *game_path, const W
     if (!start_hidden_process(game_command, game_dir, NULL, &process)) return FALSE;
     CloseHandle(process.hThread);
     CloseHandle(process.hProcess);
-    for (int attempt = 0; attempt < 40; attempt++) {
-        if (process_running(process_name)) return TRUE;
-        Sleep(250);
-    }
-    return FALSE;
+    return wait_for_process(process_name, DIRECT_GAME_START_TIMEOUT_MS);
 }
 
 static char *http_get_local(USHORT port, const WCHAR *path)
@@ -846,6 +862,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         save_game_path(game_path);
         find_steam_executable(steam_path);
     }
+    if (steam_path[0] && !is_steam_library_game_path(game_path)) steam_path[0] = L'\0';
     game_process_name = wcsrchr(game_path, L'\\');
     game_process_name = game_process_name ? game_process_name + 1 : game_path;
     if (process_running(game_process_name)) {
@@ -869,8 +886,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         WINHTTP_NO_PROXY_BYPASS,
         0);
     if (g_http_session) WinHttpSetTimeouts(g_http_session, 2000, 2000, 2000, 2000);
-    if (!g_http_session || !launch_game(steam_path, game_path, game_process_name, debug_port)) {
-        show_error(L"Could not launch " GAME_TITLE L".");
+    if (!g_http_session) {
+        show_error(L"Could not initialize the translator's local connection.");
+        return 1;
+    }
+    if (!launch_game(steam_path, game_path, game_process_name, debug_port)) {
+        if (steam_path[0]) {
+            show_error(L"Steam did not start " GAME_TITLE L". Make sure Steam is running and signed in, then try again.");
+        } else {
+            show_error(L"Could not launch " GAME_TITLE L".");
+        }
         return 1;
     }
     if (!connect_and_inject(debug_port, bundle, service_url, token_utf8)) {

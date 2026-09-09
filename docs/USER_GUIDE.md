@@ -23,7 +23,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 - `− / +` collapses the panel to a single `+` button or expands it completely.
 - Drag the space around the language controls in the top row to move the panel.
 
-The panel has only two states: expanded or collapsed. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel. Progress, errors, and the retry button use a fixed-height area so translation updates do not resize the panel or move its controls. Long error messages scroll within that area. `Retry translation` stays in a separate fixed row and is disabled during translation and when there are no failed fragments. It retries only failed fragments still present on the current screen.
+The panel has only two states: expanded or collapsed, and always starts expanded in a new game session. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel. Progress, errors, and the retry button use a fixed-height area so translation updates do not resize the panel or move its controls. Long error messages scroll within that area. `Retry translation` stays in a separate fixed row and is disabled during translation and when there are no failed fragments. It retries only failed fragments still present on the current screen.
 
 Automatic translation processes visible, newly visible, or changed blocks, including native selection options, and pre-translates recognized tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
@@ -89,6 +89,8 @@ RTL direction, language tags, font fallback, wrapping, and button sizing are app
 
 If the panel does not appear, close CoC2 completely and start it through the translator again. If OpenAI-compatible says the local helper is unavailable, reinstall/extract the complete app instead of moving only the executable. Confirm that the endpoint supports OpenAI Chat Completions (`/models` and `/chat/completions`) and that the selected model ID is valid.
 
+On Windows, the translator starts a detected Steam copy through Steam even when the client was initially closed, and waits up to two minutes for the game. It never falls back to launching a Steam game EXE directly. If Steam needs an update or sign-in, complete it and start the translator again.
+
 Closing CoC2 normally also ends the launcher and local helper.
 
 For Parallels, the macOS app stages its bundled Windows launcher under
@@ -125,7 +127,7 @@ advanced launches can select Parallels with
 - `− / +` сворачивает панель до одной кнопки `+` или полностью разворачивает её.
 - Свободное место в верхней строке с языком позволяет перемещать панель.
 
-У панели два состояния: развёрнутое и свёрнутое. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели. Прогресс, ошибки и кнопка повтора занимают область постоянной высоты: обновления перевода не меняют размер панели и не сдвигают элементы управления. Длинные сообщения об ошибках прокручиваются внутри этой области. «Повторить перевод» постоянно занимает отдельную строку и недоступна во время перевода и при отсутствии ошибок. Кнопка повторяет только непереведённые фрагменты, которые ещё находятся на текущем экране.
+У панели два состояния: развёрнутое и свёрнутое, при каждом новом запуске игры она всегда открывается развёрнутой. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели. Прогресс, ошибки и кнопка повтора занимают область постоянной высоты: обновления перевода не меняют размер панели и не сдвигают элементы управления. Длинные сообщения об ошибках прокручиваются внутри этой области. «Повторить перевод» постоянно занимает отдельную строку и недоступна во время перевода и при отсутствии ошибок. Кнопка повторяет только непереведённые фрагменты, которые ещё находятся на текущем экране.
 
 Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки, включая пункты нативных списков, и заранее переводит уже присутствующие в DOM распознанные tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
@@ -190,6 +192,8 @@ RTL, `lang`, шрифтовые fallback, переносы и размер кн�
 ### Решение проблем
 
 Если панель не появилась, полностью закройте CoC2 и снова запустите игру через переводчик. Если OpenAI-compatible сообщает об отсутствии helper, переустановите или полностью распакуйте приложение, не переносите один EXE. Убедитесь, что endpoint поддерживает OpenAI Chat Completions (`/models` и `/chat/completions`) и model ID существует.
+
+В Windows переводчик запускает найденную Steam-копию через Steam, даже если клиент изначально был закрыт, и ждёт игру до двух минут. Прямого запуска EXE Steam-игры как запасного варианта больше нет. Если Steam требует обновления или входа, завершите этот шаг и снова запустите переводчик.
 
 Обычное закрытие CoC2 завершает launcher и локальный helper.
 

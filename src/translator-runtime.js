@@ -251,7 +251,7 @@
         defaults.openAICompatibleReasoningEffort
       ),
       openAICompatibleConcurrency: normalizedOpenAICompatibleConcurrency(source.openAICompatibleConcurrency),
-      collapsed: typeof source.collapsed === "boolean" ? source.collapsed : defaults.collapsed,
+      collapsed: defaults.collapsed,
       x: Number.isFinite(source.x) ? source.x : null,
       y: Number.isFinite(source.y) ? source.y : null
     };
