@@ -126,6 +126,13 @@
     && openAIModelSelect.options[2].textContent.startsWith("Free · ")
     && !openAIModelSelect.hasAttribute("list")
     && !shadow.querySelector("datalist");
+  const savedUnlistedModelIsPlain = openAIModelSelect.value === "glm-5.3-flash"
+    && openAIModelSelect.selectedOptions[0].textContent === "glm-5.3-flash"
+    && Array.from(openAIModelSelect.options)
+      .filter((option) => option.value === "__vnrevival_manual_model__").length === 1
+    && Array.from(openAIModelSelect.options)
+      .some((option) => option.value === "__vnrevival_manual_model__"
+        && option.textContent === "Enter model ID manually…");
   const statusCallsBeforeModelOpen = window.localHelperCalls
     .filter((path) => path === "/v1/openai-compatible/status").length;
   openAIModelSelect.dispatchEvent(new Event("pointerdown"));
@@ -705,6 +712,7 @@
     openAISetupVisible,
     streamlinedOpenAIControls,
     safeOpenAIModelPicker,
+    savedUnlistedModelIsPlain,
     modelListRefreshesOnOpen,
     openAIModelSelectionSaved,
     complexControlTooltips,

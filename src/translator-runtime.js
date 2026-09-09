@@ -2084,7 +2084,7 @@
     if (selected && !sortedModels.includes(selected)) {
       const customOption = document.createElement("option");
       customOption.value = selected;
-      customOption.textContent = `${interfaceText.customModel} · ${selected}`;
+      customOption.textContent = selected;
       openAICompatibleModelSelect.appendChild(customOption);
     }
     const manualOption = document.createElement("option");

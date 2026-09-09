@@ -5,7 +5,10 @@
   window.smokeThrowIfAbortedUnavailable = typeof AbortSignal.prototype.throwIfAborted !== "function";
   localStorage.removeItem("coc2-translator.settings.v2");
   localStorage.removeItem("coc2-translator.settings.v1");
-  localStorage.setItem("coc2-translator.settings.v2", JSON.stringify({ collapsed: true }));
+  localStorage.setItem("coc2-translator.settings.v2", JSON.stringify({
+    collapsed: true,
+    openAICompatibleModel: "glm-5.3-flash"
+  }));
   localStorage.setItem("coc2-translator.cache-meta.v1", JSON.stringify({ version: 1, records: 99, bytes: 99, languages: { ar: { records: 99, bytes: 99 } } }));
   localStorage.setItem("coc2-translator.cache-meta-dirty.v1", "1");
   function request(result) {

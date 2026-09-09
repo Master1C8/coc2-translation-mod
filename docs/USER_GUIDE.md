@@ -69,6 +69,8 @@ The key field is cleared and hidden after confirmed saving; `Key saved` and `Cha
 
 LM Studio is part of this same provider. Start its local server and load a model first; no key is required by the preset. If `/models` is unavailable but Chat Completions works, enter the model ID manually.
 
+A previously selected model keeps its exact ID in the selector even when the provider temporarily omits it from `/models`. `Enter model ID manually…` is a separate action and is never used as a label for the current model.
+
 For GLM-5.3-Flash through OpenCode Go, reasoning supports only Low, High, and Maximum (plus leaving the provider default unset). Previously saved unsupported levels, including Minimal and None, are migrated to Low. This is a model-specific constraint; other models retain their available settings. The helper also normalizes older clients and records the adjustment in the log.
 
 The helper validates response structure and context markers before applying text. If an endpoint explicitly rejects an optional model parameter, the helper retries without it. Provider HTTP 400/401 responses that identify an unavailable or unsupported model are reported as a model problem without exposing the raw upstream message. Temporary failures and rate limits are retried with a delay and `Retry-After`; the panel shows the safe final error, and an exhausted rate limit stops the remaining queue. Permanent provider rejections also stop the queue and pause automatic translation for the current settings until a manual retry, a change of translation settings or key, or toggling auto-translate. OpenCode Go requests include a stable routing session ID for the lifetime of the local service, shared across concurrent requests and format fallbacks; the client identifies itself as VN Revival Translator. This is not editorial review, and the result is not an approved localization.
@@ -172,6 +174,8 @@ Base URL preset:
 После подтверждённого сохранения поле ключа очищается и скрывается; вместо него показаны «Ключ сохранён» и «Изменить». Адрес готового профиля и параметры модели находятся в «Дополнительно»; для Custom адрес виден сразу. Ключи хранятся отдельно по Base URL в Windows Credential Manager или macOS Keychain и не попадают в игровые настройки, DOM или кэш. Ввод нового ключа заменяет сохранённый ключ текущего endpoint.
 
 LM Studio входит в этот же провайдер. Сначала запустите local server и загрузите модель; preset не требует ключа. Если `/models` недоступен, но Chat Completions работает, введите model ID вручную.
+
+Ранее выбранная модель сохраняет в списке свой точный ID, даже если провайдер временно не вернул её через `/models`. «Ввести ID модели вручную…» — отдельное действие, а не обозначение текущей модели.
 
 Для GLM-5.3-Flash через OpenCode Go поддерживаются только низкая, высокая и максимальная глубина рассуждений; также можно оставить значение провайдера по умолчанию. Сохранённые неподдерживаемые уровни, включая «Минимальная» и «Нет», заменяются на «Низкая». Это ограничение конкретной модели; остальные модели сохраняют свои настройки. Локальный сервис также корректирует запросы старых клиентов и записывает изменение параметра в лог.
 
