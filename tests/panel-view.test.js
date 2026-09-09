@@ -3,7 +3,6 @@ const assert = require("node:assert/strict");
 require("../src/panel-view.js");
 const render = (theme) => globalThis.VNRevivalPanelView.render({
   theme, siteURL: "https://example.test", siteName: "Example",
-  gamePageURL: "https://example.test/ru/games/example-game",
   maxSystemPromptChars: 12000, maxGlossaryChars: 8000
 });
 
@@ -33,8 +32,9 @@ test("glossary editor exposes site entries separately from local overrides", () 
   assert.match(html, /class="openAICompatibleGlossary" maxlength="8000"/);
 });
 
-test("model help opens the game page in a separate window", () => {
+test("model help cannot navigate the game window", () => {
   const html = render();
   assert.match(html, /class="modelHelpQuestion">Don't know which model to choose\?</);
-  assert.match(html, /class="modelHelpLink" href="https:\/\/example\.test\/ru\/games\/example-game" target="_blank" rel="noopener noreferrer">How it works<\/a>/);
+  assert.match(html, /<button class="modelHelpLink" type="button">How it works<\/button>/);
+  assert.doesNotMatch(html, /class="modelHelpLink"[^>]*(?:href|target)=/);
 });

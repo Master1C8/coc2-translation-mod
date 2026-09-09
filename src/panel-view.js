@@ -16,7 +16,6 @@
 
   function render(options) {
     const siteURL = options.siteURL;
-    const gamePageURL = options.gamePageURL || siteURL;
     const siteName = options.siteName;
     const maxSystemPromptChars = options.maxSystemPromptChars;
     const maxGlossaryChars = options.maxGlossaryChars;
@@ -74,8 +73,8 @@
         .openAICompatiblePreset{margin-bottom:8px}
         .openAICompatibleModel{margin-bottom:4px}
         .modelHelp{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 5px;margin:0 0 8px;color:var(--muted);font-size:11px}
-        .modelHelp a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
-        .modelHelp a:hover{color:var(--text)}
+        .modelHelpLink{border:0;background:transparent;color:var(--accent);padding:0;font:inherit;text-decoration:underline;text-underline-offset:2px}
+        .modelHelpLink:hover{color:var(--text)}
         .endpointField{display:block;margin:7px 0;color:var(--muted);font-size:11px}
         .endpointField span{display:block;margin-bottom:4px}
         .openAICompatibleBaseURL{font-size:11px}
@@ -138,7 +137,7 @@
             </select>
             <label class="endpointField"><span class="endpointLabel">API address</span><input class="openAICompatibleBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://provider.example/v1" title="API endpoint used to list models and send translation requests."></label>
             <select class="openAICompatibleModel" aria-label="OpenAI-compatible model" title="Open the list to refresh available models, or choose manual entry."><option value="">Choose a listed model…</option></select>
-            <div class="modelHelp"><span class="modelHelpQuestion">Don't know which model to choose?</span><a class="modelHelpLink" href="${gamePageURL}" target="_blank" rel="noopener noreferrer">How it works</a></div>
+            <div class="modelHelp"><span class="modelHelpQuestion">Don't know which model to choose?</span><button class="modelHelpLink" type="button">How it works</button></div>
             <div class="keyRow"><span class="keyState" role="status"></span><button class="secondary keyEdit" type="button" hidden>Change</button></div>
             <input class="openAICompatibleKey" type="password" autocomplete="off" spellcheck="false" placeholder="API key (stored securely)" title="Saved securely for this Base URL and never stored in the game.">
             <button class="secondary openAICompatibleAdvancedToggle" type="button" aria-expanded="false" aria-controls="openAICompatibleAdvanced" title="Show system prompt and glossary settings.">Advanced</button>

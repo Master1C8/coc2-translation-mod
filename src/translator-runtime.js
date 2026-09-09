@@ -30,7 +30,6 @@
   const SOURCE_LANGUAGE = game.sourceLanguage || "en";
   const SITE_NAME = "VN Revival";
   const SITE_URL = "https://vnrevival.fun/";
-  const GAME_PAGE_URL = `${SITE_URL}ru/games/${game.siteSlug}`;
   const OPENAI_CONFIG = window.VNRevivalOpenAICompatibleConfig;
   if (!OPENAI_CONFIG || !OPENAI_CONFIG.presets || !OPENAI_CONFIG.defaultSystemPrompt) {
     throw new Error("VN Revival OpenAI-compatible config is missing or incompatible");
@@ -1772,7 +1771,6 @@
   shadow.innerHTML = panelView.render({
     theme: game.theme,
     siteURL: SITE_URL,
-    gamePageURL: GAME_PAGE_URL,
     siteName: SITE_NAME,
     maxSystemPromptChars: OPENAI_COMPATIBLE_MAX_SYSTEM_PROMPT_CHARS,
     maxGlossaryChars: OPENAI_COMPATIBLE_MAX_GLOSSARY_CHARS
@@ -2282,6 +2280,7 @@
   });
   modelHelpLink.addEventListener("click", (event) => {
     event.preventDefault();
+    event.stopPropagation();
     void requestLocalHelper("/v1/vnrevival/open-game-page", {
       body: { gameSlug: game.siteSlug }
     }).catch(() => setStatus(interfacePreset().browserOpenFailed));

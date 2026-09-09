@@ -87,10 +87,9 @@
     && shadow.querySelector(".translateAction").textContent === "Перевести"
     && shadow.querySelector(".modelHelpQuestion").textContent === "Не знаешь какую модель выбрать?"
     && shadow.querySelector(".modelHelpLink").textContent === "Как это работает"
-    && shadow.querySelector(".modelHelpLink").href
-      === "https://vnrevival.fun/ru/games/corruption-of-champions-ii"
-    && shadow.querySelector(".modelHelpLink").target === "_blank"
-    && shadow.querySelector(".modelHelpLink").rel === "noopener noreferrer"
+    && shadow.querySelector(".modelHelpLink").tagName === "BUTTON"
+    && !shadow.querySelector(".modelHelpLink").hasAttribute("href")
+    && !shadow.querySelector(".modelHelpLink").hasAttribute("target")
     && window.__vnRevivalTranslator.settings().translateInterface === true;
   const interfacePresetMadeNoRequests = window.fetchCalls.length + window.localHelperCalls.length === requestsBeforeInterfacePreset;
   const russianInterfacePresetApplied = russianInterfacePresetTextApplied && interfacePresetMadeNoRequests;
