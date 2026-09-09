@@ -131,7 +131,7 @@ rm -f "$MAC_ZIP" "$MAC_CHECKSUM"
 (cd "$READY_DIR" && shasum -a 256 "${MAC_ZIP:t}") > "$MAC_CHECKSUM"
 
 VNREVIVAL_GAME="$GAME_ID" "$ROOT/scripts/verify.sh"
-for ITEM in "$READY_DIR"/*(N); do
+for ITEM in "$READY_DIR"/*(DN); do
   case "${ITEM:t}" in
     "$ARCHIVE_PREFIX-macOS-$VERSION.zip"|"$ARCHIVE_PREFIX-Windows-$VERSION.zip") ;;
     *) rm -rf -- "$ITEM" ;;
