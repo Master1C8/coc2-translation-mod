@@ -84,6 +84,7 @@
 })();
 window.fetchCalls = [];
 window.localHelperCalls = [];
+window.openExternalRequests = [];
 window.smokeLogBytes = 2048;
 window.smokeClipboard = "";
 window.smokeCapture = { active: false, sets: [] };
@@ -106,6 +107,10 @@ window.fetch = async function (input, options = {}) {
         entries: 2,
         requestedLocale: request.locale,
       }) };
+    }
+    if (url.pathname === "/v1/vnrevival/open-game-page") {
+      window.openExternalRequests.push(JSON.parse(options.body));
+      return { ok: true, json: async () => ({ ok: true, opened: true }) };
     }
     if (url.pathname === "/v1/openai-compatible/status") {
       return { ok: true, json: async () => ({

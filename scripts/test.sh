@@ -135,7 +135,7 @@ for REQUIRED in "#define APP_ID $STEAM_APP_ID" 'WinHttpWebSocket' "$WINDOWS_EXEC
   }
 done
 
-for REQUIRED in 'OpenAICompatibleCredentialStore' 'openai_status' 'set_openai_key' 'remove_openai_key' 'openai_translate' '/v1/openai-compatible/status' '/v1/openai-compatible/key' '/v1/openai-compatible/translate' 'request_game_executable_change' '/v1/launcher/reselect-executable'; do
+for REQUIRED in 'OpenAICompatibleCredentialStore' 'openai_status' 'set_openai_key' 'remove_openai_key' 'openai_translate' '/v1/openai-compatible/status' '/v1/openai-compatible/key' '/v1/openai-compatible/translate' 'open_vnrevival_game_page' '/v1/vnrevival/open-game-page' 'request_game_executable_change' '/v1/launcher/reselect-executable'; do
   grep -Fq "$REQUIRED" src/local_service.py || {
     echo "Missing local service feature: $REQUIRED" >&2
     exit 1

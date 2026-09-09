@@ -686,6 +686,19 @@ class LocalServiceTests(unittest.TestCase):
                 "requested\n",
             )
 
+    def test_game_page_opens_only_canonical_vnrevival_url(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory)
+            with mock.patch.object(bridge, "_open_external_url") as open_external:
+                result = bridge.open_vnrevival_game_page("corruption-of-champions-ii")
+            self.assertTrue(result["opened"])
+            open_external.assert_called_once_with(
+                "https://vnrevival.fun/ru/games/corruption-of-champions-ii"
+            )
+            for invalid in (None, "", "../private", "game?next=https://evil.test", "UPPER"):
+                with self.subTest(invalid=invalid), self.assertRaises(local_service.BridgeError):
+                    bridge.open_vnrevival_game_page(invalid)
+
     def test_log_status_read_and_clear(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory)

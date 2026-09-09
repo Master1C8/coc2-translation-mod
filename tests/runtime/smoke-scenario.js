@@ -103,6 +103,17 @@
     && shadow.querySelector(".modelHelpQuestion").textContent === "Don't know which model to choose?"
     && shadow.querySelector(".modelHelpLink").textContent === "How it works"
     && window.__vnRevivalTranslator.settings().translateInterface === false;
+  const modelHelpLink = shadow.querySelector(".modelHelpLink");
+  const openExternalCalls = window.localHelperCalls
+    .filter((path) => path === "/v1/vnrevival/open-game-page").length;
+  const modelHelpDefaultPrevented = !modelHelpLink.dispatchEvent(new MouseEvent("click", {
+    bubbles: true, cancelable: true
+  }));
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const modelHelpUsesSystemBrowser = modelHelpDefaultPrevented
+    && window.localHelperCalls.filter((path) => path === "/v1/vnrevival/open-game-page").length
+      === openExternalCalls + 1
+    && window.openExternalRequests.at(-1)?.gameSlug === "corruption-of-champions-ii";
   const providerOptions = Array.from(shadow.querySelector(".provider").options)
     .map((option) => [option.value, option.textContent]);
   const shortcutInsideMainButton = shadow.querySelector(".translate .translateShortcut")?.textContent === "Ctrl+Shift+T"
@@ -709,6 +720,7 @@
     gameThemeApplied,
     russianInterfacePresetApplied,
     englishInterfaceRestored,
+    modelHelpUsesSystemBrowser,
     languageOptionsLength: languageOptions.length === 30,
     languageOrderStart: JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
       ["zh", "Chinese (Simplified) (中文（简体）)"],

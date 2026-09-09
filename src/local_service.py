@@ -55,6 +55,7 @@ _LOG_ROUTES = {
     "/v1/health", "/v1/openai-compatible/status", "/v1/openai-compatible/key",
     "/v1/openai-compatible/key/remove", "/v1/openai-compatible/translate",
     "/v1/vnrevival/translation-config",
+    "/v1/vnrevival/open-game-page",
     "/v1/launcher/reselect-executable", "/v1/capture/status", "/v1/capture/start",
     "/v1/capture/append", "/v1/capture/stop", "/v1/capture/read", "/v1/capture/clear",
 }
@@ -1198,6 +1199,28 @@ class LocalServiceBridge:
         marker.write_text("requested\n", encoding="utf-8")
         return {"ok": True, "reselectOnNextLaunch": True}
 
+    @staticmethod
+    def _open_external_url(url: str) -> None:
+        try:
+            if sys.platform == "darwin":
+                subprocess.Popen(
+                    ["/usr/bin/open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                return
+            if os.name == "nt":
+                os.startfile(url)  # type: ignore[attr-defined]
+                return
+        except OSError as error:
+            raise BridgeError("browser_open_failed", "Could not open the system browser", 500) from error
+        raise BridgeError("browser_open_failed", "Could not open the system browser", 501)
+
+    def open_vnrevival_game_page(self, game_slug: Any) -> dict[str, Any]:
+        if not isinstance(game_slug, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,99}", game_slug):
+            raise BridgeError("invalid_game_slug", "Invalid game page", 400)
+        url = f"{VNREVIVAL_SITE_ORIGIN}/ru/games/{game_slug}"
+        self._open_external_url(url)
+        return {"ok": True, "opened": True}
+
 
 class LocalServiceRequestHandler(BaseHTTPRequestHandler):
     server_version = "VNRevivalLocal/1"
@@ -1288,6 +1311,8 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 result = self.bridge.site_translation_config(
                     payload.get("gameSlug"), payload.get("locale")
                 )
+            elif self.path == "/v1/vnrevival/open-game-page":
+                result = self.bridge.open_vnrevival_game_page(payload.get("gameSlug"))
             elif self.path == "/v1/translation-metrics":
                 measured = screen_metrics(payload)
                 self.bridge.log_event("screen." + payload["phase"], **measured)

@@ -1793,6 +1793,7 @@
   const openAICompatiblePresetSelect = shadow.querySelector(".openAICompatiblePreset");
   const openAICompatibleBaseURLInput = shadow.querySelector(".openAICompatibleBaseURL");
   const openAICompatibleModelSelect = shadow.querySelector(".openAICompatibleModel");
+  const modelHelpLink = shadow.querySelector(".modelHelpLink");
   const openAICompatibleReasoningEffortSelect = shadow.querySelector(".openAICompatibleReasoningEffort");
   const openAICompatibleConcurrencySelect = shadow.querySelector(".openAICompatibleConcurrency");
   const openAICompatibleAdvancedToggleButton = shadow.querySelector(".openAICompatibleAdvancedToggle");
@@ -2278,6 +2279,12 @@
   });
   openAICompatibleModelSelect.addEventListener("pointerdown", () => {
     if (!openAICompatibleBusy) void refreshOpenAICompatibleStatus({ fromModelPicker: true });
+  });
+  modelHelpLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    void requestLocalHelper("/v1/vnrevival/open-game-page", {
+      body: { gameSlug: game.siteSlug }
+    }).catch(() => setStatus(interfacePreset().browserOpenFailed));
   });
   openAICompatibleModelSelect.addEventListener("change", () => {
     const connection = openAICompatibleConnection();
