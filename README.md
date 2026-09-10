@@ -37,7 +37,7 @@ Credential Manager, отдельно для каждого Base URL.
 публикует релиз и не выполняет deployment.
 
 Чтобы из терминала найти самую новую установленную версию CoC2 во всех
-бутылках CrossOver и запустить её через Steam:
+бутылках CrossOver и запустить её вместе с переводчиком:
 
 ```bash
 ./scripts/launch-latest-coc2-crossover.sh

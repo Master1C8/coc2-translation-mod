@@ -3,14 +3,14 @@ set -eu
 
 CROSSOVER_APP="${VNREVIVAL_CROSSOVER_APP:-/Applications/CrossOver.app}"
 BOTTLES_ROOT="${VNREVIVAL_CROSSOVER_BOTTLES_DIR:-$HOME/Library/Application Support/CrossOver/Bottles}"
-WINE="$CROSSOVER_APP/Contents/SharedSupport/CrossOver/bin/wine"
 GAME_EXECUTABLE="CoC II.exe"
-STEAM_APP_ID=1292690
+GAME_PATH_FILE="$HOME/Library/Application Support/VN Revival/Translator Paths/coc2.txt"
+DEFAULT_TRANSLATOR_APP="${0:A:h:h}/.build/macos/CoC2 Translator.app"
 
 usage() {
   print -r -- "Usage: ${0:t} [--print]"
   print -r -- ""
-  print -r -- "Find the newest installed CoC2 version in all CrossOver bottles."
+  print -r -- "Find the newest installed CoC2 version and start it with CoC2 Translator through CrossOver."
   print -r -- "With --print, show the selected installation without launching it."
 }
 
@@ -51,6 +51,25 @@ esac
 
 if [[ ! -d "$BOTTLES_ROOT" ]]; then
   print -u2 -r -- "CrossOver bottles were not found: $BOTTLES_ROOT"
+  exit 1
+fi
+
+if [[ -n "${VNREVIVAL_TRANSLATOR_APP:-}" ]]; then
+  TRANSLATOR_APP="$VNREVIVAL_TRANSLATOR_APP"
+elif [[ -d "$DEFAULT_TRANSLATOR_APP" ]]; then
+  TRANSLATOR_APP="$DEFAULT_TRANSLATOR_APP"
+elif [[ -d "/Applications/CoC2 Translator.app" ]]; then
+  TRANSLATOR_APP="/Applications/CoC2 Translator.app"
+elif [[ -d "$HOME/Applications/CoC2 Translator.app" ]]; then
+  TRANSLATOR_APP="$HOME/Applications/CoC2 Translator.app"
+else
+  print -u2 -r -- "CoC2 Translator.app was not found. Build it with ./scripts/build-coc2.sh or set VNREVIVAL_TRANSLATOR_APP."
+  exit 1
+fi
+
+TRANSLATOR_LAUNCHER="$TRANSLATOR_APP/Contents/MacOS/CoC2 Translator"
+if [[ ! -x "$TRANSLATOR_LAUNCHER" ]]; then
+  print -u2 -r -- "The CoC2 Translator launcher is missing: $TRANSLATOR_LAUNCHER"
   exit 1
 fi
 
@@ -102,21 +121,21 @@ fi
 print -r -- "Bottle: $BEST_BOTTLE"
 print -r -- "Version: ${BEST_VERSION:-unknown}"
 print -r -- "Executable: $BEST_EXE"
+print -r -- "Translator: $TRANSLATOR_APP"
 
 if (( PRINT_ONLY )); then
   exit 0
 fi
 
-if [[ ! -x "$WINE" ]]; then
+if [[ ! -x "$CROSSOVER_APP/Contents/SharedSupport/CrossOver/bin/wine" ]]; then
   print -u2 -r -- "CrossOver was not found: $CROSSOVER_APP"
   exit 1
 fi
 
-STEAM_EXE="$BOTTLES_ROOT/$BEST_BOTTLE/drive_c/Program Files (x86)/Steam/steam.exe"
-if [[ -f "$STEAM_EXE" ]]; then
-  print -r -- "Launching through Steam in CrossOver..."
-  exec "$WINE" --bottle "$BEST_BOTTLE" --no-wait "$STEAM_EXE" -applaunch "$STEAM_APP_ID"
-fi
-
-print -r -- "Steam was not found in the selected bottle; launching the executable directly..."
-exec "$WINE" --bottle "$BEST_BOTTLE" --no-wait "$BEST_EXE"
+/bin/mkdir -p "${GAME_PATH_FILE:h}"
+print -r -- "$BEST_EXE" > "$GAME_PATH_FILE"
+print -r -- "Launching CoC2 with CoC2 Translator through CrossOver..."
+VNREVIVAL_WINDOWS_RUNTIME=crossover \
+  VNREVIVAL_CROSSOVER_APP="$CROSSOVER_APP" \
+  VNREVIVAL_CROSSOVER_BOTTLE="$BEST_BOTTLE" \
+  exec "$TRANSLATOR_LAUNCHER"
