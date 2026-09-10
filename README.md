@@ -36,6 +36,16 @@ Credential Manager, отдельно для каждого Base URL.
 Сборка создаёт macOS и Windows архивы в `launcher/READY_TO_SHARE/`. Она не
 публикует релиз и не выполняет deployment.
 
+Чтобы из терминала найти самую новую установленную версию CoC2 во всех
+бутылках CrossOver и запустить её через Steam:
+
+```bash
+./scripts/launch-latest-coc2-crossover.sh
+```
+
+Команда с `--print` только покажет выбранную бутылку, версию и путь, не запуская
+игру.
+
 ## Платформы
 
 - Windows launcher — нативное Win32 x86-64 GUI-приложение без консоли и прав

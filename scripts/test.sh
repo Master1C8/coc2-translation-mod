@@ -58,7 +58,8 @@ else
 fi
 zsh -n launcher/macos/launch.sh scripts/build.sh scripts/build-windows.sh scripts/test.sh scripts/verify.sh \
   scripts/build-coc2.sh scripts/test-coc2.sh scripts/test-runtime.sh scripts/test-service.sh scripts/test-adapter.sh \
-  scripts/test-browser-smoke.sh
+  scripts/test-browser-smoke.sh scripts/launch-latest-coc2-crossover.sh tests/test_launch_latest_crossover.sh
+./tests/test_launch_latest_crossover.sh
 python3 -m py_compile scripts/generate-languages-js.py scripts/generate-openai-config.py scripts/test-browser-smoke.py
 ./scripts/test-browser-smoke.sh
 
