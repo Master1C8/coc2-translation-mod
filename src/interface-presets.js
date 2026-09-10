@@ -55,12 +55,7 @@
       copyLogTitle: "Copy the local service log to the clipboard.",
       chooseModel: "Choose a model…", freeModel: "Free", enterModel: "Enter model ID manually…",
       deleteConfirm: "Delete all cached translations and the local service log?", cacheDeleted: "Cache and log deleted", cacheDeleteFailed: "Could not completely delete cache and log",
-      logCopied: "Log copied", logTailCopied: "Latest 2 MB of log copied", logCopyFailed: "Could not copy log",
-      captureStatus: "Request capture: {state} · Sets: {count}", captureStart: "Capture requests", captureStop: "Stop capture", copyCapture: "Copy request set", clearCapture: "Clear request set",
-      captureStartTitle: "Capture the exact OpenAI system prompt, selected glossary, and text locally without contacting the provider.", captureStopTitle: "Stop recording request sets.",
-      captureCopyTitle: "Copy the captured OpenAI request sets as JSON.", captureClearTitle: "Delete all saved request sets without stopping active capture.",
-      captureReplaceConfirm: "Delete the previous request set and start a new one?", captureClearConfirm: "Delete all saved request sets? Active capture will remain on.",
-      captureStarted: "Request capture started", captureSaved: "Request set saved", captureDuplicate: "This request set is already saved", captureStopped: "Request capture stopped", captureCopied: "Request set copied", captureCleared: "Request sets cleared", captureFailed: "Could not use request capture"
+      logCopied: "Log copied", logTailCopied: "Latest 2 MB of log copied", logCopyFailed: "Could not copy log"
     }),
     ru: Object.freeze({
       language: "Язык", translate: "Перевести", cancel: "Отменить",
@@ -115,12 +110,7 @@
       copyLogTitle: "Скопировать лог локального сервиса в буфер обмена.",
       chooseModel: "Выберите модель…", freeModel: "Бесплатно", enterModel: "Ввести ID модели вручную…",
       deleteConfirm: "Удалить все кэшированные переводы и лог локального сервиса?", cacheDeleted: "Кэш и лог удалены", cacheDeleteFailed: "Не удалось полностью удалить кэш и лог",
-      logCopied: "Лог скопирован", logTailCopied: "Скопированы последние 2 МБ лога", logCopyFailed: "Не удалось скопировать лог",
-      captureStatus: "Сбор запросов: {state} · Наборов: {count}", captureStart: "Собирать запросы", captureStop: "Остановить сбор", copyCapture: "Копировать набор", clearCapture: "Очистить набор",
-      captureStartTitle: "Локально собирать точный системный промт OpenAI, выбранный словарь и текст без обращения к провайдеру.", captureStopTitle: "Остановить сбор наборов запросов.",
-      captureCopyTitle: "Скопировать собранные наборы запросов OpenAI в формате JSON.", captureClearTitle: "Удалить все сохранённые наборы, не останавливая активный сбор.",
-      captureReplaceConfirm: "Удалить предыдущий набор запросов и начать новый?", captureClearConfirm: "Удалить все сохранённые наборы запросов? Активный сбор останется включён.",
-      captureStarted: "Сбор запросов начат", captureSaved: "Набор запросов сохранён", captureDuplicate: "Такой набор запросов уже сохранён", captureStopped: "Сбор запросов остановлен", captureCopied: "Набор запросов скопирован", captureCleared: "Наборы запросов очищены", captureFailed: "Не удалось обработать набор запросов"
+      logCopied: "Лог скопирован", logTailCopied: "Скопированы последние 2 МБ лога", logCopyFailed: "Не удалось скопировать лог"
     })
   });
 })(typeof globalThis !== "undefined" ? globalThis : this);

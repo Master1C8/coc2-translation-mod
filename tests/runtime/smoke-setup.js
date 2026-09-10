@@ -87,7 +87,6 @@ window.localHelperCalls = [];
 window.openExternalRequests = [];
 window.smokeLogBytes = 2048;
 window.smokeClipboard = "";
-window.smokeCapture = { active: false, sets: [] };
 Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
   writeText: async (value) => { window.smokeClipboard = value; }
 } });
@@ -132,37 +131,6 @@ window.fetch = async function (input, options = {}) {
     if (url.pathname === "/v1/log/clear") {
       window.smokeLogBytes = 0;
       return { ok: true, json: async () => ({ ok: true, bytes: 0 }) };
-    }
-    if (url.pathname === "/v1/capture/status") {
-      return { ok: true, json: async () => ({ ok: true, active: window.smokeCapture.active,
-        sets: window.smokeCapture.sets.length, bytes: 0 }) };
-    }
-    if (url.pathname === "/v1/capture/start") {
-      window.smokeCapture = { active: true, sets: [] };
-      return { ok: true, json: async () => ({ ok: true, active: true, sets: 0, bytes: 0 }) };
-    }
-    if (url.pathname === "/v1/capture/append") {
-      const candidate = JSON.parse(options.body);
-      const comparable = ({ game_id, game_version, translator_version, language, preset, model, reasoning_effort, requests }) =>
-        JSON.stringify({ game_id, game_version, translator_version, language, preset, model, reasoning_effort, requests });
-      const duplicate = window.smokeCapture.sets.some((item) => comparable(item) === comparable(candidate));
-      if (window.smokeCapture.active && !duplicate) window.smokeCapture.sets.push(candidate);
-      return { ok: true, json: async () => ({ ok: true, active: window.smokeCapture.active,
-        sets: window.smokeCapture.sets.length, bytes: 100, duplicate }) };
-    }
-    if (url.pathname === "/v1/capture/stop") {
-      window.smokeCapture.active = false;
-      return { ok: true, json: async () => ({ ok: true, active: false,
-        sets: window.smokeCapture.sets.length, bytes: 100 }) };
-    }
-    if (url.pathname === "/v1/capture/read") {
-      return { ok: true, json: async () => ({ ok: true, sets: window.smokeCapture.sets.length,
-        bytes: 100, content: JSON.stringify({ schema_version: 2, request_sets: window.smokeCapture.sets }) }) };
-    }
-    if (url.pathname === "/v1/capture/clear") {
-      window.smokeCapture.sets = [];
-      return { ok: true, json: async () => ({ ok: true, active: window.smokeCapture.active,
-        sets: 0, bytes: window.smokeCapture.active ? 100 : 0 }) };
     }
     return { ok: true, json: async () => ({ ok: true, reselectOnNextLaunch: true }) };
   }

@@ -120,8 +120,6 @@
   let cacheMetadataVerified = false;
   let cacheMetadataSaveTimer = 0;
   let localLogBytes = null;
-  let captureActive = false;
-  let captureSets = 0;
   let openAICompatibleStatus = null;
   let editingOpenAIKey = false;
   let openAICompatibleBusy = false;
@@ -365,13 +363,6 @@
     return { ...connection, glossary, requestSystemPrompt: glossary
       ? `${connection.systemPrompt}\n\nTranslation glossary. Apply these mappings consistently whenever the source term occurs:\n${glossary}`
       : connection.systemPrompt };
-  }
-
-  function materializedSystemPrompt(connection, language) {
-    const targetName = (LANGUAGES.find(([code]) => code === language) || [null, language])[1];
-    return String(connection.requestSystemPrompt || connection.systemPrompt || "").trim()
-      .split("{targetName}").join(String(targetName || language).trim())
-      .split("{target}").join(language);
   }
 
   function batchOpenAIRequest(job, parts, baseConnection) {
@@ -1269,62 +1260,10 @@
     return [settings.provider, settings.language, providerCacheVariant(settings.provider)].join("\n");
   }
 
-  function openAIRequestRecords(jobs, language, baseConnection) {
-    const requests = [];
-    for (const job of core.batchScreenJobs(jobs, PROVIDERS["openai-compatible"].contextLimit)) {
-      if (job.batchParts) {
-        const request = batchOpenAIRequest(job, job.batchParts, baseConnection);
-        requests.push({
-          kind: job.kind,
-          batch_size: job.batchParts.length,
-          system_prompt: materializedSystemPrompt(request.connection, language),
-          glossary: request.connection.glossary,
-          text: request.source
-        });
-        continue;
-      }
-      const connection = connectionForSource(job.source, baseConnection);
-      for (const chunk of PROVIDERS["openai-compatible"].splitText(job.source)) {
-        requests.push({
-          kind: job.kind,
-          batch_size: 1,
-          system_prompt: materializedSystemPrompt(connection, language),
-          glossary: connection.glossary,
-          text: chunk
-        });
-      }
-    }
-    return requests;
-  }
-
-  async function captureOpenAIRequestSet(jobs, manual) {
-    const connection = openAICompatibleConnection();
-    const language = settings.language;
-    const requests = openAIRequestRecords(jobs, language, connection);
-    if (!requests.length) return;
-    const gameVersion = typeof adapter.getGameVersion === "function"
-      ? String(adapter.getGameVersion(window) || "unknown") : "unknown";
-    const result = await requestLocalHelper("/v1/capture/append", { body: {
-      screen_id: randomHexId(),
-      game_id: game.id,
-      game_version: gameVersion,
-      translator_version: VERSION,
-      language,
-      preset: String(connection.preset || ""),
-      model: String(connection.model || ""),
-      reasoning_effort: String(connection.modelParameters?.reasoningEffort || ""),
-      mode: manual ? "manual" : "auto",
-      requests
-    } });
-    captureSets = Number.isInteger(result.sets) ? result.sets : captureSets + 1;
-    renderCaptureStatus();
-    setStatus(result.duplicate === true ? interfacePreset().captureDuplicate : interfacePreset().captureSaved);
-  }
-
   async function runJobs(jobs, options) {
     const manual = !!(options && options.manual);
     if (clearSourceLanguageTranslationState()) return;
-    if (!manual && !captureActive && autoBlockedVariant === translationVariant()) return;
+    if (!manual && autoBlockedVariant === translationVariant()) return;
     if (running) {
       if (manual && abortController) abortController.abort();
       else pendingAutoRun = true;
@@ -1334,7 +1273,7 @@
       setTranslationStatus((text) => text.alreadyTranslated);
       return;
     }
-    const needsSiteTranslationConfig = (captureActive || providerUsesOpenAICompatible(settings.provider))
+    const needsSiteTranslationConfig = providerUsesOpenAICompatible(settings.provider)
       && settings.language !== SOURCE_LANGUAGE
       && !siteTranslationConfig(settings.language);
     if (needsSiteTranslationConfig) {
@@ -1342,31 +1281,11 @@
       // scan and a manual click can otherwise both pass the normal `running`
       // guard and start duplicate translation queues after the fetch resolves.
       running = true;
-      renderCaptureStatus();
       try {
         await ensureSiteTranslationConfig(settings.language);
       } finally {
         running = false;
-        renderCaptureStatus();
       }
-    }
-    if (captureActive) {
-      running = true;
-      renderCaptureStatus();
-      try {
-        await captureOpenAIRequestSet(jobs, manual);
-      } catch (_) {
-        captureActive = false;
-        setStatus(interfacePreset().captureFailed);
-      } finally {
-        running = false;
-        renderCaptureStatus();
-        if (pendingAutoRun) {
-          pendingAutoRun = false;
-          scheduleAutoTranslation(250);
-        }
-      }
-      return;
     }
     if (providerUsesOpenAICompatible(settings.provider)) {
       const connection = openAICompatibleConnection();
@@ -1457,7 +1376,6 @@
     abortController = runAbortController;
     running = true;
     try {
-      renderCaptureStatus();
       report("start");
       setMainButton("Cancel");
       retryButton.disabled = true;
@@ -1487,7 +1405,6 @@
       report("result", { outcome, duration_ms: Math.round(performance.now() - started),
         failed_jobs: lastFailedJobs.reduce((count, job) => count + (job.batchParts?.length || 1), 0) });
       running = false;
-      renderCaptureStatus();
       abortController = null;
       setMainButton("Translate");
       retryButton.disabled = !lastFailedJobs.length;
@@ -1503,7 +1420,7 @@
   function translateScreen(manual) {
     const isManual = manual !== false;
     if (clearSourceLanguageTranslationState()) return Promise.resolve();
-    if (!isManual && !captureActive && autoBlockedVariant === translationVariant()) return Promise.resolve();
+    if (!isManual && autoBlockedVariant === translationVariant()) return Promise.resolve();
     if (running) {
       if (isManual && abortController) abortController.abort();
       else pendingAutoRun = true;
@@ -1512,7 +1429,7 @@
     const roots = isManual ? null : takeAutoTranslationRoots();
     if (!isManual && !roots.length) return Promise.resolve();
     const jobs = buildJobs(collectVisibleTextNodes({
-      roots, includeHiddenTooltips: true, includeCompleted: captureActive
+      roots, includeHiddenTooltips: true
     }));
     if (!isManual && !jobs.length) return Promise.resolve();
     return runJobs(jobs, { manual: isManual });
@@ -1566,7 +1483,7 @@
       if (!roots.length) return;
       reapplyKnownTranslations(roots);
       for (const root of roots) pendingTranslationRoots.add(root);
-      if (captureActive || (settings.autoTranslate && settings.mode === "translated")) translateScreen(false);
+      if (settings.autoTranslate && settings.mode === "translated") translateScreen(false);
     }, Number(delay) || 350);
   }
 
@@ -1636,98 +1553,6 @@
       setStatus(text.logCopyFailed);
     } finally {
       cacheCopyButton.disabled = !LOCAL_BRIDGE || !(localLogBytes > 0);
-    }
-  }
-
-  function renderCaptureStatus() {
-    const text = interfacePreset();
-    captureStatsElement.textContent = formatMessage(text.captureStatus, {
-      state: captureActive ? text.on : text.off,
-      count: captureSets
-    });
-    captureToggleButton.textContent = captureActive ? text.captureStop : text.captureStart;
-    captureToggleButton.title = captureActive ? text.captureStopTitle : text.captureStartTitle;
-    captureToggleButton.disabled = !LOCAL_BRIDGE || running;
-    captureCopyButton.textContent = text.copyCapture;
-    captureCopyButton.title = text.captureCopyTitle;
-    captureCopyButton.disabled = !LOCAL_BRIDGE || captureSets === 0;
-    captureClearButton.textContent = text.clearCapture;
-    captureClearButton.title = text.captureClearTitle;
-    captureClearButton.disabled = !LOCAL_BRIDGE || running || captureSets === 0;
-  }
-
-  async function refreshCaptureStatus() {
-    if (!LOCAL_BRIDGE) {
-      captureActive = false;
-      captureSets = 0;
-      renderCaptureStatus();
-      return;
-    }
-    try {
-      const result = await requestLocalHelper("/v1/capture/status", { body: {} });
-      captureActive = result.active === true;
-      captureSets = Number.isInteger(result.sets) ? Math.max(0, result.sets) : 0;
-    } catch (_) {
-      captureActive = false;
-      captureSets = 0;
-    }
-    renderCaptureStatus();
-  }
-
-  async function toggleTranslationCapture() {
-    if (!LOCAL_BRIDGE) return;
-    const text = interfacePreset();
-    captureToggleButton.disabled = true;
-    try {
-      if (captureActive) {
-        const result = await requestLocalHelper("/v1/capture/stop", { body: {} });
-        captureActive = false;
-        captureSets = Number.isInteger(result.sets) ? result.sets : captureSets;
-        setStatus(text.captureStopped);
-      } else {
-        if (captureSets > 0 && !confirm(text.captureReplaceConfirm)) return;
-        const result = await requestLocalHelper("/v1/capture/start", { body: { accepted: true } });
-        captureActive = result.active === true;
-        captureSets = 0;
-        setStatus(text.captureStarted);
-        if (captureActive) await translateScreen(true);
-      }
-    } catch (_) {
-      setStatus(text.captureFailed);
-    } finally {
-      renderCaptureStatus();
-    }
-  }
-
-  async function copyTranslationCapture() {
-    if (!LOCAL_BRIDGE || captureSets === 0) return;
-    const text = interfacePreset();
-    captureCopyButton.disabled = true;
-    try {
-      const result = await requestLocalHelper("/v1/capture/read", { body: {} });
-      const copied = await copyTextToClipboard(String(result.content || ""));
-      setStatus(copied ? text.captureCopied : text.captureFailed);
-    } catch (_) {
-      setStatus(text.captureFailed);
-    } finally {
-      renderCaptureStatus();
-    }
-  }
-
-  async function clearTranslationCapture() {
-    if (!LOCAL_BRIDGE || captureSets === 0) return;
-    const text = interfacePreset();
-    if (!confirm(text.captureClearConfirm)) return;
-    captureClearButton.disabled = true;
-    try {
-      const result = await requestLocalHelper("/v1/capture/clear", { body: { accepted: true } });
-      captureActive = result.active === true;
-      captureSets = 0;
-      setStatus(text.captureCleared);
-    } catch (_) {
-      setStatus(text.captureFailed);
-    } finally {
-      renderCaptureStatus();
     }
   }
 
@@ -1820,10 +1645,6 @@
   const cacheStatsElement = shadow.querySelector(".cacheStats");
   const cacheCopyButton = shadow.querySelector(".cacheCopy");
   const cacheDeleteButton = shadow.querySelector(".cacheDelete");
-  const captureStatsElement = shadow.querySelector(".captureStats");
-  const captureToggleButton = shadow.querySelector(".captureToggle");
-  const captureCopyButton = shadow.querySelector(".captureCopy");
-  const captureClearButton = shadow.querySelector(".captureClear");
   const compatibilityBox = shadow.querySelector(".compat");
 
   for (const provider of PROVIDER_LIST) {
@@ -1895,7 +1716,6 @@
     autoState.dataset.off = text.off;
     cacheCopyButton.textContent = text.copyLog;
     cacheDeleteButton.textContent = text.delete;
-    renderCaptureStatus();
     openAICompatiblePresetSelect.title = text.presetTitle;
     openAICompatibleBaseURLInput.title = text.baseURLTitle;
     openAICompatibleKeyInput.title = text.keyTitle;
@@ -2222,7 +2042,6 @@
   updateProviderHint();
   applyInterfacePreset();
   refreshCacheStats();
-  refreshCaptureStatus();
 
   mainButton.addEventListener("click", () => translateScreen(true));
   retryButton.addEventListener("click", retryFailed);
@@ -2253,9 +2072,6 @@
   });
   cacheCopyButton.addEventListener("click", copyLocalLog);
   cacheDeleteButton.addEventListener("click", deleteTranslationCache);
-  captureToggleButton.addEventListener("click", toggleTranslationCapture);
-  captureCopyButton.addEventListener("click", copyTranslationCapture);
-  captureClearButton.addEventListener("click", clearTranslationCapture);
   openAICompatiblePresetSelect.addEventListener("change", async () => {
     const preset = openAICompatiblePresetSelect.value;
     applyOpenAICompatibleSettings({

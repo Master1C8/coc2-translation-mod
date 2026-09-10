@@ -43,3 +43,8 @@ test("panel has no first-use privacy choice", () => {
   const html = render();
   assert.doesNotMatch(html, /class="privacy|privacyText|allowAuto|manualOnly|Allow auto-translate|Manual only/);
 });
+
+test("panel has no request capture controls", () => {
+  const html = render();
+  assert.doesNotMatch(html, /captureBox|captureStats|captureToggle|captureCopy|captureClear|Capture requests/);
+});

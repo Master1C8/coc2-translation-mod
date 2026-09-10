@@ -93,11 +93,9 @@
         .openAICompatiblePrompt,.openAICompatibleGlossary{min-height:100px;resize:vertical;font-size:12px}
         .openAICompatibleSiteGlossary{min-height:140px;resize:vertical;font-size:12px;color:var(--muted);background:var(--background)}
         .openAICompatibleAdvancedNotice{margin:8px 0;color:var(--muted);font-size:11px}
-        .cacheBox,.captureBox{display:grid;grid-template-columns:auto auto;justify-content:space-between;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
-        .captureBox{margin-top:8px}
-        .cacheStats,.captureStats{grid-column:1/-1;color:var(--muted);font-size:11px}
-        .cacheCopy,.cacheDelete,.captureToggle,.captureCopy,.captureClear{padding:4px 0;font-size:10px;background:transparent}
-        .captureClear{grid-column:1/-1;justify-self:end}
+        .cacheBox{display:grid;grid-template-columns:auto auto;justify-content:space-between;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
+        .cacheStats{grid-column:1/-1;color:var(--muted);font-size:11px}
+        .cacheCopy,.cacheDelete{padding:4px 0;font-size:10px;background:transparent}
         .site{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
         .site a{color:var(--text);text-decoration:none;font-size:14px}
         .siteLabel a{display:flex;align-items:baseline;justify-content:center;flex-wrap:wrap;gap:4px 8px;text-align:center}
@@ -158,7 +156,6 @@
             </div>
           </div>
           <div class="cacheBox"><div class="cacheStats">Cache: … · Log: …</div><button class="secondary cacheCopy" type="button" title="Copy the local service log to the clipboard." disabled>Copy log</button><button class="danger cacheDelete" type="button" title="Delete all cached translations and the local service log. Other settings stay unchanged.">Clear cache and log</button></div>
-          <div class="captureBox"><div class="captureStats">Request capture: Off · Sets: 0</div><button class="secondary captureToggle" type="button" title="Capture the exact OpenAI system prompt, selected glossary, and text locally without contacting the provider.">Capture requests</button><button class="secondary captureCopy" type="button" title="Copy the captured OpenAI request sets as JSON." disabled>Copy request set</button><button class="danger captureClear" type="button" title="Delete all saved request sets without stopping active capture." disabled>Clear request set</button></div>
         </div>
         </div>
         <div class="site">

@@ -429,22 +429,9 @@
   for (let attempt = 0; attempt < 100 && shadow.querySelector(".translateAction").textContent === "Cancel"; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  const autoBeforeCapture = autoCheckbox.checked;
-  autoCheckbox.checked = false;
-  autoCheckbox.dispatchEvent(new Event("change"));
-  const captureSource = document.createElement("p");
-  captureSource.style.cssText = "position:fixed;top:40px;left:0;width:200px;height:30px";
-  captureSource.textContent = "Capture this Minstrel source sentence.";
-  document.body.append(captureSource);
-  await new Promise((resolve) => setTimeout(resolve, 260));
-  const captureToggleButton = shadow.querySelector(".captureToggle");
-  const captureCopyButton = shadow.querySelector(".captureCopy");
-  const captureClearButton = shadow.querySelector(".captureClear");
-  const providerRequestsBeforeCapture = window.localHelperCalls
-    .filter((path) => path === "/v1/openai-compatible/translate").length;
-  const captureProvider = shadow.querySelector(".provider");
-  captureProvider.value = "openai-compatible";
-  captureProvider.dispatchEvent(new Event("change"));
+  const glossaryProvider = shadow.querySelector(".provider");
+  glossaryProvider.value = "openai-compatible";
+  glossaryProvider.dispatchEvent(new Event("change"));
   for (let attempt = 0; attempt < 50
       && !openAISiteGlossaryInput.value.includes("Capture = التقاط من الموقع"); attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -454,59 +441,11 @@
     && shadow.querySelector(".siteGlossaryStatus").textContent === "2 terms loaded"
     && shadow.querySelector(".localGlossaryLabel").textContent === "Local overrides";
   shadow.querySelector(".openAICompatiblePromptReset").click();
-  captureProvider.value = "google";
-  captureProvider.dispatchEvent(new Event("change"));
-  captureToggleButton.click();
-  for (let attempt = 0; attempt < 50 && !window.smokeCapture.active; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  for (let attempt = 0; attempt < 50 && window.smokeCapture.sets.length === 0; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  await window.__vnRevivalTranslator.translateScreen();
-  const captureDeduplicates = window.smokeCapture.sets.length === 1
-    && shadow.querySelector(".status").textContent === "This request set is already saved";
-  captureClearButton.click();
-  for (let attempt = 0; attempt < 50
-      && shadow.querySelector(".status").textContent !== "Request sets cleared"; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  const captureClearWorks = window.smokeCapture.active
-    && window.smokeCapture.sets.length === 0
-    && captureCopyButton.disabled && captureClearButton.disabled
-    && shadow.querySelector(".status").textContent === "Request sets cleared";
-  await window.__vnRevivalTranslator.translateScreen();
-  for (let attempt = 0; attempt < 50 && window.smokeCapture.sets.length === 0; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  captureToggleButton.click();
-  for (let attempt = 0; attempt < 50 && window.smokeCapture.active; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  captureCopyButton.click();
-  for (let attempt = 0; attempt < 50 && !window.smokeClipboard.includes("Capture this Minstrel source sentence."); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  const capturedRequest = window.smokeCapture.sets[0]?.requests.find((request) =>
-    request.text.includes("Capture this Minstrel source sentence."));
-  const translationCaptureWorks = window.smokeCapture.sets.length === 1
-    && capturedRequest?.system_prompt
-    && !capturedRequest.system_prompt.includes("{targetName}")
-    && !capturedRequest.system_prompt.includes("{target}")
-    && capturedRequest.system_prompt.includes("REMOTE SITE PROMPT")
-    && capturedRequest.system_prompt.includes("Capture = التقاط من الموقع")
-    && capturedRequest.system_prompt.includes("Minstrel = Менестрель")
-    && capturedRequest.glossary === "Capture = التقاط من الموقع\nMinstrel = Менестрель"
-    && !capturedRequest.glossary.includes("شاعر الموقع")
-    && window.localHelperCalls.includes("/v1/vnrevival/translation-config")
-    && window.localHelperCalls.filter((path) => path === "/v1/openai-compatible/translate").length
-      === providerRequestsBeforeCapture
-    && !window.smokeCapture.active
-    && shadow.querySelector(".captureStats").textContent === "Request capture: Off · Sets: 1"
-    && window.smokeClipboard.includes("Capture this Minstrel source sentence.");
-  captureSource.remove();
-  autoCheckbox.checked = autoBeforeCapture;
-  autoCheckbox.dispatchEvent(new Event("change"));
+  glossaryProvider.value = "google";
+  glossaryProvider.dispatchEvent(new Event("change"));
+  const requestCaptureRemoved = !shadow.querySelector(
+    ".captureBox,.captureStats,.captureToggle,.captureCopy,.captureClear"
+  ) && !window.localHelperCalls.some((path) => path.startsWith("/v1/capture/"));
 
   await new Promise((resolve) => setTimeout(resolve, 700));
   const repairedMetadata = JSON.parse(localStorage.getItem("coc2-translator.cache-meta.v1") || "null");
@@ -708,9 +647,7 @@
     compactCacheRow,
     logCopied,
     cacheDeleted,
-    translationCaptureWorks,
-    captureDeduplicates,
-    captureClearWorks,
+    requestCaptureRemoved,
     originalButtonRemoved,
     metadataDirty: metadataDirty === null,
     legacyMigrated,
