@@ -92,7 +92,7 @@ RTL direction, language tags, font fallback, wrapping, and button sizing are app
 
 If the panel does not appear, close CoC2 completely and start it through the translator again. If OpenAI-compatible says the local helper is unavailable, reinstall/extract the complete app instead of moving only the executable. Confirm that the endpoint supports OpenAI Chat Completions (`/models` and `/chat/completions`) and that the selected model ID is valid.
 
-On Windows, the translator starts a detected Steam copy through Steam even when the client was initially closed, and waits up to two minutes for the game. It never falls back to launching a Steam game EXE directly. If Steam needs an update or sign-in, complete it and start the translator again.
+On Windows and in CrossOver, the translator starts a detected Steam copy through Steam even when the client was initially closed, and waits up to two minutes for the game. It never falls back to launching a Steam game EXE directly. If Steam needs an update or sign-in, complete it and start the translator again.
 
 Closing CoC2 normally also ends the launcher and local helper.
 
@@ -199,7 +199,7 @@ RTL, `lang`, шрифтовые fallback, переносы и размер кн�
 
 Если панель не появилась, полностью закройте CoC2 и снова запустите игру через переводчик. Если OpenAI-compatible сообщает об отсутствии helper, переустановите или полностью распакуйте приложение, не переносите один EXE. Убедитесь, что endpoint поддерживает OpenAI Chat Completions (`/models` и `/chat/completions`) и model ID существует.
 
-В Windows переводчик запускает найденную Steam-копию через Steam, даже если клиент изначально был закрыт, и ждёт игру до двух минут. Прямого запуска EXE Steam-игры как запасного варианта больше нет. Если Steam требует обновления или входа, завершите этот шаг и снова запустите переводчик.
+В Windows и CrossOver переводчик запускает найденную Steam-копию через Steam, даже если клиент изначально был закрыт, и ждёт игру до двух минут. Прямого запуска EXE Steam-игры как запасного варианта больше нет. Если Steam требует обновления или входа, завершите этот шаг и снова запустите переводчик.
 
 Обычное закрытие CoC2 завершает launcher и локальный helper.
 

@@ -49,6 +49,7 @@ PARALLELS_WINDOWS_SOURCE="\\\\Mac\\Home\\Documents\\VN Revival\\Parallels\\$GAME
 PARALLELS_WINDOWS_LAUNCHER="$PARALLELS_WINDOWS_SOURCE\\$PRODUCT_NAME.exe"
 PARALLELS_WINDOWS_LOCAL_DIR="%LOCALAPPDATA%\\VN Revival\\Parallels\\$GAME_ID\\$PARALLELS_STAGE_ID\\$WINDOWS_DISTRIBUTION_NAME"
 PARALLELS_WINDOWS_LOCAL_LAUNCHER="$PARALLELS_WINDOWS_LOCAL_DIR\\$PRODUCT_NAME.exe"
+STEAM_GAME_START_TIMEOUT_SECONDS=120
 
 cleanup() {
   if [[ -n "$SERVICE_PID" ]] && kill -0 "$SERVICE_PID" >/dev/null 2>&1; then
@@ -72,6 +73,12 @@ choose_game_executable() {
   VNREVIVAL_GAME_TITLE="$GAME_TITLE" /usr/bin/osascript \
     -e 'POSIX path of (choose file with prompt ("Locate the Windows executable for " & (system attribute "VNREVIVAL_GAME_TITLE")))' \
     2>/dev/null
+}
+
+is_steam_library_game_path() {
+  local normalized_path="${GAME_EXE:l}"
+  local bottle_prefix="${BOTTLE_DIR:l}/"
+  [[ "$normalized_path" == "$bottle_prefix"* && "$normalized_path" == *"/steamapps/common/"* ]]
 }
 
 if [[ "$LAUNCH_STRATEGY" != "electron-cdp" ]]; then
@@ -283,28 +290,31 @@ if [[ -n "$SERVICE_PORT" && -x "$PYTHON" ]]; then
   fi
 fi
 
-if [[ -f "$STEAM_EXE" ]]; then
-  "$WINE" --bottle "$BOTTLE" --no-wait "$STEAM_EXE" -applaunch "$STEAM_APP_ID" \
-    "--remote-debugging-address=127.0.0.1" "--remote-debugging-port=$PORT" >/dev/null 2>&1
-fi
-
-for _ in {1..20}; do
-  game_main_running && break
-  sleep 0.5
-done
-
-if ! game_main_running; then
+if [[ -f "$STEAM_EXE" ]] && is_steam_library_game_path; then
+  if ! "$WINE" --bottle "$BOTTLE" --no-wait "$STEAM_EXE" -applaunch "$STEAM_APP_ID" \
+      "--remote-debugging-address=127.0.0.1" "--remote-debugging-port=$PORT" >/dev/null 2>&1; then
+    show_error "Steam could not be started in CrossOver. Make sure the Steam bottle is available and try again."
+    exit 1
+  fi
+  for (( attempt = 0; attempt < STEAM_GAME_START_TIMEOUT_SECONDS * 2; attempt += 1 )); do
+    game_main_running && break
+    sleep 0.5
+  done
+  if ! game_main_running; then
+    show_error "Steam did not start $GAME_TITLE. Make sure Steam is running and signed in, then try again."
+    exit 1
+  fi
+else
   "$WINE" --bottle "$BOTTLE" --no-wait "$GAME_EXE" \
     "--remote-debugging-address=127.0.0.1" "--remote-debugging-port=$PORT" >/dev/null 2>&1
-fi
-
-for _ in {1..20}; do
-  game_main_running && break
-  sleep 0.5
-done
-if ! game_main_running; then
-  show_error "The selected executable did not start the expected game process. Choose the game's main EXE and try again."
-  exit 1
+  for _ in {1..20}; do
+    game_main_running && break
+    sleep 0.5
+  done
+  if ! game_main_running; then
+    show_error "The selected executable did not start the expected game process. Choose the game's main EXE and try again."
+    exit 1
+  fi
 fi
 
 if [[ -n "$SERVICE_URL" ]]; then

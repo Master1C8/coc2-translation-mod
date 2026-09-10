@@ -183,6 +183,13 @@ if grep -Fq 'awk -v executable="$GAME_PROCESS_NAME"' launcher/macos/launch.sh; t
   echo "macOS process detection exposes the searched executable in awk arguments" >&2
   exit 1
 fi
+for REQUIRED in 'STEAM_GAME_START_TIMEOUT_SECONDS=120' 'is_steam_library_game_path' \
+    'Steam did not start $GAME_TITLE' 'Make sure Steam is running and signed in'; do
+  grep -Fq -- "$REQUIRED" launcher/macos/launch.sh || {
+    echo "Missing safe CrossOver Steam startup behavior: $REQUIRED" >&2
+    exit 1
+  }
+done
 for REQUIRED in 'VNREVIVAL_WINDOWS_RUNTIME' 'VNREVIVAL_PARALLELS_VM' 'prlctl' '--current-user' \
     'Parallels Shared Folders' 'PARALLELS_WINDOWS_LAUNCHER' 'PARALLELS_WINDOWS_LOCAL_LAUNCHER' \
     'robocopy' '%LOCALAPPDATA%' 'WINDOWS_DISTRIBUTION_NAME'; do
