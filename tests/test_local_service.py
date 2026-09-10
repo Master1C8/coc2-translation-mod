@@ -693,7 +693,7 @@ class LocalServiceTests(unittest.TestCase):
                 result = bridge.open_vnrevival_game_page("corruption-of-champions-ii")
             self.assertTrue(result["opened"])
             open_external.assert_called_once_with(
-                "https://vnrevival.fun/ru/games/corruption-of-champions-ii"
+                "https://vnrevival.fun/ru/games/corruption-of-champions-ii#translation-how-title"
             )
             for invalid in (None, "", "../private", "game?next=https://evil.test", "UPPER"):
                 with self.subTest(invalid=invalid), self.assertRaises(local_service.BridgeError):

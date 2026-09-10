@@ -1217,7 +1217,7 @@ class LocalServiceBridge:
     def open_vnrevival_game_page(self, game_slug: Any) -> dict[str, Any]:
         if not isinstance(game_slug, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,99}", game_slug):
             raise BridgeError("invalid_game_slug", "Invalid game page", 400)
-        url = f"{VNREVIVAL_SITE_ORIGIN}/ru/games/{game_slug}"
+        url = f"{VNREVIVAL_SITE_ORIGIN}/ru/games/{game_slug}#translation-how-title"
         self._open_external_url(url)
         return {"ok": True, "opened": True}
 
