@@ -1,3 +1,4 @@
+import ctypes
 import io
 import json
 import sys
@@ -247,17 +248,21 @@ class LocalServiceTests(unittest.TestCase):
         self.assertNotEqual(left.credential_id, right.credential_id)
         self.assertTrue(left.credential_id.startswith("coc2-"))
 
-    def test_macos_keychain_receives_secret_over_stdin_not_process_arguments(self):
+    def test_macos_keychain_receives_secret_through_native_api_not_process_arguments(self):
         store = local_service.OpenAICompatibleCredentialStore("coc2", "https://example.test/v1")
         api_key = "secret-key-that-is-long-enough"
-        completed = mock.Mock(returncode=0, stderr="")
+        security = mock.Mock()
+        security.SecKeychainAddGenericPassword.return_value = 0
+        core_foundation = mock.Mock()
         with mock.patch.object(local_service.sys, "platform", "darwin"), \
-                mock.patch.object(local_service.subprocess, "run", return_value=completed) as run:
+                mock.patch.object(store, "_macos_find", return_value=(
+                    ctypes, security, core_foundation, None, None, None
+                )), \
+                mock.patch.object(local_service.subprocess, "run") as run:
             store.set(api_key)
-        command = run.call_args.args[0]
-        self.assertNotIn(api_key, command)
-        self.assertEqual(command[-1], "-w")
-        self.assertEqual(run.call_args.kwargs["input"], f"{api_key}\n{api_key}\n")
+        run.assert_not_called()
+        security.SecKeychainAddGenericPassword.assert_called_once()
+        self.assertNotIn(api_key, repr(security.SecKeychainAddGenericPassword.call_args))
 
     def test_status_does_not_contact_a_keyed_preset_before_a_key_is_saved(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -196,6 +196,7 @@ class OpenAICompatibleCredentialStore:
     """Store one endpoint-scoped key in the operating system credential vault."""
 
     MACOS_SERVICE = "fun.vnrevival.translator.openai-compatible"
+    MACOS_ITEM_NOT_FOUND = -25300
 
     def __init__(self, credential_id: str, base_url: str):
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", credential_id or ""):
@@ -215,43 +216,110 @@ class OpenAICompatibleCredentialStore:
     def _windows_target(self) -> str:
         return f"VN Revival/OpenAI Compatible API/{self.credential_id}"
 
+    @staticmethod
+    def _macos_frameworks():
+        import ctypes
+
+        security = ctypes.CDLL(
+            "/System/Library/Frameworks/Security.framework/Security"
+        )
+        core_foundation = ctypes.CDLL(
+            "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+        )
+        security.SecKeychainFindGenericPassword.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p,
+            ctypes.c_uint32, ctypes.c_char_p,
+            ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(ctypes.c_void_p),
+        ]
+        security.SecKeychainFindGenericPassword.restype = ctypes.c_int32
+        security.SecKeychainAddGenericPassword.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p,
+            ctypes.c_uint32, ctypes.c_char_p, ctypes.c_uint32,
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),
+        ]
+        security.SecKeychainAddGenericPassword.restype = ctypes.c_int32
+        security.SecKeychainItemModifyAttributesAndData.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p,
+        ]
+        security.SecKeychainItemModifyAttributesAndData.restype = ctypes.c_int32
+        security.SecKeychainItemDelete.argtypes = [ctypes.c_void_p]
+        security.SecKeychainItemDelete.restype = ctypes.c_int32
+        security.SecKeychainItemFreeContent.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        security.SecKeychainItemFreeContent.restype = ctypes.c_int32
+        core_foundation.CFRelease.argtypes = [ctypes.c_void_p]
+        core_foundation.CFRelease.restype = None
+        return ctypes, security, core_foundation
+
+    def _macos_find(self, include_password: bool):
+        ctypes, security, core_foundation = self._macos_frameworks()
+        service = self.MACOS_SERVICE.encode("utf-8")
+        account = self.credential_id.encode("utf-8")
+        password_length = ctypes.c_uint32()
+        password_data = ctypes.c_void_p()
+        item = ctypes.c_void_p()
+        status = security.SecKeychainFindGenericPassword(
+            None, len(service), service, len(account), account,
+            ctypes.byref(password_length) if include_password else None,
+            ctypes.byref(password_data) if include_password else None,
+            ctypes.byref(item),
+        )
+        if status == self.MACOS_ITEM_NOT_FOUND:
+            return ctypes, security, core_foundation, None, None, None
+        if status != 0:
+            raise BridgeError(
+                "credential_store_failed", "Could not access the API key in macOS Keychain", 500
+            )
+        return (
+            ctypes, security, core_foundation, item,
+            password_length.value if include_password else None,
+            password_data if include_password else None,
+        )
+
     def get(self) -> str | None:
         if sys.platform == "darwin":
-            result = subprocess.run(
-                [
-                    "/usr/bin/security", "find-generic-password", "-a", self.credential_id,
-                    "-s", self.MACOS_SERVICE, "-w",
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-            value = result.stdout.strip() if result.returncode == 0 else ""
-            return value or None
+            ctypes, security, core_foundation, item, length, data = self._macos_find(True)
+            if item is None:
+                return None
+            try:
+                return ctypes.string_at(data, length).decode("utf-8") or None
+            except UnicodeDecodeError as error:
+                raise BridgeError(
+                    "credential_store_failed", "Could not read the API key from macOS Keychain", 500
+                ) from error
+            finally:
+                if data:
+                    security.SecKeychainItemFreeContent(None, data)
+                core_foundation.CFRelease(item)
         if os.name == "nt":
             return self._windows_get()
         return None
 
     def set(self, api_key: str) -> None:
         if sys.platform == "darwin":
-            result = subprocess.run(
-                [
-                    "/usr/bin/security", "add-generic-password", "-U", "-a", self.credential_id,
-                    "-s", self.MACOS_SERVICE, "-w",
-                ],
-                input=f"{api_key}\n{api_key}\n",
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-            if result.returncode != 0:
-                raise BridgeError(
-                    "credential_store_failed", "Could not save the API key in macOS Keychain", 500
-                )
+            ctypes, security, core_foundation, item, _, _ = self._macos_find(False)
+            service = self.MACOS_SERVICE.encode("utf-8")
+            account = self.credential_id.encode("utf-8")
+            encoded = api_key.encode("utf-8")
+            secret = ctypes.create_string_buffer(encoded)
+            try:
+                if item is None:
+                    status = security.SecKeychainAddGenericPassword(
+                        None, len(service), service, len(account), account,
+                        len(encoded), ctypes.cast(secret, ctypes.c_void_p), None,
+                    )
+                else:
+                    status = security.SecKeychainItemModifyAttributesAndData(
+                        item, None, len(encoded), ctypes.cast(secret, ctypes.c_void_p)
+                    )
+                if status != 0:
+                    raise BridgeError(
+                        "credential_store_failed", "Could not save the API key in macOS Keychain", 500
+                    )
+            finally:
+                ctypes.memset(secret, 0, len(secret))
+                if item is not None:
+                    core_foundation.CFRelease(item)
             return
         if os.name == "nt":
             self._windows_set(api_key)
@@ -260,16 +328,16 @@ class OpenAICompatibleCredentialStore:
 
     def delete(self) -> None:
         if sys.platform == "darwin":
-            subprocess.run(
-                [
-                    "/usr/bin/security", "delete-generic-password", "-a", self.credential_id,
-                    "-s", self.MACOS_SERVICE,
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=10,
-                check=False,
-            )
+            _, security, core_foundation, item, _, _ = self._macos_find(False)
+            if item is None:
+                return
+            try:
+                if security.SecKeychainItemDelete(item) != 0:
+                    raise BridgeError(
+                        "credential_delete_failed", "Could not remove the API key", 500
+                    )
+            finally:
+                core_foundation.CFRelease(item)
             return
         if os.name == "nt":
             self._windows_delete()
