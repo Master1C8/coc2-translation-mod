@@ -48,3 +48,9 @@ test("panel has no request capture controls", () => {
   const html = render();
   assert.doesNotMatch(html, /captureBox|captureStats|captureToggle|captureCopy|captureClear|Capture requests/);
 });
+
+test("panel labels are not selectable but editable fields remain selectable", () => {
+  const html = render();
+  assert.match(html, /\.panel\{[^}]*user-select:none;[^}]*-webkit-user-select:none/);
+  assert.match(html, /input:not\(\[type="checkbox"\]\),textarea\{user-select:text;-webkit-user-select:text\}/);
+});

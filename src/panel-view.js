@@ -24,12 +24,13 @@
         :host{all:initial}
         *{box-sizing:border-box}
         [hidden],.hidden{display:none!important}
-        .panel{width:330px;max-width:calc(100vw - 16px);max-height:calc(100vh - 28px);display:flex;flex-direction:column;color:var(--text);background:var(--background);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px #0008;font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden;color-scheme:dark}
+        .panel{width:330px;max-width:calc(100vw - 16px);max-height:calc(100vh - 28px);display:flex;flex-direction:column;color:var(--text);background:var(--background);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px #0008;font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden;color-scheme:dark;user-select:none;-webkit-user-select:none}
         .bar{display:flex;align-items:center;gap:10px;padding:12px 12px 8px;cursor:move;user-select:none;flex-shrink:0}
         .quickLanguageLabel{font-size:12px;color:var(--muted)}
         .language{flex:1;min-width:0}
         .panelBody{padding:0 12px 10px;overflow-y:auto;min-height:0;scrollbar-width:thin}
         select,input:not([type="checkbox"]),textarea{width:100%;min-width:0;border:1px solid var(--border);border-radius:6px;background:var(--field);color:var(--text);padding:7px 8px;font:inherit}
+        input:not([type="checkbox"]),textarea{user-select:text;-webkit-user-select:text}
         button{font:inherit;cursor:pointer}
         button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         input[type="checkbox"]{accent-color:var(--accent)}

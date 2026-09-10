@@ -315,7 +315,7 @@ class LocalServiceTests(unittest.TestCase):
                 "mimo-v2.5-free", "deepseek-v4-flash", "glm-5.3-flash",
             ])
 
-    def test_opencode_go_lists_only_supported_chat_and_response_models(self):
+    def test_opencode_go_lists_every_model_returned_by_the_provider(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")
             response = FakeHTTPResponse({"data": [
@@ -332,7 +332,8 @@ class LocalServiceTests(unittest.TestCase):
                 status = bridge.openai_status("opencode-go", "ignored")
 
             self.assertEqual(status["models"], [
-                "deepseek-v4-flash", "glm-5.3-flash", "gpt-5.6-luna", "longcat-2.0", "omen-alpha",
+                "deepseek-v4-flash", "glm-5.3-flash", "gpt-5.6-luna", "longcat-2.0",
+                "minimax-m3", "omen-alpha", "qwen3.8-flash",
             ])
 
     def test_opencode_go_luna_uses_responses_api(self):
@@ -403,6 +404,38 @@ class LocalServiceTests(unittest.TestCase):
             self.assertNotIn("reasoning", request_bodies[1])
             self.assertEqual(request_bodies[1]["text"]["verbosity"], "low")
             self.assertEqual(result["ignoredModelParameters"], ["reasoning_effort"])
+
+    def test_opencode_go_qwen_uses_messages_api(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            captured = {}
+
+            def fake_open(request, timeout):
+                captured["request"] = request
+                captured["body"] = json.loads(request.data.decode("utf-8"))
+                return FakeHTTPResponse({
+                    "stop_reason": "end_turn",
+                    "content": [{"type": "text", "text": '{"translation":"Привет"}'}],
+                    "usage": {"input_tokens": 9, "output_tokens": 3},
+                })
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
+                result = bridge.openai_translate(
+                    "ru", "Russian", "Hello", "qwen3.8-flash", "opencode-go", "ignored",
+                    None, {"reasoningEffort": "high", "verbosity": "low"},
+                )
+
+            self.assertTrue(captured["request"].full_url.endswith("/messages"))
+            self.assertEqual(captured["request"].get_header("X-api-key"), "secret-key-that-is-long-enough")
+            self.assertEqual(captured["request"].get_header("Anthropic-version"), "2023-06-01")
+            self.assertIsNone(captured["request"].get_header("Authorization"))
+            self.assertEqual(captured["body"]["system"], local_service.OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT.replace("{targetName}", "Russian").replace("{target}", "ru"))
+            self.assertEqual(captured["body"]["messages"], [{"role": "user", "content": "Hello"}])
+            self.assertEqual(captured["body"]["max_tokens"], 16_384)
+            self.assertNotIn("reasoning_effort", captured["body"])
+            self.assertNotIn("verbosity", captured["body"])
+            self.assertEqual(result["translatedText"], "Привет")
+            self.assertEqual(result["ignoredModelParameters"], ["reasoning_effort", "verbosity"])
 
     def test_translation_uses_chat_completions_and_marks_output_unreviewed(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -44,9 +44,21 @@ OPENCODE_RESPONSE_MODELS = {
     preset: set(models)
     for preset, models in OPENAI_COMPATIBLE_CONFIG["openCodeResponseModels"].items()
 }
+OPENCODE_MESSAGE_MODELS = {
+    preset: set(models)
+    for preset, models in OPENAI_COMPATIBLE_CONFIG["openCodeMessageModels"].items()
+}
 OPENCODE_SUPPORTED_MODELS = {
-    preset: OPENCODE_CHAT_MODELS.get(preset, set()) | OPENCODE_RESPONSE_MODELS.get(preset, set())
-    for preset in OPENCODE_CHAT_MODELS.keys() | OPENCODE_RESPONSE_MODELS.keys()
+    preset: (
+        OPENCODE_CHAT_MODELS.get(preset, set())
+        | OPENCODE_RESPONSE_MODELS.get(preset, set())
+        | OPENCODE_MESSAGE_MODELS.get(preset, set())
+    )
+    for preset in (
+        OPENCODE_CHAT_MODELS.keys()
+        | OPENCODE_RESPONSE_MODELS.keys()
+        | OPENCODE_MESSAGE_MODELS.keys()
+    )
 }
 OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT = OPENAI_COMPATIBLE_CONFIG["defaultSystemPrompt"]
 OPENAI_COMPATIBLE_PRESETS = OPENAI_COMPATIBLE_CONFIG["presets"]
@@ -908,7 +920,10 @@ class LocalServiceBridge:
         headers = {"Accept": "application/json", "User-Agent": "VNRevival-Translator/1"}
         if body is not None:
             headers["Content-Type"] = "application/json"
-        if key:
+        if key and path == "/messages":
+            headers["x-api-key"] = key
+            headers["anthropic-version"] = "2023-06-01"
+        elif key:
             headers["Authorization"] = "Bearer " + key
         if connection["preset"] == "openrouter":
             headers["HTTP-Referer"] = "https://vnrevival.fun/"
@@ -950,7 +965,7 @@ class LocalServiceBridge:
     @staticmethod
     def _models(payload: dict[str, Any], preset: str = "") -> list[str]:
         models: list[str] = []
-        compatible_models = OPENCODE_SUPPORTED_MODELS.get(preset)
+        compatible_models = None if preset == "opencode-go" else OPENCODE_SUPPORTED_MODELS.get(preset)
         if isinstance(payload.get("data"), list):
             for item in payload["data"]:
                 model_id = item.get("id") if isinstance(item, dict) else None
@@ -1080,6 +1095,17 @@ class LocalServiceBridge:
         return "".join(parts).strip()
 
     @staticmethod
+    def _message_content(payload: dict[str, Any]) -> str:
+        content = payload.get("content")
+        if not isinstance(content, list):
+            raise BridgeError("openai_invalid_response", "The provider returned an invalid message", 502)
+        return "".join(
+            item["text"] for item in content
+            if isinstance(item, dict) and item.get("type") == "text"
+            and isinstance(item.get("text"), str)
+        ).strip()
+
+    @staticmethod
     def _translation_content(content: str) -> str:
         candidate = content.strip()
         fence = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, re.I | re.S)
@@ -1182,6 +1208,9 @@ class LocalServiceBridge:
         uses_responses_api = model_id.casefold() in OPENCODE_RESPONSE_MODELS.get(
             connection["preset"], set()
         )
+        uses_messages_api = model_id.casefold() in OPENCODE_MESSAGE_MODELS.get(
+            connection["preset"], set()
+        )
         translation_schema = {
             "type": "object",
             "properties": {"translation": {"type": "string"}},
@@ -1213,6 +1242,14 @@ class LocalServiceBridge:
                 body["reasoning"] = {"effort": request_model_parameters["reasoning_effort"]}
             if "verbosity" in request_model_parameters:
                 body["text"] = {"verbosity": request_model_parameters["verbosity"]}
+        elif uses_messages_api:
+            body = {
+                "model": model_id,
+                "system": system_instruction,
+                "messages": [{"role": "user", "content": text}],
+                "max_tokens": 16_384,
+                "stream": False,
+            }
         else:
             body = {
                 "model": model_id,
@@ -1227,7 +1264,10 @@ class LocalServiceBridge:
             payload = None
             measured_usage: dict[str, Any] = {"usage_available": False, "cost_available": False}
             ignored_model_parameters: list[str] = []
-            response_formats = [None] if (
+            if uses_messages_api:
+                ignored_model_parameters.extend(request_model_parameters)
+                request_model_parameters.clear()
+            response_formats = [None] if uses_messages_api or (
                 connection["preset"] == "opencode-zen" and self._is_free_model(model.strip())
             ) else [response_schema if uses_responses_api else chat_schema, {"type": "json_object"}, None]
             response_format_index = 0
@@ -1248,12 +1288,16 @@ class LocalServiceBridge:
                                response_format=response_format["type"] if response_format else "none",
                                reasoning_effort=request_model_parameters.get("reasoning_effort", "default"),
                                verbosity=request_model_parameters.get("verbosity", "default"),
-                               api="responses" if uses_responses_api else "chat_completions")
+                               api="responses" if uses_responses_api else "messages" if uses_messages_api
+                               else "chat_completions")
                 try:
-                    path = "/responses" if uses_responses_api else "/chat/completions"
+                    path = "/responses" if uses_responses_api else "/messages" if uses_messages_api \
+                        else "/chat/completions"
                     payload = self._request_json(connection, path, request_body, timeout=300)
                     if uses_responses_api:
                         finish = payload.get("status")
+                    elif uses_messages_api:
+                        finish = payload.get("stop_reason")
                     else:
                         choices = payload.get("choices")
                         choice = choices[0] if isinstance(choices, list) and choices else None
@@ -1261,7 +1305,8 @@ class LocalServiceBridge:
                     measured_usage = token_usage(payload)
                     self.log_event("provider.usage", attempt=attempt, **measured_usage,
                                    finish_reason=finish if finish in (
-                                       "stop", "length", "content_filter", "tool_calls", "completed", "incomplete"
+                                       "stop", "length", "content_filter", "tool_calls", "completed", "incomplete",
+                                       "end_turn", "max_tokens", "stop_sequence",
                                    ) else "unknown")
                     break
                 except urllib.error.HTTPError as error:
@@ -1330,7 +1375,9 @@ class LocalServiceBridge:
             ) from error
 
         try:
-            content = self._response_content(payload) if uses_responses_api else self._completion_content(payload)
+            content = self._response_content(payload) if uses_responses_api \
+                else self._message_content(payload) if uses_messages_api \
+                else self._completion_content(payload)
             if not content:
                 raise BridgeError("openai_empty_translation", "The provider returned an empty translation", 502)
             translation = self._translation_content(content).strip()

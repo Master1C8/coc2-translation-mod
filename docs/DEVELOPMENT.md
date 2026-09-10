@@ -70,7 +70,7 @@ first; a timeout may require the fixture load order and setup.
 - `src/languages.json` is the canonical translator language catalog;
   `.build/languages.js` is generated from it for tests and bundles.
 - `src/openai-compatible.json` is the shared browser/helper source for prompts,
-  presets, limits, and documented OpenCode Chat Completions models.
+  presets, limits, and documented OpenCode model protocol mappings.
 - The browser runtime public surface is `window.__vnRevivalTranslator`.
   Unexported helper functions are not a compatibility API.
 - `docs/USER_GUIDE.md` is the canonical detailed user documentation.
