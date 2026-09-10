@@ -1370,15 +1370,19 @@
     }
     if (providerUsesOpenAICompatible(settings.provider)) {
       const connection = openAICompatibleConnection();
-      if (!connection.model) {
-        setStatus("Enter or select an OpenAI-compatible model first");
-        return;
-      }
       const status = openAICompatibleStatus && openAICompatibleStatus.preset === connection.preset
         && openAICompatibleStatus.baseURL === connection.baseURL
         ? openAICompatibleStatus : await refreshOpenAICompatibleStatus();
-      if (!status || (status.requiresKey && !status.configured)) {
-        setStatus(status && status.message ? status.message : "Configure the OpenAI-compatible provider first");
+      if (!status) {
+        setStatus("Configure the OpenAI-compatible provider first");
+        return;
+      }
+      if (status.requiresKey && !status.configured) {
+        setStatus(interfacePreset().keyMissing);
+        return;
+      }
+      if (!connection.model) {
+        setStatus(interfacePreset().modelRequired);
         return;
       }
     }
@@ -1765,6 +1769,19 @@
   });
   document.documentElement.appendChild(host);
 
+  // Shadow DOM retargets panel events to the host, but does not stop them from
+  // bubbling into document-level game handlers. Keep every panel interaction
+  // inside the translator so a select or key press cannot activate the game UI.
+  for (const eventType of [
+    "pointerdown", "pointerup", "pointermove", "pointerover", "pointerout",
+    "mousedown", "mouseup", "mousemove", "click", "dblclick", "contextmenu",
+    "touchstart", "touchmove", "touchend", "touchcancel",
+    "keydown", "keyup", "keypress", "beforeinput", "input", "change",
+    "focusin", "focusout"
+  ]) {
+    host.addEventListener(eventType, (event) => event.stopPropagation());
+  }
+
   const panel = shadow.querySelector(".panel");
   const collapseButton = shadow.querySelector(".collapseToggle");
   const mainButton = shadow.querySelector(".translate");
@@ -1985,7 +2002,10 @@
       openAICompatibleConcurrencySelect,
       openAICompatibleKeyInput
     ]) control.disabled = busy || !LOCAL_BRIDGE;
-    openAICompatibleModelSelect.disabled = (busy && !keepModelPickerEnabled) || !LOCAL_BRIDGE;
+    const missingRequiredKey = !!(openAICompatibleStatus
+      && openAICompatibleStatus.requiresKey && !openAICompatibleStatus.configured);
+    openAICompatibleModelSelect.disabled = (busy && !keepModelPickerEnabled)
+      || !LOCAL_BRIDGE || missingRequiredKey;
     if (!busy && LOCAL_BRIDGE && openAICompatiblePresetSelect.value !== "custom") {
       openAICompatibleBaseURLInput.disabled = true;
     }
@@ -2252,7 +2272,9 @@
     await refreshOpenAICompatibleStatus();
   });
   openAICompatibleModelSelect.addEventListener("pointerdown", () => {
-    if (!openAICompatibleBusy) void refreshOpenAICompatibleStatus({ fromModelPicker: true });
+    if (!openAICompatibleBusy && !openAICompatibleModelSelect.disabled) {
+      void refreshOpenAICompatibleStatus({ fromModelPicker: true });
+    }
   });
   modelHelpLink.addEventListener("click", (event) => {
     event.preventDefault();
@@ -2263,6 +2285,12 @@
   });
   openAICompatibleModelSelect.addEventListener("change", () => {
     const connection = openAICompatibleConnection();
+    if (openAICompatibleStatus && openAICompatibleStatus.requiresKey
+        && !openAICompatibleStatus.configured) {
+      populateOpenAICompatibleModelOptions(openAICompatibleModels, connection.model);
+      setStatus(interfacePreset().keyMissing);
+      return;
+    }
     let model = openAICompatibleModelSelect.value;
     if (model === OPENAI_COMPATIBLE_MANUAL_MODEL_VALUE) {
       const entered = prompt("Enter the exact model ID", connection.model);

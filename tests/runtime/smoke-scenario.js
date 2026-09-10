@@ -3,6 +3,18 @@
   await new Promise((resolve) => requestAnimationFrame(() => resolve()));
   const host = document.getElementById("vnrevival-translator-coc2");
   const shadow = host.shadowRoot;
+  const escapedPanelEvents = [];
+  const panelEventTypes = ["pointerdown", "click", "change", "keydown"];
+  const rememberEscapedPanelEvent = (event) => escapedPanelEvents.push(event.type);
+  for (const eventType of panelEventTypes) document.addEventListener(eventType, rememberEscapedPanelEvent);
+  const panelEventProbe = document.createElement("input");
+  shadow.appendChild(panelEventProbe);
+  for (const eventType of panelEventTypes) {
+    panelEventProbe.dispatchEvent(new Event(eventType, { bubbles: true, composed: true }));
+  }
+  panelEventProbe.remove();
+  for (const eventType of panelEventTypes) document.removeEventListener(eventType, rememberEscapedPanelEvent);
+  const panelEventsStayOutOfGame = escapedPanelEvents.length === 0;
   const startsExpanded = !shadow.querySelector(".panel").classList.contains("collapsed")
     && shadow.querySelector(".collapseToggle").textContent === "−"
     && shadow.querySelector(".collapseToggle").getAttribute("aria-expanded") === "true";
@@ -124,6 +136,7 @@
     && !Object.keys(localStorage).some((key) => /api.*key/i.test(key));
   const modelBeforeKey = shadow.querySelector(".openAICompatibleModel").nextElementSibling.classList.contains("modelHelp")
     && shadow.querySelector(".openAICompatibleModel").nextElementSibling.nextElementSibling.classList.contains("keyRow");
+  const gameTextBeforeMissingKey = document.querySelector("#rich").textContent;
   shadow.querySelector(".provider").value = "openai-compatible";
   shadow.querySelector(".provider").dispatchEvent(new Event("change"));
   await new Promise((resolve) => setTimeout(resolve, 30));
@@ -136,6 +149,21 @@
       + ".openAICompatiblePromptHint,.openAICompatibleNotice"
   );
   const openAIModelSelect = shadow.querySelector(".openAICompatibleModel");
+  const modelDisabledUntilRequiredKey = openAIModelSelect.disabled
+    && shadow.querySelector(".keyState").textContent === "API key required";
+  const gameScreenPreservedWithoutKey = document.querySelector("#rich").textContent === gameTextBeforeMissingKey
+    && document.querySelector("#rich").textContent.trim().length > 0;
+  const openAIKeyInput = shadow.querySelector(".openAICompatibleKey");
+  openAIKeyInput.value = "smoke-test-api-key";
+  openAIKeyInput.dispatchEvent(new Event("change"));
+  for (let attempt = 0; attempt < 50 && shadow.querySelector(".keyState").textContent !== "Key saved"; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  const openAIKeyAutoSaved = window.localHelperCalls.includes("/v1/openai-compatible/key")
+    && openAIKeyInput.value === ""
+    && openAIKeyInput.hidden
+    && shadow.querySelector(".keyState").textContent === "Key saved"
+    && !openAIModelSelect.disabled;
   const modelOptionValues = Array.from(openAIModelSelect.options).map((option) => option.value);
   const safeOpenAIModelPicker = openAIModelSelect instanceof HTMLSelectElement
     && shadow.querySelectorAll(".openAICompatibleModel").length === 1
@@ -270,16 +298,6 @@
     && !("openAICompatibleMaxTokens" in savedModelParameters);
   const openAIHintRemoved = shadow.querySelector(".providerHint").textContent === ""
     && getComputedStyle(shadow.querySelector(".providerHint")).display === "none";
-  const openAIKeyInput = shadow.querySelector(".openAICompatibleKey");
-  openAIKeyInput.value = "smoke-test-api-key";
-  openAIKeyInput.dispatchEvent(new Event("change"));
-  for (let attempt = 0; attempt < 50 && shadow.querySelector(".keyState").textContent !== "Key saved"; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  const openAIKeyAutoSaved = window.localHelperCalls.includes("/v1/openai-compatible/key")
-    && openAIKeyInput.value === ""
-    && openAIKeyInput.hidden
-    && shadow.querySelector(".keyState").textContent === "Key saved";
   shadow.querySelector(".keyEdit").click();
   const keyEditDoesNotRevealSecret = !openAIKeyInput.hidden && openAIKeyInput.value === "";
   shadow.querySelector(".openAICompatiblePreset").value = "custom";
@@ -731,8 +749,11 @@
     providerOrder: JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]]),
     openAIKeyIsPasswordOnly,
     modelBeforeKey,
+    panelEventsStayOutOfGame,
     openAISetupVisible,
     streamlinedOpenAIControls,
+    modelDisabledUntilRequiredKey,
+    gameScreenPreservedWithoutKey,
     safeOpenAIModelPicker,
     savedUnlistedModelIsPlain,
     modelListRefreshesOnOpen,

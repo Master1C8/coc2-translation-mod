@@ -113,12 +113,13 @@ window.fetch = async function (input, options = {}) {
       return { ok: true, json: async () => ({ ok: true, opened: true }) };
     }
     if (url.pathname === "/v1/openai-compatible/status") {
+      const configured = window.localHelperCalls.includes("/v1/openai-compatible/key");
       return { ok: true, json: async () => ({
-        ok: true, configured: window.localHelperCalls.includes("/v1/openai-compatible/key"), available: false, requiresKey: true,
+        ok: true, configured, available: configured, requiresKey: true,
         preset: "opencode-go", name: "OpenCode Go",
         baseURL: "https://opencode.ai/zen/go/v1",
-        models: ["model-b", "mimo-v2.5-free", "model-a", "big-pickle"],
-        message: "Add the OpenCode Go API key first",
+        models: configured ? ["model-b", "mimo-v2.5-free", "model-a", "big-pickle"] : [],
+        message: configured ? "" : "Add the OpenCode Go API key first",
         credentialStorage: "test credential vault", promptVersion: "vnrevival-openai-compatible-v2"
       }) };
     }
