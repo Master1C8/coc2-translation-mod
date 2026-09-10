@@ -64,7 +64,8 @@ show_error() {
 }
 
 game_main_running() {
-  ps -ax -o command= | /usr/bin/awk -v executable="$GAME_PROCESS_NAME" 'index($0, executable) && $0 !~ /--type=/{found=1} END{exit !found}'
+  ps -ax -o command= | VNREVIVAL_GAME_PROCESS="$GAME_PROCESS_NAME" /usr/bin/awk \
+    'BEGIN{executable=ENVIRON["VNREVIVAL_GAME_PROCESS"]} index($0, executable) && $0 !~ /--type=/{found=1} END{exit !found}'
 }
 
 choose_game_executable() {

@@ -178,6 +178,11 @@ grep -Eq 'VNRevivalGameConfig' "$ROOT/.build/game-config.js"
 grep -Eq 'choose_game_executable' launcher/macos/launch.sh
 grep -Eq 'RESELECT_MARKER' launcher/macos/launch.sh
 grep -Fq -- '--credential-id "$GAME_ID"' launcher/macos/launch.sh
+grep -Fq 'ENVIRON["VNREVIVAL_GAME_PROCESS"]' launcher/macos/launch.sh
+if grep -Fq 'awk -v executable="$GAME_PROCESS_NAME"' launcher/macos/launch.sh; then
+  echo "macOS process detection exposes the searched executable in awk arguments" >&2
+  exit 1
+fi
 for REQUIRED in 'VNREVIVAL_WINDOWS_RUNTIME' 'VNREVIVAL_PARALLELS_VM' 'prlctl' '--current-user' \
     'Parallels Shared Folders' 'PARALLELS_WINDOWS_LAUNCHER' 'PARALLELS_WINDOWS_LOCAL_LAUNCHER' \
     'robocopy' '%LOCALAPPDATA%' 'WINDOWS_DISTRIBUTION_NAME'; do
