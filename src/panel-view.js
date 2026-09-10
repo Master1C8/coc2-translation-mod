@@ -64,9 +64,7 @@
         .status{min-width:0;min-height:0;overflow:auto;color:var(--warning);font-size:12px;overflow-wrap:anywhere}
         .providerHint:empty{display:none}
         .retry{width:100%;height:32px;min-height:32px;max-height:32px;padding:0 8px;white-space:nowrap;overflow:hidden}
-        .compat,.privacy{padding:8px;margin:8px 0;border:1px solid var(--border);border-radius:6px;color:var(--warning);font-size:12px}
-        .privacyActions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
-        .privacyActions button{flex:1}
+        .compat{padding:8px;margin:8px 0;border:1px solid var(--border);border-radius:6px;color:var(--warning);font-size:12px}
         .settings label.title{display:block;margin:8px 0 4px;color:var(--muted);font-size:12px}
         .providerHint,.cacheStats{color:var(--muted);font-size:11px}
         .openAICompatibleBox{margin-top:10px;padding-top:2px}
@@ -124,10 +122,6 @@
           <button class="secondary retry" type="button" disabled>Retry translation</button>
         </div>
         <div class="compat" hidden></div>
-        <div class="privacy" hidden>
-          <span class="privacyText">Visible game text is sent to the selected translation service. Save slots and input fields are excluded.</span>
-          <div class="privacyActions"><button class="primary allowAuto">Allow auto-translate</button><button class="secondary manualOnly">Manual only</button></div>
-        </div>
         <div class="settings">
           <label class="title translationServiceLabel">Translation service</label><select class="provider"></select>
           <div class="providerHint"></div>

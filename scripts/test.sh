@@ -104,12 +104,17 @@ grep -Fq 'VNRevivalInterfacePresets' src/interface-presets.js || {
   exit 1
 }
 
-for REQUIRED in 'autoTranslate' 'showOriginal' 'showTranslations' 'privacyAccepted' 'collapsed' 'collapseToggle' 'updateCollapsedState' 'applyLanguageFormatting' 'restoreLanguageFormatting' 'applyJobTranslation' 'populateLanguageOptions' 'MEMORY_CACHE_LIMIT' 'CACHE_META_KEY' 'CACHE_DIRTY_KEY' 'IntersectionObserver' 'visibilitychange' 'providerRegistry'; do
+for REQUIRED in 'autoTranslate' 'showOriginal' 'showTranslations' 'collapsed' 'collapseToggle' 'updateCollapsedState' 'applyLanguageFormatting' 'restoreLanguageFormatting' 'applyJobTranslation' 'populateLanguageOptions' 'MEMORY_CACHE_LIMIT' 'CACHE_META_KEY' 'CACHE_DIRTY_KEY' 'IntersectionObserver' 'visibilitychange' 'providerRegistry'; do
   grep -Fq "$REQUIRED" src/translator-runtime.js || {
     echo "Missing runtime feature: $REQUIRED" >&2
     exit 1
   }
 done
+
+if rg -n 'privacyAccepted|privacyText|allowAuto|manualOnly|Confirm online translation' src; then
+  echo "The removed first-use privacy choice is still present" >&2
+  exit 1
+fi
 
 grep -Fq 'const MEMORY_CACHE_LIMIT = 20000;' src/translator-runtime.js || {
   echo "RAM cache must retain 20000 recent translations" >&2

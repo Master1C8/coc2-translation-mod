@@ -14,6 +14,7 @@
   const autoModeHidesTranslate = mainButton.hidden
     && mainButton.parentElement.hidden
     && !shadow.querySelector(".autoTranslateHint");
+  const privacyChoiceRemoved = !shadow.querySelector(".privacy,.privacyText,.allowAuto,.manualOnly");
   const languageOptions = Array.from(shadow.querySelector(".language").options)
     .map((option) => [option.value, option.textContent]);
   const languageIsTopLevel = !!shadow.querySelector(".panel > .bar > .language")
@@ -304,7 +305,7 @@
   const autoChangeSaved = savedAfterAutoChange && savedAfterAutoChange.autoTranslate === false;
   const manualModeShowsTranslate = !mainButton.hidden && !mainButton.parentElement.hidden
     && getComputedStyle(mainButton).display === "flex";
-  shadow.querySelector(".allowAuto").click();
+  autoCheckbox.closest(".autoToggle").click();
   for (let attempt = 0; attempt < 100
       && document.getElementById("prefetched-tooltip").textContent.trim() !== "ترجمة"; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -708,6 +709,7 @@
     sourceLanguageSkipsTranslation,
     defaultAutoTranslate,
     autoModeHidesTranslate,
+    privacyChoiceRemoved,
     languageIsTopLevel,
     interfaceToggleIsClearlyLabelled,
     compactGooglePanel,

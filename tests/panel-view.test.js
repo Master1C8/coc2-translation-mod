@@ -38,3 +38,8 @@ test("model help cannot navigate the game window", () => {
   assert.match(html, /<button class="modelHelpLink" type="button">How it works<\/button>/);
   assert.doesNotMatch(html, /class="modelHelpLink"[^>]*(?:href|target)=/);
 });
+
+test("panel has no first-use privacy choice", () => {
+  const html = render();
+  assert.doesNotMatch(html, /class="privacy|privacyText|allowAuto|manualOnly|Allow auto-translate|Manual only/);
+});

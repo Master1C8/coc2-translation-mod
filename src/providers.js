@@ -26,7 +26,6 @@
       delay: 70,
       retries: 3,
       contextLimit: 3200,
-      requiresPrivacy: true,
       supportsLanguage(code) {
         return core.providerSupportsLanguage("google", code);
       },
@@ -53,7 +52,6 @@
       delay: 100,
       retries: 4,
       contextLimit: 6000,
-      requiresPrivacy: true,
       credentialManager: "openai-compatible",
       modelManager: "openai-compatible",
       supportsLanguage(code) {

@@ -27,7 +27,7 @@ The panel has only two states: expanded or collapsed, and always starts expanded
 
 Automatic translation processes visible, newly visible, or changed blocks, including native selection options, and pre-translates recognized tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
-The language selector uses the same 30 locales and order as VN Revival. English and `Auto translate: On` are selected on the first launch; later choices are preserved locally. The first network request still waits for the privacy choice.
+The language selector uses the same 30 locales and order as VN Revival. English and `Auto translate: On` are selected on the first launch; later choices are preserved locally. There is no first-use confirmation dialog.
 
 When the selected target matches the game's source language, the translator keeps the original text and creates no translation jobs or provider requests. CoC2's source language is English.
 
@@ -40,7 +40,7 @@ The provider list contains exactly two choices:
 
 Visible game text is sent to the selected service. Native selection labels and options are included; save slots, text-entry controls, editable areas, and recognized standalone player names are excluded. A name already embedded in a full story sentence may still be sent.
 
-At first network use, select `Allow auto-translate` or `Manual only`. The choice does not certify provider output: every machine translation remains unreviewed.
+Machine translation remains unreviewed regardless of the selected service or automatic/manual mode.
 
 ### OpenAI-compatible setup
 
@@ -134,7 +134,7 @@ advanced launches can select Parallels with
 
 Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки, включая пункты нативных списков, и заранее переводит уже присутствующие в DOM распознанные tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
-Список и порядок 30 языков совпадают с каталогом VN Revival. При первом запуске выбран английский и `Auto translate: On`; последующий выбор сохраняется локально. Первый сетевой запрос всё равно ожидает выбора режима приватности.
+Список и порядок 30 языков совпадают с каталогом VN Revival. При первом запуске выбран английский и `Auto translate: On`; последующий выбор сохраняется локально. Отдельного подтверждения при первом использовании нет.
 
 Если выбранный язык перевода совпадает с исходным языком игры, переводчик сохраняет оригинальный текст и не создаёт задания или запросы к провайдеру. Исходный язык CoC2 — английский.
 
@@ -147,7 +147,7 @@ advanced launches can select Parallels with
 
 Видимый игровой текст отправляется выбранному сервису. Подписи и пункты нативных списков включаются; слоты сохранения, поля текстового ввода, редактируемые области и распознанные отдельные имена игрока исключаются. Имя внутри цельного сюжетного предложения всё равно может попасть в запрос.
 
-При первом сетевом использовании выберите `Allow auto-translate` или `Manual only`. Это разрешение на режим работы, а не одобрение ответа провайдера: машинный перевод остаётся непроверенным.
+Машинный перевод остаётся непроверенным независимо от выбранного сервиса и автоматического или ручного режима.
 
 ### Настройка OpenAI-compatible
 

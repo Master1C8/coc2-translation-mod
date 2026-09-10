@@ -72,7 +72,6 @@
     translateInterface: false,
     provider: "google",
     autoTranslate: true,
-    privacyAccepted: false,
     mode: "translated",
     openAICompatiblePreset: "opencode-go",
     openAICompatibleBaseURL: OPENAI_COMPATIBLE_PRESETS["opencode-go"].baseURL,
@@ -213,12 +212,10 @@
 
   function loadSettings() {
     let parsed = null;
-    let migratedLegacy = false;
     try { parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null"); } catch (_) {}
     if (!parsed) {
       try {
         parsed = JSON.parse(localStorage.getItem(LEGACY_SETTINGS_KEY) || "null");
-        migratedLegacy = !!parsed;
       } catch (_) {}
     }
     const source = parsed || {};
@@ -231,7 +228,6 @@
       translateInterface: typeof source.translateInterface === "boolean" ? source.translateInterface : defaults.translateInterface,
       provider: PROVIDERS[source.provider] ? source.provider : defaults.provider,
       autoTranslate: typeof source.autoTranslate === "boolean" ? source.autoTranslate : defaults.autoTranslate,
-      privacyAccepted: typeof source.privacyAccepted === "boolean" ? source.privacyAccepted : migratedLegacy,
       mode: defaults.mode,
       openAICompatiblePreset,
       openAICompatibleBaseURL: openAICompatiblePreset === "custom"
@@ -1338,8 +1334,7 @@
       setTranslationStatus((text) => text.alreadyTranslated);
       return;
     }
-    const needsSiteTranslationConfig = settings.privacyAccepted
-      && (captureActive || providerUsesOpenAICompatible(settings.provider))
+    const needsSiteTranslationConfig = (captureActive || providerUsesOpenAICompatible(settings.provider))
       && settings.language !== SOURCE_LANGUAGE
       && !siteTranslationConfig(settings.language);
     if (needsSiteTranslationConfig) {
@@ -1386,11 +1381,6 @@
         setStatus(status && status.message ? status.message : "Configure the OpenAI-compatible provider first");
         return;
       }
-    }
-    if (providerRequiresPrivacy(settings.provider) && !settings.privacyAccepted) {
-      privacyBox.hidden = false;
-      setStatus("Confirm online translation");
-      return;
     }
     const originalJobCount = jobs.length;
     if (providerUsesOpenAICompatible(settings.provider)) jobs = core.batchScreenJobs(jobs, PROVIDERS[settings.provider].contextLimit);
@@ -1572,9 +1562,7 @@
       if (!roots.length) return;
       reapplyKnownTranslations(roots);
       for (const root of roots) pendingTranslationRoots.add(root);
-      if (captureActive || (settings.autoTranslate
-          && (settings.privacyAccepted || !providerRequiresPrivacy(settings.provider))
-          && settings.mode === "translated")) translateScreen(false);
+      if (captureActive || (settings.autoTranslate && settings.mode === "translated")) translateScreen(false);
     }, Number(delay) || 350);
   }
 
@@ -1819,7 +1807,6 @@
   const captureToggleButton = shadow.querySelector(".captureToggle");
   const captureCopyButton = shadow.querySelector(".captureCopy");
   const captureClearButton = shadow.querySelector(".captureClear");
-  const privacyBox = shadow.querySelector(".privacy");
   const compatibilityBox = shadow.querySelector(".compat");
 
   for (const provider of PROVIDER_LIST) {
@@ -1833,7 +1820,6 @@
   interfaceTranslationCheckbox.checked = settings.translateInterface;
   autoCheckbox.checked = settings.autoTranslate;
   syncTranslateTrigger();
-  privacyBox.hidden = settings.privacyAccepted || !providerRequiresPrivacy(settings.provider);
   updateCollapsedState();
 
   if (Number.isFinite(settings.x) && Number.isFinite(settings.y)) {
@@ -1863,9 +1849,6 @@
     retryButton.textContent = text.retryFailed;
     retryButton.title = text.retryTitle;
     if (translationStatus) statusElement.textContent = translationStatus(text);
-    shadow.querySelector(".privacyText").textContent = text.privacyText;
-    shadow.querySelector(".allowAuto").textContent = text.allowAuto;
-    shadow.querySelector(".manualOnly").textContent = text.manualOnly;
     shadow.querySelector(".translationServiceLabel").textContent = text.translationService;
     shadow.querySelector(".modelHelpQuestion").textContent = text.modelHelpQuestion;
     shadow.querySelector(".modelHelpLink").textContent = text.howItWorks;
@@ -1955,7 +1938,6 @@
     collapseButton.setAttribute("aria-label", collapseButton.title);
     collapseButton.setAttribute("aria-expanded", String(!settings.collapsed));
   }
-  function providerRequiresPrivacy(provider) { return !!(PROVIDERS[provider] && PROVIDERS[provider].requiresPrivacy); }
   function languagesForProvider(provider) {
     const selectedProvider = PROVIDERS[provider];
     if (!selectedProvider) return [];
@@ -1989,14 +1971,11 @@
     if (languageChanged && translationTargetsSourceLanguage() && abortController) abortController.abort();
     clearSourceLanguageTranslationState();
     saveSettings();
-    if (settings.privacyAccepted && (languageChanged || providerChanged)
-        && providerUsesOpenAICompatible(settings.provider)
+    if ((languageChanged || providerChanged) && providerUsesOpenAICompatible(settings.provider)
         && settings.language !== SOURCE_LANGUAGE) {
       void ensureSiteTranslationConfig(settings.language);
     }
-    if (settings.autoTranslate && (settings.privacyAccepted || !providerRequiresPrivacy(settings.provider))) {
-      scheduleAutoTranslation(50);
-    }
+    if (settings.autoTranslate) scheduleAutoTranslation(50);
   }
   function setOpenAICompatibleBusy(busy, keepModelPickerEnabled = false) {
     openAICompatibleBusy = busy;
@@ -2213,12 +2192,10 @@
     populateLanguageOptions(providerSelect.value, languageSelect.value || settings.language);
     if (providerUsesOpenAICompatible(providerSelect.value)) {
       providerHint.textContent = selectedProvider.hint(languageSelect.options.length);
-      privacyBox.hidden = settings.privacyAccepted;
       refreshOpenAICompatibleStatus();
     } else {
       openAICompatibleBox.hidden = true;
       providerHint.textContent = selectedProvider ? selectedProvider.hint(languageSelect.options.length) : "";
-      privacyBox.hidden = settings.privacyAccepted || !providerRequiresPrivacy(providerSelect.value);
     }
   }
 
@@ -2253,7 +2230,6 @@
   });
   autoCheckbox.addEventListener("change", () => {
     persistControlSettings();
-    privacyBox.hidden = settings.privacyAccepted || !providerRequiresPrivacy(settings.provider);
   });
   cacheCopyButton.addEventListener("click", copyLocalLog);
   cacheDeleteButton.addEventListener("click", deleteTranslationCache);
@@ -2397,24 +2373,6 @@
     event.preventDefault();
     saveOpenAICompatibleKey();
   });
-  shadow.querySelector(".allowAuto").addEventListener("click", () => {
-    settings.privacyAccepted = true;
-    settings.autoTranslate = true;
-    autoCheckbox.checked = true;
-    syncTranslateTrigger();
-    privacyBox.hidden = true;
-    saveSettings();
-    scheduleAutoTranslation(50);
-  });
-  shadow.querySelector(".manualOnly").addEventListener("click", () => {
-    settings.privacyAccepted = true;
-    settings.autoTranslate = false;
-    autoCheckbox.checked = false;
-    syncTranslateTrigger();
-    privacyBox.hidden = true;
-    saveSettings();
-    setStatus("Manual translation enabled");
-  });
   let drag = null;
   const bar = shadow.querySelector(".bar");
   bar.addEventListener("pointerdown", (event) => {
@@ -2521,7 +2479,7 @@
   let startupChecks = 0;
   const startupGuard = setInterval(() => {
     startupChecks += 1;
-    if (!settings.autoTranslate || (!settings.privacyAccepted && providerRequiresPrivacy(settings.provider)) || startupChecks > 180) {
+    if (!settings.autoTranslate || startupChecks > 180) {
       clearInterval(startupGuard);
       return;
     }
