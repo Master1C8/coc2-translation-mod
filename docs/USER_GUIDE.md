@@ -48,7 +48,7 @@ Machine translation remains unreviewed regardless of the selected service or aut
 2. Choose a preset.
 3. If the endpoint requires authentication, paste its key and press `Enter` or leave the field. The key is saved and replaces the previously stored key for this Base URL.
 4. Open the model list to refresh it from the provider.
-5. Choose a model from the single list. Free models are pinned first, and both the free and paid groups are alphabetical. OpenCode Go and Zen show only models documented for Chat Completions because their full catalogs also contain models for other incompatible APIs. Use `Enter model ID manually…` when the endpoint does not list the required ID.
+5. Choose a model from the single list. Free models are pinned first, and both the free and paid groups are alphabetical. OpenCode Go includes its supported Chat Completions models and GPT-5.6 Luna through the Responses API. OpenCode Zen shows only its supported Chat Completions models. Use `Enter model ID manually…` when the endpoint does not list the required ID.
    The help link immediately below the selector opens the `How it works` section of the CoC2 page on VN Revival in the system browser, outside the game's Electron window.
 6. In `Advanced`, optionally set reasoning effort; `Provider default` omits that parameter. Output verbosity is automatic: the translator requests `low`, then falls back to the provider default if unsupported. Choose `Parallel requests` from 1 to 8; the default is 4. Reduce it if the provider rate-limits requests.
 7. Open the collapsed `Advanced` group, then click `System prompt` to edit it when needed. The default prompt is loaded from VN Revival together with the selected language's glossary; `{targetName}` and `{target}` are replaced with the language name and code. A user edit becomes a local override, while `Restore default` returns to the current site version. If the site is temporarily unavailable, the app uses its bundled safe prompt.
@@ -88,7 +88,7 @@ RTL direction, language tags, font fallback, wrapping, and button sizing are app
 
 ### Troubleshooting
 
-If the panel does not appear, close CoC2 completely and start it through the translator again. If OpenAI-compatible says the local helper is unavailable, reinstall/extract the complete app instead of moving only the executable. Confirm that the endpoint supports OpenAI Chat Completions (`/models` and `/chat/completions`) and that the selected model ID is valid.
+If the panel does not appear, close CoC2 completely and start it through the translator again. If OpenAI-compatible says the local helper is unavailable, reinstall/extract the complete app instead of moving only the executable. Confirm that the endpoint supports `/models` and the API required by the selected model (`/chat/completions`, or `/responses` for GPT-5.6 Luna on OpenCode Go), and that the selected model ID is valid.
 
 On Windows and in CrossOver, the translator starts a detected Steam copy through Steam even when the client was initially closed, and waits up to two minutes for the game. It never falls back to launching a Steam game EXE directly. If Steam needs an update or sign-in, complete it and start the translator again.
 
@@ -153,7 +153,7 @@ advanced launches can select Parallels with
 2. Выберите preset.
 3. Если endpoint требует авторизацию, вставьте ключ и нажмите `Enter` или покиньте поле. Ключ сохранится и заменит прежний ключ этого Base URL.
 4. Откройте список моделей, чтобы обновить его у провайдера.
-5. Выберите модель в единственном списке. Бесплатные модели закреплены сверху, а бесплатная и платная группы отсортированы по алфавиту. Для OpenCode Go и Zen показываются только модели, документированные для Chat Completions: полные каталоги этих провайдеров также содержат модели для других несовместимых API. Для отсутствующего в каталоге ID используйте `Enter model ID manually…`.
+5. Выберите модель в единственном списке. Бесплатные модели закреплены сверху, а бесплатная и платная группы отсортированы по алфавиту. Для OpenCode Go показываются поддерживаемые модели Chat Completions и GPT-5.6 Luna через Responses API. Для OpenCode Zen показываются поддерживаемые модели Chat Completions. Для отсутствующего в каталоге ID используйте `Enter model ID manually…`.
    Ссылка «Как это работает» сразу под списком открывает одноимённый раздел страницы CoC2 на VN Revival в системном браузере, а не в окне игры.
 6. При необходимости задайте reasoning effort; `Provider default` не отправляет этот параметр. Verbosity выбирается автоматически: переводчик запрашивает `low`, а при отсутствии поддержки использует default провайдера. В `Parallel requests` выберите от 1 до 8 одновременных запросов; по умолчанию — 4. Уменьшите значение, если провайдер ограничивает частоту запросов.
 7. Откройте свёрнутую по умолчанию группу `Advanced`, затем при необходимости нажмите `System prompt`. Стандартный prompt загружается с VN Revival вместе с глоссарием выбранного языка; вместо `{targetName}` и `{target}` helper подставляет название и код языка. Пользовательская правка становится локальным override, а `Restore default` возвращает текущую версию с сайта. Если сайт временно недоступен, приложение использует комплектный безопасный prompt.
@@ -193,7 +193,7 @@ RTL, `lang`, шрифтовые fallback, переносы и размер кн�
 
 ### Решение проблем
 
-Если панель не появилась, полностью закройте CoC2 и снова запустите игру через переводчик. Если OpenAI-compatible сообщает об отсутствии helper, переустановите или полностью распакуйте приложение, не переносите один EXE. Убедитесь, что endpoint поддерживает OpenAI Chat Completions (`/models` и `/chat/completions`) и model ID существует.
+Если панель не появилась, полностью закройте CoC2 и снова запустите игру через переводчик. Если OpenAI-compatible сообщает об отсутствии helper, переустановите или полностью распакуйте приложение, не переносите один EXE. Убедитесь, что endpoint поддерживает `/models` и API выбранной модели (`/chat/completions` либо `/responses` для GPT-5.6 Luna в OpenCode Go), а model ID существует.
 
 В Windows и CrossOver переводчик запускает найденную Steam-копию через Steam, даже если клиент изначально был закрыт, и ждёт игру до двух минут. Прямого запуска EXE Steam-игры как запасного варианта больше нет. Если Steam требует обновления или входа, завершите этот шаг и снова запустите переводчик.
 

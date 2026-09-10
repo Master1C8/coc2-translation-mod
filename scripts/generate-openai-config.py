@@ -17,7 +17,8 @@ def main() -> int:
         "promptVersion", "maxSystemPromptChars", "maxGlossaryChars",
         "maxRequestSystemPromptChars", "minConcurrency", "maxConcurrency",
         "reasoningEfforts", "verbosities", "translationVerbosity", "manualModelValue",
-        "defaultSystemPrompt", "presets", "openCodeChatModels", "modelReasoningEfforts",
+        "defaultSystemPrompt", "presets", "openCodeChatModels", "openCodeResponseModels",
+        "modelReasoningEfforts",
     }
     if not isinstance(config, dict) or set(config) != required:
         raise ValueError("the OpenAI-compatible config has an invalid shape")

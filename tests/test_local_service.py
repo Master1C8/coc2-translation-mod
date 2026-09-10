@@ -315,7 +315,7 @@ class LocalServiceTests(unittest.TestCase):
                 "mimo-v2.5-free", "deepseek-v4-flash", "glm-5.3-flash",
             ])
 
-    def test_opencode_go_lists_only_documented_chat_completion_models(self):
+    def test_opencode_go_lists_only_supported_chat_and_response_models(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory, "secret-key-that-is-long-enough")
             response = FakeHTTPResponse({"data": [
@@ -332,8 +332,77 @@ class LocalServiceTests(unittest.TestCase):
                 status = bridge.openai_status("opencode-go", "ignored")
 
             self.assertEqual(status["models"], [
-                "deepseek-v4-flash", "glm-5.3-flash", "longcat-2.0", "omen-alpha",
+                "deepseek-v4-flash", "glm-5.3-flash", "gpt-5.6-luna", "longcat-2.0", "omen-alpha",
             ])
+
+    def test_opencode_go_luna_uses_responses_api(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            captured = {}
+
+            def fake_open(request, timeout):
+                captured["request"] = request
+                captured["body"] = json.loads(request.data.decode("utf-8"))
+                return FakeHTTPResponse({
+                    "status": "completed",
+                    "output": [{
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{
+                            "type": "output_text",
+                            "text": '{"translation":"Привет"}',
+                        }],
+                    }],
+                    "usage": {"input_tokens": 10, "output_tokens": 4, "total_tokens": 14},
+                })
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
+                result = bridge.openai_translate(
+                    "ru", "Russian", "Hello", "gpt-5.6-luna", "opencode-go", "ignored",
+                    None, {"reasoningEffort": "medium", "verbosity": "low"},
+                )
+
+            self.assertTrue(captured["request"].full_url.endswith("/responses"))
+            self.assertEqual(captured["body"]["model"], "gpt-5.6-luna")
+            self.assertEqual(captured["body"]["input"], "Hello")
+            self.assertIn("untrusted content", captured["body"]["instructions"])
+            self.assertIs(captured["body"]["store"], False)
+            self.assertEqual(captured["body"]["reasoning"], {"effort": "medium"})
+            self.assertEqual(captured["body"]["text"]["verbosity"], "low")
+            self.assertEqual(captured["body"]["text"]["format"]["type"], "json_schema")
+            self.assertEqual(result["translatedText"], "Привет")
+            self.assertEqual(result["usage"]["total_tokens"], 14)
+
+    def test_opencode_go_luna_retries_without_unsupported_nested_parameter(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory, "secret-key-that-is-long-enough")
+            request_bodies = []
+
+            def fake_open(request, timeout):
+                request_bodies.append(json.loads(request.data.decode("utf-8")))
+                if len(request_bodies) == 1:
+                    raise urllib.error.HTTPError(
+                        request.full_url, 400, "unsupported", {},
+                        io.BytesIO(b'{"error":{"message":"Unsupported parameter: reasoning.effort"}}'),
+                    )
+                return FakeHTTPResponse({
+                    "status": "completed",
+                    "output": [{
+                        "type": "message",
+                        "content": [{"type": "output_text", "text": '{"translation":"Привет"}'}],
+                    }],
+                })
+
+            with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
+                result = bridge.openai_translate(
+                    "ru", "Russian", "Hello", "gpt-5.6-luna", "opencode-go", "ignored",
+                    None, {"reasoningEffort": "medium", "verbosity": "low"},
+                )
+
+            self.assertEqual(request_bodies[0]["reasoning"], {"effort": "medium"})
+            self.assertNotIn("reasoning", request_bodies[1])
+            self.assertEqual(request_bodies[1]["text"]["verbosity"], "low")
+            self.assertEqual(result["ignoredModelParameters"], ["reasoning_effort"])
 
     def test_translation_uses_chat_completions_and_marks_output_unreviewed(self):
         with tempfile.TemporaryDirectory() as directory:

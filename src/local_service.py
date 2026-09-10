@@ -40,6 +40,14 @@ OPENCODE_CHAT_MODELS = {
     preset: set(models)
     for preset, models in OPENAI_COMPATIBLE_CONFIG["openCodeChatModels"].items()
 }
+OPENCODE_RESPONSE_MODELS = {
+    preset: set(models)
+    for preset, models in OPENAI_COMPATIBLE_CONFIG["openCodeResponseModels"].items()
+}
+OPENCODE_SUPPORTED_MODELS = {
+    preset: OPENCODE_CHAT_MODELS.get(preset, set()) | OPENCODE_RESPONSE_MODELS.get(preset, set())
+    for preset in OPENCODE_CHAT_MODELS.keys() | OPENCODE_RESPONSE_MODELS.keys()
+}
 OPENAI_COMPATIBLE_DEFAULT_SYSTEM_PROMPT = OPENAI_COMPATIBLE_CONFIG["defaultSystemPrompt"]
 OPENAI_COMPATIBLE_PRESETS = OPENAI_COMPATIBLE_CONFIG["presets"]
 VNREVIVAL_SITE_ORIGIN = "https://vnrevival.fun"
@@ -758,7 +766,7 @@ class LocalServiceBridge:
     @staticmethod
     def _response_format_rejected(status: int, detail: str) -> bool:
         return status == 400 and bool(re.search(
-            r"response.?format|json.?schema|json.?object|grammar|structured", detail, re.I
+            r"response.?format|text.?format|json.?schema|json.?object|grammar|structured", detail, re.I
         ))
 
     @staticmethod
@@ -769,7 +777,20 @@ class LocalServiceBridge:
             return None
         normalized = detail.lower().replace("-", "_").replace(" ", "_")
         for parameter in ("reasoning_effort", "verbosity"):
-            if parameter in request_body and parameter in normalized:
+            nested = (
+                parameter == "reasoning_effort"
+                and isinstance(request_body.get("reasoning"), dict)
+                and "effort" in request_body["reasoning"]
+            ) or (
+                parameter == "verbosity"
+                and isinstance(request_body.get("text"), dict)
+                and "verbosity" in request_body["text"]
+            )
+            mentioned = parameter in normalized or (
+                parameter == "reasoning_effort"
+                and "reasoning" in normalized and "effort" in normalized
+            )
+            if (parameter in request_body or nested) and mentioned:
                 return parameter
         return None
 
@@ -929,7 +950,7 @@ class LocalServiceBridge:
     @staticmethod
     def _models(payload: dict[str, Any], preset: str = "") -> list[str]:
         models: list[str] = []
-        compatible_models = OPENCODE_CHAT_MODELS.get(preset)
+        compatible_models = OPENCODE_SUPPORTED_MODELS.get(preset)
         if isinstance(payload.get("data"), list):
             for item in payload["data"]:
                 model_id = item.get("id") if isinstance(item, dict) else None
@@ -1037,6 +1058,28 @@ class LocalServiceBridge:
         return ""
 
     @staticmethod
+    def _response_content(payload: dict[str, Any]) -> str:
+        direct = payload.get("output_text")
+        if isinstance(direct, str):
+            return direct.strip()
+        output = payload.get("output")
+        if not isinstance(output, list):
+            raise BridgeError("openai_invalid_response", "The provider returned an invalid response", 502)
+        parts: list[str] = []
+        for item in output:
+            if not isinstance(item, dict) or item.get("type") != "message":
+                continue
+            content = item.get("content")
+            if not isinstance(content, list):
+                continue
+            parts.extend(
+                part["text"] for part in content
+                if isinstance(part, dict) and part.get("type") == "output_text"
+                and isinstance(part.get("text"), str)
+            )
+        return "".join(parts).strip()
+
+    @staticmethod
     def _translation_content(content: str) -> str:
         candidate = content.strip()
         fence = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, re.I | re.S)
@@ -1135,52 +1178,91 @@ class LocalServiceBridge:
             request_model_parameters["reasoning_effort"] = allowed_efforts[0]
             self.log_event("provider.parameter_adjusted", parameter="reasoning_effort",
                            requested=requested_effort, effective=allowed_efforts[0], reason="model_supported_values")
-        body = {
-            "model": model.strip(),
-            "messages": [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": text},
-            ],
-            "stream": False,
-            **request_model_parameters,
+        model_id = model.strip()
+        uses_responses_api = model_id.casefold() in OPENCODE_RESPONSE_MODELS.get(
+            connection["preset"], set()
+        )
+        translation_schema = {
+            "type": "object",
+            "properties": {"translation": {"type": "string"}},
+            "required": ["translation"],
+            "additionalProperties": False,
         }
-        schema = {
+        chat_schema = {
             "type": "json_schema",
             "json_schema": {
                 "name": "translation_response",
                 "strict": True,
-                "schema": {
-                    "type": "object",
-                    "properties": {"translation": {"type": "string"}},
-                    "required": ["translation"],
-                    "additionalProperties": False,
-                },
+                "schema": translation_schema,
             },
         }
+        response_schema = {
+            "type": "json_schema",
+            "name": "translation_response",
+            "strict": True,
+            "schema": translation_schema,
+        }
+        if uses_responses_api:
+            body = {
+                "model": model_id,
+                "instructions": system_instruction,
+                "input": text,
+                "store": False,
+            }
+            if "reasoning_effort" in request_model_parameters:
+                body["reasoning"] = {"effort": request_model_parameters["reasoning_effort"]}
+            if "verbosity" in request_model_parameters:
+                body["text"] = {"verbosity": request_model_parameters["verbosity"]}
+        else:
+            body = {
+                "model": model_id,
+                "messages": [
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": text},
+                ],
+                "stream": False,
+                **request_model_parameters,
+            }
         try:
             payload = None
             measured_usage: dict[str, Any] = {"usage_available": False, "cost_available": False}
             ignored_model_parameters: list[str] = []
             response_formats = [None] if (
                 connection["preset"] == "opencode-zen" and self._is_free_model(model.strip())
-            ) else [schema, {"type": "json_object"}, None]
+            ) else [response_schema if uses_responses_api else chat_schema, {"type": "json_object"}, None]
             response_format_index = 0
             attempt = 0
             while response_format_index < len(response_formats):
                 response_format = response_formats[response_format_index]
-                request_body = body if response_format is None else {**body, "response_format": response_format}
+                if response_format is None:
+                    request_body = body
+                elif uses_responses_api:
+                    request_body = {
+                        **body,
+                        "text": {**body.get("text", {}), "format": response_format},
+                    }
+                else:
+                    request_body = {**body, "response_format": response_format}
                 attempt += 1
                 self.log_event("provider.attempt", attempt=attempt,
                                response_format=response_format["type"] if response_format else "none",
-                               reasoning_effort=body.get("reasoning_effort", "default"), verbosity=body.get("verbosity", "default"))
+                               reasoning_effort=request_model_parameters.get("reasoning_effort", "default"),
+                               verbosity=request_model_parameters.get("verbosity", "default"),
+                               api="responses" if uses_responses_api else "chat_completions")
                 try:
-                    payload = self._request_json(connection, "/chat/completions", request_body, timeout=300)
-                    choices = payload.get("choices")
-                    choice = choices[0] if isinstance(choices, list) and choices else None
-                    finish = choice.get("finish_reason") if isinstance(choice, dict) else None
+                    path = "/responses" if uses_responses_api else "/chat/completions"
+                    payload = self._request_json(connection, path, request_body, timeout=300)
+                    if uses_responses_api:
+                        finish = payload.get("status")
+                    else:
+                        choices = payload.get("choices")
+                        choice = choices[0] if isinstance(choices, list) and choices else None
+                        finish = choice.get("finish_reason") if isinstance(choice, dict) else None
                     measured_usage = token_usage(payload)
                     self.log_event("provider.usage", attempt=attempt, **measured_usage,
-                                   finish_reason=finish if finish in ("stop", "length", "content_filter", "tool_calls") else "unknown")
+                                   finish_reason=finish if finish in (
+                                       "stop", "length", "content_filter", "tool_calls", "completed", "incomplete"
+                                   ) else "unknown")
                     break
                 except urllib.error.HTTPError as error:
                     retry_after_ms = self._retry_after_ms(error)
@@ -1197,7 +1279,17 @@ class LocalServiceBridge:
                     if unsupported_parameter:
                         self.log_event("provider.fallback", attempt=attempt, provider_status=error.code,
                                        reason="unsupported_parameter", parameter=unsupported_parameter)
-                        body.pop(unsupported_parameter, None)
+                        if uses_responses_api and unsupported_parameter == "reasoning_effort":
+                            body.pop("reasoning", None)
+                        elif uses_responses_api and unsupported_parameter == "verbosity":
+                            text_options = body.get("text")
+                            if isinstance(text_options, dict):
+                                text_options.pop("verbosity", None)
+                                if not text_options:
+                                    body.pop("text", None)
+                        else:
+                            body.pop(unsupported_parameter, None)
+                        request_model_parameters.pop(unsupported_parameter, None)
                         ignored_model_parameters.append(unsupported_parameter)
                         continue
                     if response_format_index < len(response_formats) - 1 \
@@ -1238,7 +1330,7 @@ class LocalServiceBridge:
             ) from error
 
         try:
-            content = self._completion_content(payload)
+            content = self._response_content(payload) if uses_responses_api else self._completion_content(payload)
             if not content:
                 raise BridgeError("openai_empty_translation", "The provider returned an empty translation", 502)
             translation = self._translation_content(content).strip()
