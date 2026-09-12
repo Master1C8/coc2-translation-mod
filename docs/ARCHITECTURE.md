@@ -4,9 +4,9 @@
 game.json
   → задаёт идентичность CoC2, Steam/App/процесс, пути и строгие CDP target matchers
 CoC2 Translator.app / CoC2 Translator.exe
-  → на Windows/CrossOver запускает credential-backed helper и CoC2 напрямую
-  → на macOS без CrossOver запускает комплектный Windows launcher внутри Parallels VM
-  → держит Electron remote debugging только на loopback той же ОС/VM
+  → на Windows запускает credential-backed helper и CoC2 напрямую
+  → на macOS запускает Windows-версию CoC2 только через CrossOver
+  → держит Electron remote debugging только на loopback той же ОС
   → контроллер выбирает только совпавшую CoC2 page и внедряет translator.bundle.js
 translator.bundle.js
   → core + languages + providers + generated game config + CoC2 adapter + runtime
@@ -105,17 +105,8 @@ IndexedDB хранит полный кэш; RAM-кэш — LRU на 20 000 за�
 
 ## Launcher-инварианты
 
-Windows-лаунчер остаётся нативным Win32 x86-64 GUI без консоли и прав администратора. Он использует сохранённый путь, ищет Steam-библиотеки и AppID, показывает `GetOpenFileNameW`, запускает embeddable Python helper, подключается через WinHTTP WebSocket и завершает helper при закрытии игры или исчезновении CDP target три проверки подряд.
+Windows-лаунчер — единый Win32 x86-64 GUI без консоли и прав администратора. Он работает нативно на Windows 10/11 x64 и через встроенную эмуляцию x64-приложений на Windows 11 on Arm. Лаунчер использует сохранённый путь, ищет Steam-библиотеки и AppID, показывает `GetOpenFileNameW`, запускает комплектный x86-64 embeddable Python helper, подключается через WinHTTP WebSocket и завершает helper при закрытии игры или исчезновении CDP target три проверки подряд. В пакете нет драйверов и дополнительных нативных расширений; отдельный Arm-архив не создаётся.
 
-macOS launcher выбирает CrossOver при его наличии, иначе Parallels Desktop. В
-CrossOver Steam-копия запускается только через Steam с ожиданием до двух минут,
-без прямого fallback на EXE; сохраняются системный выбор файла и путь по `game-id`; локальный helper
-запускается системным Python при его наличии. В Parallels приложение помещает
-комплектный Windows payload в версионированную папку Documents, зеркалирует его
-в `%LOCALAPPDATA%` гостевой Windows, выбирает единственную VM автоматически либо показывает системный список, при
-необходимости запускает VM и вызывает Windows launcher через `prlctl exec
---current-user`. Windows launcher внутри гостя владеет helper, Steam discovery,
-выбором EXE, CDP-инъекцией и lifecycle. Поэтому гостевой CDP не пробрасывается на
-host и остаётся на `127.0.0.1`.
+macOS launcher требует CrossOver и запускает только Windows-версию игры из бутылки CrossOver. Steam-копия запускается только через Steam с ожиданием до двух минут, без прямого fallback на EXE; сохраняются системный выбор файла и путь по `game-id`; локальный helper запускается системным Python при его наличии. Parallels, виртуальные машины и комплектный Windows payload не входят в macOS-приложение.
 
-Windows ZIP и Parallels payload содержат только официальный embeddable Python и standard-library helper — переводческих движков, моделей и дополнительных runtime-пакетов нет. Сборка macOS по-прежнему объединяет `arm64` и `x86_64`, поддерживает ad-hoc/Developer ID signing и нотариальное заверение; Windows поддерживает Authenticode. `VNREVIVAL_APP_ONLY=1` создаёт проверяемую локальную `.app` с Parallels payload, но без релизных архивов.
+Windows ZIP содержит только официальный x86-64 embeddable Python и standard-library helper — переводческих движков, моделей и дополнительных runtime-пакетов нет. Сборка macOS объединяет `arm64` и `x86_64`, поддерживает ad-hoc/Developer ID signing и нотариальное заверение; Windows поддерживает Authenticode. `VNREVIVAL_APP_ONLY=1` создаёт проверяемую локальную CrossOver-only `.app` без сборки Windows payload и без релизных архивов.

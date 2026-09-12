@@ -1,6 +1,10 @@
 __PRODUCT_NAME__ for Windows — VN Revival
 https://vnrevival.fun/
 
+Supported systems: Windows 10/11 x64 and Windows 11 on Arm. On Arm devices,
+Windows runs this x64 package through its built-in application emulation.
+No separate Arm download is required.
+
 1. Fully extract this ZIP to a regular folder.
 2. Close __GAME_TITLE__ if it is already running.
 3. Double-click __PRODUCT_NAME__.exe.

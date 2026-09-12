@@ -195,15 +195,20 @@ for REQUIRED in 'STEAM_GAME_START_TIMEOUT_SECONDS=120' 'is_steam_library_game_pa
     exit 1
   }
 done
-for REQUIRED in 'VNREVIVAL_WINDOWS_RUNTIME' 'VNREVIVAL_PARALLELS_VM' 'prlctl' '--current-user' \
-    'Parallels Shared Folders' 'PARALLELS_WINDOWS_LAUNCHER' 'PARALLELS_WINDOWS_LOCAL_LAUNCHER' \
-    'robocopy' '%LOCALAPPDATA%' 'WINDOWS_DISTRIBUTION_NAME'; do
-  grep -Fq -- "$REQUIRED" launcher/macos/launch.sh || {
-    echo "Missing Parallels launcher feature: $REQUIRED" >&2
-    exit 1
-  }
-done
-grep -Fq 'VNRevivalWindowsDistributionName' launcher/macos/Info.plist
+if rg -n 'Parallels|parallels|prlctl|VNREVIVAL_WINDOWS_RUNTIME' \
+    launcher/macos scripts/build.sh; then
+  echo "macOS application must launch the game only through CrossOver" >&2
+  exit 1
+fi
+if grep -Fq 'VNRevivalWindowsDistributionName' launcher/macos/Info.plist; then
+  echo "macOS application still declares a Windows VM payload" >&2
+  exit 1
+fi
+grep -Fq 'Install CrossOver to run the Windows version of $GAME_SHORT_TITLE on macOS.' launcher/macos/launch.sh
+grep -Fq 'python-$PYTHON_VERSION-embed-amd64.zip' scripts/build-windows.sh
+grep -Fq "grep -Eq 'PE32\\+ executable.*x86-64'" scripts/build-windows.sh
+grep -Fq "grep -Eq 'PE32\\+ executable.*GUI.*x86-64'" scripts/verify.sh
+grep -Fq 'Windows 11 on Arm' launcher/windows/README-Windows.txt
 grep -Fq 'VNREVIVAL_WINDOWS_UNPACKED_ONLY' scripts/build-windows.sh
 grep -Fq 'VNREVIVAL_APP_ONLY' scripts/build.sh
 grep -Eq 'persistControlSettings' src/translator-runtime.js

@@ -135,7 +135,6 @@ fi
 /bin/mkdir -p "${GAME_PATH_FILE:h}"
 print -r -- "$BEST_EXE" > "$GAME_PATH_FILE"
 print -r -- "Launching CoC2 with CoC2 Translator through CrossOver..."
-VNREVIVAL_WINDOWS_RUNTIME=crossover \
-  VNREVIVAL_CROSSOVER_APP="$CROSSOVER_APP" \
+VNREVIVAL_CROSSOVER_APP="$CROSSOVER_APP" \
   VNREVIVAL_CROSSOVER_BOTTLE="$BEST_BOTTLE" \
   exec "$TRANSLATOR_LAUNCHER"

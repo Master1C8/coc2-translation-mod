@@ -48,11 +48,11 @@ Credential Manager, отдельно для каждого Base URL.
 
 ## Платформы
 
-- Windows launcher — нативное Win32 x86-64 GUI-приложение без консоли и прав
-  администратора; пакет содержит официальный embeddable Python.
-- macOS 12+ — universal app (`arm64` + `x86_64`), использующий CrossOver при его
-  наличии, иначе Parallels Desktop с комплектным Windows launcher.
-- Electron CDP и credential helper слушают только loopback соответствующей ОС
-  или виртуальной машины.
+- Windows launcher — единое Win32 x86-64 GUI-приложение без консоли и прав
+  администратора: нативно для Windows 10/11 x64 и через встроенную x64-эмуляцию
+  для Windows 11 on Arm. Пакет содержит официальный embeddable Python той же архитектуры.
+- macOS 12+ — universal app (`arm64` + `x86_64`), запускающий Windows-версию
+  игры только через CrossOver. CrossOver обязателен; Parallels не используется.
+- Electron CDP и credential helper слушают только loopback Windows или macOS.
 
 Проект VN Revival: [vnrevival.fun](https://vnrevival.fun/).

@@ -31,7 +31,7 @@ src/games/example/
 | `steamAppId` | Steam AppID |
 | `windowsExecutable` | имя основного Windows-процесса и автоматического поиска; у пользователя остаётся выбор другого `.exe` |
 | `crossOverBottle`, `crossOverGamePath` | запуск macOS через CrossOver |
-| `windowsDistributionName` | имя комплектного Windows payload для Windows и Parallels |
+| `windowsDistributionName` | имя отдельного Windows ZIP/payload |
 | `dataDirectory` | служебный каталог локального credential helper |
 | `bundleIdentifier` | идентификатор macOS-приложения |
 | `iconPng`, `iconIcns` | безопасные относительные пути к ресурсам продукта |

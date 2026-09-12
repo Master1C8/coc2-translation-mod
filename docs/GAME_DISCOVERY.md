@@ -7,7 +7,7 @@
 - Проверенный ранее Steam build ID: 24504721
 - Steam AppID: 1292690
 - Исполняемый файл: `Corruption of Champions II/CoC II.exe`
-- Установка: нативный Steam на Windows, бутылка CrossOver `Steam` либо Windows VM Parallels Desktop на macOS
+- Установка: нативный Steam на Windows либо бутылка CrossOver `Steam` на macOS
 
 ## Технология
 
@@ -17,7 +17,7 @@
 
 ## Выбранное внедрение
 
-Лаунчер передаёт Electron `--remote-debugging-address=127.0.0.1` и случайный свободный port. CrossOver использует macOS Swift-контроллер; нативная Windows и Parallels — один Win32/WinHTTP WebSocket launcher внутри Windows. В Parallels debug port не пробрасывается на host. Внедряемый JavaScript изменяет только значения существующих текстовых узлов и связанные presentation-атрибуты; `innerHTML`, React state, event handlers, input `value`, ссылки и игровые файлы не изменяются.
+Лаунчер передаёт Electron `--remote-debugging-address=127.0.0.1` и случайный свободный port. CrossOver использует macOS Swift-контроллер; Windows — Win32/WinHTTP WebSocket launcher. Внедряемый JavaScript изменяет только значения существующих текстовых узлов и связанные presentation-атрибуты; `innerHTML`, React state, event handlers, input `value`, ссылки и игровые файлы не изменяются.
 
 Проект остаётся одноигровым runtime/realtime переводчиком. Asset extraction, статическая локализация, массовый Workbench и выбор игр не входят в его архитектуру.
 
@@ -25,7 +25,7 @@
 
 - настройки и положение панели — `localStorage` origin игры;
 - переводный кэш — IndexedDB origin игры;
-- путь выбранного EXE — HKCU на Windows/Parallels или Application Support по `game-id` в CrossOver;
+- путь выбранного EXE — HKCU на Windows или Application Support по `game-id` в CrossOver;
 - OpenAI-compatible API key — Keychain/Credential Manager отдельно по Base URL;
 - helper — случайный loopback port с одноразовым токеном;
 - внешние запросы — Google без ключа либо выбранный OpenAI-compatible endpoint.
@@ -49,7 +49,7 @@
 
 После изменения провайдеров остаются необходимы реальные проверки:
 
-- Windows 10/11 x64, Steam discovery, системный выбор EXE и повторный запуск;
+- Windows 10/11 x64 и Windows 11 on Arm через x64-эмуляцию: Steam discovery, системный выбор EXE и повторный запуск;
 - универсальная сборка на Intel Mac;
 - сюжет, выборы, tooltip, бой и история в актуальной CoC2;
 - визуальные RTL/CJK/Indic/Thai и длинные подписи;

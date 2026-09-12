@@ -21,7 +21,7 @@ capture="$FIXTURE/translator-environment.txt"
 /bin/mkdir -p "${fake_wine:h}" "${fake_launcher:h}" "$FIXTURE/home"
 : > "$fake_wine"
 /bin/chmod +x "$fake_wine"
-/usr/bin/printf '%s\n' '#!/bin/zsh' '/usr/bin/printf '\''%s\n'\'' "$VNREVIVAL_WINDOWS_RUNTIME" "$VNREVIVAL_CROSSOVER_APP" "$VNREVIVAL_CROSSOVER_BOTTLE" > "$VNREVIVAL_TEST_CAPTURE"' > "$fake_launcher"
+/usr/bin/printf '%s\n' '#!/bin/zsh' '/usr/bin/printf '\''%s\n'\'' "$VNREVIVAL_CROSSOVER_APP" "$VNREVIVAL_CROSSOVER_BOTTLE" > "$VNREVIVAL_TEST_CAPTURE"' > "$fake_launcher"
 /bin/chmod +x "$fake_launcher"
 
 output=$(VNREVIVAL_CROSSOVER_BOTTLES_DIR="$FIXTURE" \
@@ -40,7 +40,7 @@ HOME="$FIXTURE/home" \
   VNREVIVAL_TEST_CAPTURE="$capture" \
   "$ROOT/scripts/launch-latest-coc2-crossover.sh" >/dev/null
 
-expected_environment=(crossover "$fake_crossover" New)
+expected_environment=("$fake_crossover" New)
 actual_environment=("${(@f)$(<"$capture")}")
 [[ "${(j:|:)actual_environment}" == "${(j:|:)expected_environment}" ]]
 saved_path="$FIXTURE/home/Library/Application Support/VN Revival/Translator Paths/coc2.txt"

@@ -5,9 +5,9 @@
 ### Start
 
 1. Close CoC2 if it is running.
-2. On Windows, fully extract the ZIP and run `CoC2 Translator.exe`. On macOS, open `CoC2 Translator.app`; it uses CrossOver when available and otherwise Parallels Desktop.
-3. In Parallels, keep Windows signed in and enable Shared Folders. If there is more than one VM, choose the Windows VM from the macOS dialog.
-4. If automatic discovery fails, select the main `CoC II.exe` file in the runtime that opened.
+2. On Windows, fully extract the ZIP and run `CoC2 Translator.exe`. The same package supports Windows 10/11 x64 and Windows 11 on Arm; Windows uses its built-in x64 application emulation on Arm.
+3. On macOS, install CrossOver, install the Windows version of CoC2 in a CrossOver bottle, and open `CoC2 Translator.app`. The macOS app does not use Parallels or a native macOS game build.
+4. If automatic discovery fails, select the main `CoC II.exe` file in the CrossOver bottle or Windows installation that opened.
 5. Wait for the panel in the top-right corner.
 
 Always start CoC2 through the translator. It translates only the live DOM shown by the running game; it does not extract or modify game assets and does not create a static localization.
@@ -94,14 +94,9 @@ On Windows and in CrossOver, the translator starts a detected Steam copy through
 
 Closing CoC2 normally also ends the launcher and local helper.
 
-For Parallels, the macOS app stages its bundled Windows launcher under
-`~/Documents/VN Revival/Parallels/`, copies it to the guest's
-`%LOCALAPPDATA%\VN Revival\Parallels\`, and starts it as the current Windows user.
-The Windows launcher keeps CDP and the credential helper on guest loopback. If
-both CrossOver and Parallels are installed, CrossOver remains the default;
-advanced launches can select Parallels with
-`VNREVIVAL_WINDOWS_RUNTIME=parallels` and a VM with
-`VNREVIVAL_PARALLELS_VM="Windows 11"`.
+The macOS application requires CrossOver and starts only the Windows version of
+CoC2 installed in a CrossOver bottle. It contains no Parallels fallback or
+embedded Windows launcher payload.
 
 ---
 
@@ -110,9 +105,9 @@ advanced launches can select Parallels with
 ### Запуск
 
 1. Закройте CoC2, если игра запущена.
-2. На Windows полностью распакуйте ZIP и запустите `CoC2 Translator.exe`. На macOS откройте `CoC2 Translator.app`: при наличии CrossOver используется он, иначе Parallels Desktop.
-3. Для Parallels войдите в Windows и включите Shared Folders. Если VM несколько, выберите нужную Windows VM в системном окне macOS.
-4. Если автоматический поиск не сработал, укажите основной `CoC II.exe` в открывшейся среде.
+2. На Windows полностью распакуйте ZIP и запустите `CoC2 Translator.exe`. Один пакет поддерживает Windows 10/11 x64 и Windows 11 on Arm; на Arm используется встроенная в Windows эмуляция x64-приложений.
+3. На macOS установите CrossOver, установите Windows-версию CoC2 в бутылку CrossOver и откройте `CoC2 Translator.app`. macOS-приложение не использует Parallels и нативную macOS-версию игры.
+4. Если автоматический поиск не сработал, укажите основной `CoC II.exe` в бутылке CrossOver или открывшейся установке Windows.
 5. Дождитесь панели в правом верхнем углу.
 
 Всегда запускайте CoC2 через переводчик. Он обрабатывает только живой DOM работающей игры, не извлекает и не меняет игровые ассеты и не создаёт статическую локализацию.
@@ -199,10 +194,6 @@ RTL, `lang`, шрифтовые fallback, переносы и размер кн�
 
 Обычное закрытие CoC2 завершает launcher и локальный helper.
 
-В режиме Parallels macOS-приложение помещает комплектный Windows launcher в
-`~/Documents/VN Revival/Parallels/`, копирует его в
-`%LOCALAPPDATA%\VN Revival\Parallels\` гостевой системы и запускает от текущего
-пользователя Windows. CDP и credential helper остаются на гостевом loopback. Если установлены
-и CrossOver, и Parallels, по умолчанию сохраняется CrossOver; для ручного выбора
-используйте `VNREVIVAL_WINDOWS_RUNTIME=parallels`, а имя VM можно задать через
-`VNREVIVAL_PARALLELS_VM="Windows 11"`.
+macOS-приложение требует CrossOver и запускает только Windows-версию CoC2,
+установленную в бутылку CrossOver. В приложении нет fallback на Parallels и
+вложенного Windows launcher payload.

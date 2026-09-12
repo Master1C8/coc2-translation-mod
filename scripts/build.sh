@@ -15,7 +15,6 @@ PRODUCT_NAME=$(manifest_value translatorName)
 GAME_TITLE=$(manifest_value title)
 SHORT_TITLE=$(manifest_value shortTitle)
 STEAM_APP_ID=$(manifest_value steamAppId)
-WINDOWS_EXECUTABLE=$(manifest_value windowsExecutable)
 CROSSOVER_BOTTLE=$(manifest_value crossOverBottle)
 CROSSOVER_GAME_PATH=$(manifest_value crossOverGamePath)
 DATA_DIRECTORY=$(manifest_value dataDirectory)
@@ -23,7 +22,6 @@ BUNDLE_IDENTIFIER=$(manifest_value bundleIdentifier)
 ICON_PNG=$(manifest_value iconPng)
 ICON_ICNS=$(manifest_value iconIcns)
 ARCHIVE_PREFIX=$(manifest_value archivePrefix)
-WINDOWS_DISTRIBUTION_NAME=$(manifest_value windowsDistributionName)
 LAUNCH_STRATEGY=$(manifest_value launchStrategy)
 DEBUG_TARGET_TITLE=$(manifest_value debugTargetTitleContains)
 DEBUG_TARGET_URL=$(manifest_value debugTargetUrlContains)
@@ -62,14 +60,9 @@ python3 "$ROOT/scripts/generate-openai-config.py" "$ROOT/src/openai-compatible.j
   cat "$BUILD_DIR/translator-runtime.js"
 } > "$BUILD_DIR/translator.bundle.js"
 
-if [[ "$APP_ONLY" == "1" ]]; then
-  VNREVIVAL_GAME="$GAME_ID" VNREVIVAL_WINDOWS_UNPACKED_ONLY=1 \
-    "$ROOT/scripts/build-windows.sh" "$BUILD_DIR/translator.bundle.js"
-else
+if [[ "$APP_ONLY" == "0" ]]; then
   VNREVIVAL_GAME="$GAME_ID" "$ROOT/scripts/build-windows.sh" "$BUILD_DIR/translator.bundle.js"
 fi
-WINDOWS_DIST_DIR="$BUILD_DIR/windows/$WINDOWS_DISTRIBUTION_NAME"
-[[ -s "$WINDOWS_DIST_DIR/$PRODUCT_NAME.exe" ]]
 
 [[ -x "$SWIFTC" && -d "$SDK" ]]
 for ARCH in arm64 x86_64; do
@@ -88,8 +81,7 @@ done
 python3 "$ROOT/scripts/render-template.py" "$ROOT/launcher/macos/Info.plist" "$APP/Contents/Info.plist" \
   VERSION "$VERSION" BUILD "$BUILD_NUMBER" PRODUCT_NAME "$PRODUCT_NAME" \
   BUNDLE_IDENTIFIER "$BUNDLE_IDENTIFIER" GAME_ID "$GAME_ID" GAME_TITLE "$GAME_TITLE" \
-  SHORT_TITLE "$SHORT_TITLE" STEAM_APP_ID "$STEAM_APP_ID" WINDOWS_EXECUTABLE "$WINDOWS_EXECUTABLE" \
-  WINDOWS_DISTRIBUTION_NAME "$WINDOWS_DISTRIBUTION_NAME" \
+  SHORT_TITLE "$SHORT_TITLE" STEAM_APP_ID "$STEAM_APP_ID" \
   CROSSOVER_BOTTLE "$CROSSOVER_BOTTLE" CROSSOVER_GAME_PATH "$CROSSOVER_GAME_PATH" DATA_DIRECTORY "$DATA_DIRECTORY" \
   LAUNCH_STRATEGY "$LAUNCH_STRATEGY" DEBUG_TARGET_TITLE "$DEBUG_TARGET_TITLE" DEBUG_TARGET_URL "$DEBUG_TARGET_URL"
 cp "$ROOT/launcher/macos/launch.sh" "$APP/Contents/MacOS/$PRODUCT_NAME"
@@ -101,8 +93,6 @@ cp "$ROOT/src/openai-compatible.json" "$APP/Contents/Resources/"
 cp "$ROOT/$ICON_ICNS" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/README.md" "$APP/Contents/Resources/README.md"
 cp "$ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
-mkdir -p "$APP/Contents/Resources/parallels"
-/usr/bin/ditto "$WINDOWS_DIST_DIR" "$APP/Contents/Resources/parallels/$WINDOWS_DISTRIBUTION_NAME"
 chmod +x "$APP/Contents/MacOS/$PRODUCT_NAME" "$APP/Contents/Resources/VNRevivalTranslatorController" "$APP/Contents/Resources/local_service.py"
 
 if [[ "$MAC_SIGN_IDENTITY" == "-" ]]; then
@@ -121,7 +111,6 @@ fi
 
 if [[ "$APP_ONLY" == "1" ]]; then
   /usr/bin/codesign --verify --deep --strict "$APP"
-  [[ -s "$APP/Contents/Resources/parallels/$WINDOWS_DISTRIBUTION_NAME/$PRODUCT_NAME.exe" ]]
   echo "Built local app at $APP"
   exit 0
 fi
