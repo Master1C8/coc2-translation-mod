@@ -1,6 +1,43 @@
 # QA report 0.10.2
 
-Дата последней полной проверки: 2026-09-07.
+Дата последнего полного аудита: 2026-09-12.
+
+## Итог
+
+В проверенной области критических или высоких дефектов не обнаружено.
+Исходный код, тесты, сборочные скрипты и документация согласованы с текущей
+логикой версии 0.10.2. Автоматизированная проверка не заменяет оставшиеся ручные
+платформенные и provider-проверки, перечисленные ниже.
+
+## Область аудита
+
+- DOM runtime: Text-узлы, контекстные маркеры, приватные области, batching, кэш,
+  Unicode, RTL и lifecycle автоперевода;
+- панель: удалённый first-use вопрос, отсутствие сбора запросов, невыделяемые
+  обычные надписи, изоляция событий и сохранение игрового экрана без API-ключа;
+- provider/helper: Google, `/models`, Chat Completions, Responses, Messages, optional parameters,
+  fallback формата, маркеры, retry/rate limit и безопасные ошибки;
+- безопасность: loopback helper/CDP, launch token, URL policy, ограничения размера,
+  Keychain/Credential Manager и отсутствие секретов в URL, DOM, кэше и логах;
+- лаунчеры: Windows x86-64/Windows 11 on Arm, universal macOS app, CrossOver-only запуск,
+  Steam lifecycle и упаковка;
+- границы проекта, manifest/adapter contract, карта разработки и пользовательская
+  документация.
+
+## Исправления по итогам
+
+- Chat-Completions-only описание заменено на фактические три маршрута OpenCode Go;
+- из Development map удалены ссылки на уже удалённые runtime-символы;
+- зафиксировано, что сбора запросов нет в панели и runtime; helper-only API
+  изолирован launch token и loopback;
+- контракт заголовка API-ключа уточнён для Anthropic-compatible Messages;
+- `deepseek-v4.1-flash` добавлен в явную таблицу Chat Completions OpenCode Go;
+- руководство пользователя зафиксировало невыделяемые надписи, безопасное
+  поведение без ключа и все три provider API.
+
+Официальная таблица на дату аудита подтверждает динамический `/models` и три API:
+[OpenCode Go](https://dev.opencode.ai/docs/go/). Карточка Luna подтверждает Responses API и набор reasoning
+efforts: [OpenAI GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna).
 
 ## Каноническая команда
 
@@ -8,35 +45,32 @@
 ./scripts/test-coc2.sh --quiet
 ```
 
-Verbose-вариант той же проверки используется для диагностики. Focused-команды
-перечислены в `docs/DEVELOPMENT.md` и не заменяют полный integration gate.
+Verbose-вариант используется для диагностики. Focused-команды из `docs/DEVELOPMENT.md` не заменяют
+полный integration gate.
 
-## Проверяемые области
+## Последний автоматизированный результат
 
-- translation core: Unicode-safe splitting, context markers, language aliases,
-  provider cache keys и фильтрация технического текста;
-- provider registry: Google и OpenAI-compatible request contracts;
-- canonical 30-language catalog, генерируемый из `src/languages.json`;
-- CoC2 manifest и DOM adapter contract;
-- credential vault, URL policy, model discovery, Chat Completions, structured
-  output fallback, optional parameters, marker validation и safe errors;
-- JavaScript, Python, zsh и Swift syntax/type checks;
-- Windows launcher compilation с MinGW и `-Werror`, когда toolchain доступен;
-- repository invariants: отсутствие чужой игровой идентичности, удалённых
-  providers и несовместимых Chromium API.
+- Node.js: 35/35 tests passed.
+- Python: 65/65 tests passed.
+- Browser smoke: passed.
+- JavaScript, Python, zsh и Swift syntax/type checks: passed.
+- Windows launcher: MinGW compilation with `-Werror` passed.
+- Source/manifest invariants: passed; 30 языков.
+- macOS/Windows ZIP: `scripts/verify.sh` passed.
+- Тесты не изменили отслеживаемые исходники.
 
-Browser smoke fixture находится в `tests/runtime-smoke.html`, setup и сценарий
-— в `tests/runtime/`, а полный test gate запускает её через локальный headless
-Chrome/Chromium, когда браузер установлен. Перед публичной сборкой также
-проверяются реальные macOS/Windows artifacts через `scripts/verify.sh`.
+Browser smoke fixture находится в `tests/runtime-smoke.html`, setup и сценарии — в `tests/runtime/`.
 
-## Последний результат
+## Оставшиеся ручные проверки
 
-- Node.js: 23 tests passed.
-- Python: 37 tests passed.
-- Source and manifest verification: passed.
-- Рабочее дерево после проверки: без изменений исходников со стороны тестов.
+Автоматизация не подтверждает без реальных сред:
+
+- Windows 10/11 x64 и Windows 11 on Arm: Steam discovery, системный выбор EXE, повторный запуск и lifecycle;
+- Intel Mac и CrossOver: universal binary, поиск бутылки, Steam-запуск и lifecycle;
+- сюжет, выборы, tooltip, бой и история в актуальной CoC2;
+- визуальные RTL/CJK/Indic/Thai и длинные подписи;
+- действительные ключи и модели удалённых preset, включая три протокола, и LM Studio;
+- Defender, SmartScreen, Gatekeeper и подписанные/нотаризованные публичные сборки.
 
 Подробные пользовательские свойства не дублируются здесь: они находятся в
-`docs/USER_GUIDE.md`, а устойчивые технические инварианты — в
-`docs/ARCHITECTURE.md`.
+`docs/USER_GUIDE.md`, а устойчивые технические инварианты — в `docs/ARCHITECTURE.md`.

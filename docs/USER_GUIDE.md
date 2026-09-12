@@ -23,7 +23,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 - `− / +` collapses the panel to a single `+` button or expands it completely.
 - Drag the space around the language controls in the top row to move the panel.
 
-The panel has only two states: expanded or collapsed, and always starts expanded in a new game session. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Long settings scroll inside the panel. Progress, errors, and the retry button use a fixed-height area so translation updates do not resize the panel or move its controls. Long error messages scroll within that area. `Retry translation` stays in a separate fixed row and is disabled during translation and when there are no failed fragments. It retries only failed fragments still present on the current screen.
+The panel has only two states: expanded or collapsed, and always starts expanded in a new game session. Auto-translate is directly below the language controls. AI connection settings appear only for OpenAI-compatible; Google stays compact. The game manifest supplies the default panel palette. Ordinary panel labels cannot be selected; text selection remains enabled in editable fields and text areas. Long settings scroll inside the panel. Progress, errors, and the retry button use a fixed-height area so translation updates do not resize the panel or move its controls. Long error messages scroll within that area. `Retry translation` stays in a separate fixed row and is disabled during translation and when there are no failed fragments. It retries only failed fragments still present on the current screen.
 
 Automatic translation processes visible, newly visible, or changed blocks, including native selection options, and pre-translates recognized tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
@@ -68,6 +68,8 @@ For Custom, enter a Base URL. Remote URLs must use HTTPS. HTTP is accepted only 
 
 The key field is cleared and hidden after confirmed saving; `Key saved` and `Change` replace it. The preset address and model parameters are inside `Advanced`; Custom shows its address immediately. Keys are stored separately per Base URL in Windows Credential Manager or macOS Keychain; they are not saved in game settings, the DOM, or the translation cache. Entering another key replaces the stored key for the current endpoint.
 
+For a preset that requires a key, the model selector remains disabled until the key is saved. A missing key changes only the panel status: it does not clear, replace, or hide the game screen.
+
 LM Studio is part of this same provider. Start its local server and load a model first; no key is required by the preset. If `/models` is unavailable but Chat Completions works, enter the model ID manually.
 
 A previously selected model keeps its exact ID in the selector even when the provider temporarily omits it from `/models`. `Enter model ID manually…` is a separate action and is never used as a label for the current model.
@@ -88,7 +90,7 @@ RTL direction, language tags, font fallback, wrapping, and button sizing are app
 
 ### Troubleshooting
 
-If the panel does not appear, close CoC2 completely and start it through the translator again. If OpenAI-compatible says the local helper is unavailable, reinstall/extract the complete app instead of moving only the executable. Confirm that the endpoint supports `/models` and the API required by the selected model (`/chat/completions`, or `/responses` for GPT-5.6 Luna on OpenCode Go), and that the selected model ID is valid.
+If the panel does not appear, close CoC2 completely and start it through the translator again. If OpenAI-compatible says the local helper is unavailable, reinstall/extract the complete app instead of moving only the executable. Confirm that the endpoint supports `/models` and the API required by the selected model: `/chat/completions`, `/responses`, or `/messages`. On OpenCode Go, GPT-5.6 Luna uses `/responses`; MiniMax and Qwen models use `/messages`. Also confirm that the selected model ID is valid.
 
 On Windows and in CrossOver, the translator starts a detected Steam copy through Steam even when the client was initially closed, and waits up to two minutes for the game. It never falls back to launching a Steam game EXE directly. If Steam needs an update or sign-in, complete it and start the translator again.
 
@@ -123,7 +125,7 @@ embedded Windows launcher payload.
 - `− / +` сворачивает панель до одной кнопки `+` или полностью разворачивает её.
 - Свободное место в верхней строке с языком позволяет перемещать панель.
 
-У панели два состояния: развёрнутое и свёрнутое, при каждом новом запуске игры она всегда открывается развёрнутой. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Длинные настройки прокручиваются внутри панели. Прогресс, ошибки и кнопка повтора занимают область постоянной высоты: обновления перевода не меняют размер панели и не сдвигают элементы управления. Длинные сообщения об ошибках прокручиваются внутри этой области. «Повторить перевод» постоянно занимает отдельную строку и недоступна во время перевода и при отсутствии ошибок. Кнопка повторяет только непереведённые фрагменты, которые ещё находятся на текущем экране.
+У панели два состояния: развёрнутое и свёрнутое, при каждом новом запуске игры она всегда открывается развёрнутой. Автоперевод расположен сразу под языком. Настройки ИИ появляются только для OpenAI-compatible; Google остаётся компактным. Палитра панели по умолчанию задаётся манифестом игры. Обычные надписи панели не выделяются; в полях ввода и текстовых областях выделение остаётся доступным. Длинные настройки прокручиваются внутри панели. Прогресс, ошибки и кнопка повтора занимают область постоянной высоты: обновления перевода не меняют размер панели и не сдвигают элементы управления. Длинные сообщения об ошибках прокручиваются внутри этой области. «Повторить перевод» постоянно занимает отдельную строку и недоступна во время перевода и при отсутствии ошибок. Кнопка повторяет только непереведённые фрагменты, которые ещё находятся на текущем экране.
 
 Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки, включая пункты нативных списков, и заранее переводит уже присутствующие в DOM распознанные tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
@@ -168,6 +170,8 @@ Base URL preset:
 
 После подтверждённого сохранения поле ключа очищается и скрывается; вместо него показаны «Ключ сохранён» и «Изменить». Адрес готового профиля и параметры модели находятся в «Дополнительно»; для Custom адрес виден сразу. Ключи хранятся отдельно по Base URL в Windows Credential Manager или macOS Keychain и не попадают в игровые настройки, DOM или кэш. Ввод нового ключа заменяет сохранённый ключ текущего endpoint.
 
+Для preset, которому нужен ключ, список моделей остаётся недоступным до сохранения ключа. Отсутствие ключа меняет только статус в панели: игровой экран не очищается, не заменяется и не скрывается.
+
 LM Studio входит в этот же провайдер. Сначала запустите local server и загрузите модель; preset не требует ключа. Если `/models` недоступен, но Chat Completions работает, введите model ID вручную.
 
 Ранее выбранная модель сохраняет в списке свой точный ID, даже если провайдер временно не вернул её через `/models`. «Ввести ID модели вручную…» — отдельное действие, а не обозначение текущей модели.
@@ -188,7 +192,7 @@ RTL, `lang`, шрифтовые fallback, переносы и размер кн�
 
 ### Решение проблем
 
-Если панель не появилась, полностью закройте CoC2 и снова запустите игру через переводчик. Если OpenAI-compatible сообщает об отсутствии helper, переустановите или полностью распакуйте приложение, не переносите один EXE. Убедитесь, что endpoint поддерживает `/models` и API выбранной модели (`/chat/completions` либо `/responses` для GPT-5.6 Luna в OpenCode Go), а model ID существует.
+Если панель не появилась, полностью закройте CoC2 и снова запустите игру через переводчик. Если OpenAI-compatible сообщает об отсутствии helper, переустановите или полностью распакуйте приложение, не переносите один EXE. Убедитесь, что endpoint поддерживает `/models` и нужный выбранной модели API: `/chat/completions`, `/responses` или `/messages`. В OpenCode Go GPT-5.6 Luna использует `/responses`, а модели MiniMax и Qwen — `/messages`. Также проверьте, что model ID существует.
 
 В Windows и CrossOver переводчик запускает найденную Steam-копию через Steam, даже если клиент изначально был закрыт, и ждёт игру до двух минут. Прямого запуска EXE Steam-игры как запасного варианта больше нет. Если Steam требует обновления или входа, завершите этот шаг и снова запустите переводчик.
 

@@ -5,10 +5,11 @@ II** на Windows и macOS. Он переводит видимый и динам
 запущенной Electron-игры и не извлекает, не изменяет и не распространяет её
 ресурсы.
 
-Поддерживаются Google Translate и OpenAI-compatible Chat Completions через
-OpenCode Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio или пользовательский
-HTTPS/loopback endpoint. API-ключи хранятся в macOS Keychain или Windows
-Credential Manager, отдельно для каждого Base URL.
+Поддерживаются Google Translate и OpenAI-compatible API через OpenCode
+Go, OpenCode Zen, OpenRouter, DeepSeek, LM Studio или пользовательский
+HTTPS/loopback endpoint. Для OpenCode Go переводчик автоматически выбирает
+Chat Completions, Responses или Messages по модели. API-ключи хранятся в macOS
+Keychain или Windows Credential Manager, отдельно для каждого Base URL.
 
 ## Документация
 
