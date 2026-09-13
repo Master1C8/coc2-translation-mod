@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-09-13T17:17:04+07:00",
+  "game": {
+    "name": "Corruption of Champions II",
+    "version": "0.9.6",
+    "versionEvidence": "Visible on screen 01"
+  },
+  "translator": {
+    "name": "CoC2 Translator",
+    "version": "0.10.2"
+  },
+  "locale": {
+    "code": "ru",
+    "name": "Russian",
+    "nativeName": "русский",
+    "verification": {
+      "status": "pass",
+      "methods": [
+        "Canonical locale entry in src/languages.json",
+        "Runtime translation.start events with target=ru",
+        "Visible Russian interface and narrative text"
+      ]
+    }
+  },
+  "capture": {
+    "method": "User-supplied native macOS screenshots from the local translated game session",
+    "timeZone": "Asia/Ho_Chi_Minh",
+    "nativeDimensions": {
+      "width": 2862,
+      "height": 1780
+    },
+    "postProcessing": "A 150x46 locale/sequence badge was composited at x=18,y=12; the canvas was not resized",
+    "pixelVerification": "Absolute-error count is zero below y=60 and to the right of x=170 for every final screenshot",
+    "runtimeEvidence": {
+      "path": "ru-runtime-evidence.ndjson",
+      "sha256": "f7adad305190d342e16244d5e031f24a786b5a161322fc04f6693b70cee1affd",
+      "privacy": "Only bounded structural fields were retained; prompts, translated text, credentials and cost fields were excluded"
+    },
+    "stateRestore": {
+      "status": "not-applicable",
+      "reason": "Package assembly did not change the game locale, save data or translator configuration"
+    }
+  },
+  "screenshots": [
+    {
+      "screen": 1,
+      "role": "title-menu",
+      "source": {
+        "path": "raw/ru-01-title-menu-native.png",
+        "sha256": "e104ef3927187b691989e5f088179cd02369aa2e907f5bcf9da2b92105d9c994"
+      },
+      "final": {
+        "path": "ru-01-title-menu.png",
+        "sha256": "f2a4e11758a956e8cd58df80ec17325896d2e52fff706955868346c0d5556514"
+      },
+      "dimensions": "2862x1780",
+      "automatedResult": "pass",
+      "visualReview": {
+        "status": "pass",
+        "checks": [
+          "Cyrillic glyphs render correctly",
+          "Main menu labels fit their controls",
+          "Narrative copy is readable",
+          "No duplicate translator panel is visible"
+        ]
+      },
+      "overallResult": "pass"
+    },
+    {
+      "screen": 3,
+      "role": "race-selection",
+      "source": {
+        "path": "raw/ru-03-race-selection-native.png",
+        "sha256": "fadbded86072c26d90ea7bb4685becd7ed055ddf1936eaa6f732aac756e0ad0c"
+      },
+      "final": {
+        "path": "ru-03-race-selection.png",
+        "sha256": "f285334d04c2af010bbf2c18f6265bd3470d45e639ba46b736249b84bccb8ace"
+      },
+      "dimensions": "2862x1780",
+      "automatedResult": "pass",
+      "visualReview": {
+        "status": "pass",
+        "checks": [
+          "Cyrillic glyphs render correctly",
+          "All five race labels fit their controls",
+          "Narrative copy wraps within the content area",
+          "Artwork and close control remain unobstructed"
+        ]
+      },
+      "overallResult": "pass"
+    },
+    {
+      "screen": 4,
+      "role": "background-selection",
+      "source": {
+        "path": "raw/ru-04-background-selection-native.png",
+        "sha256": "6edc0d9980494be5ec8a4e0b384571b054c941f21732dc891cb2f18c359c16ad"
+      },
+      "final": {
+        "path": "ru-04-background-selection.png",
+        "sha256": "2860723759c0b4751776e38defce9aef5535ef891cb3dd4ffd830e3c0059031f"
+      },
+      "dimensions": "2862x1780",
+      "automatedResult": "pass",
+      "visualReview": {
+        "status": "needs-review",
+        "checks": [
+          "Cyrillic glyphs render correctly",
+          "All ten background labels fit their controls",
+          "Two-line labels remain readable"
+        ],
+        "observation": "The collapsed translator control obscures the ending of the first narrative line in the supplied source frame"
+      },
+      "overallResult": "needs-review"
+    }
+  ],
+  "overallResult": "needs-review"
+}
