@@ -107,8 +107,8 @@ class LocalServiceTests(unittest.TestCase):
             with mock.patch.object(bridge, "_screenshot_target_url",
                                    return_value="ws://127.0.0.1:9317/devtools/page/game"), \
                     mock.patch.object(local_service, "_capture_cdp_png", return_value=image):
-                result = bridge.capture_screenshot("a" * 32, "pt-BR", 1, 1, "0.10.2", "0.9.6")
-                self.assertEqual(result["file"], "pt-BR-01.png")
+                result = bridge.capture_screenshot("a" * 32, "pt-BR", 7, 1, 1, "0.11.1", "0.9.6")
+                self.assertEqual(result["file"], "pt-BR-7-Gameplay.png")
                 self.assertEqual((result["width"], result["height"]), (1, 1))
                 destination = Path(result["directory"]) / result["file"]
                 self.assertEqual(destination.read_bytes(), image)
@@ -117,26 +117,33 @@ class LocalServiceTests(unittest.TestCase):
                 manifest = json.loads((Path(result["directory"]) / "screenshots-evidence.json").read_text())
                 self.assertEqual(manifest["result"], "capture-pass-review-pending")
                 self.assertEqual(manifest["outcome"], "complete")
+                self.assertEqual(manifest["screenshotNumber"], 7)
                 self.assertEqual(manifest["screenshots"][0]["locale"], "pt-BR")
+                self.assertEqual(manifest["screenshots"][0]["number"], 7)
+                self.assertEqual(manifest["screenshots"][0]["content"], "Gameplay")
                 self.assertEqual(manifest["screenshots"][0]["sha256"], local_service.hashlib.sha256(image).hexdigest())
                 with self.assertRaises(local_service.BridgeError) as caught:
-                    bridge.capture_screenshot("a" * 32, "pt-BR", 1, 1, "0.10.2", "0.9.6")
+                    bridge.capture_screenshot("a" * 32, "pt-BR", 7, 1, 1, "0.11.1", "0.9.6")
                 self.assertEqual(caught.exception.code, "screenshot_exists")
 
     def test_screenshot_batch_rejects_untrusted_names_and_missing_cdp(self):
         with tempfile.TemporaryDirectory() as directory:
             bridge = self.bridge(directory)
-            for batch_id, locale, sequence, total in (
-                ("../escape", "ru", 1, 1), ("a" * 32, "../../escape", 1, 1),
-                ("a" * 32, "ru", 0, 1), ("a" * 32, "ru", True, 1),
-                ("a" * 32, "ru", 2, 1),
+            for batch_id, locale, screenshot_number, sequence, total in (
+                ("../escape", "ru", 1, 1, 1), ("a" * 32, "../../escape", 1, 1, 1),
+                ("a" * 32, "ru", 0, 1, 1), ("a" * 32, "ru", True, 1, 1),
+                ("a" * 32, "ru", 1, 0, 1), ("a" * 32, "ru", 1, True, 1),
+                ("a" * 32, "ru", 1, 2, 1),
             ):
-                with self.subTest(batch_id=batch_id, locale=locale, sequence=sequence, total=total), \
+                with self.subTest(batch_id=batch_id, locale=locale, screenshot_number=screenshot_number,
+                                  sequence=sequence, total=total), \
                         self.assertRaises(local_service.BridgeError) as caught:
-                    bridge.capture_screenshot(batch_id, locale, sequence, total, "0.10.2", "0.9.6")
+                    bridge.capture_screenshot(
+                        batch_id, locale, screenshot_number, sequence, total, "0.11.1", "0.9.6"
+                    )
                 self.assertEqual(caught.exception.code, "screenshot_request_invalid")
             with self.assertRaises(local_service.BridgeError) as caught:
-                bridge.capture_screenshot("a" * 32, "ru", 1, 1, "0.10.2", "0.9.6")
+                bridge.capture_screenshot("a" * 32, "ru", 1, 1, 1, "0.11.1", "0.9.6")
             self.assertEqual(caught.exception.code, "screenshots_unavailable")
             self.assertFalse(bridge.screenshots_path.exists())
 

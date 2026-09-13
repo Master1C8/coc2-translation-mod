@@ -19,7 +19,7 @@ Always start CoC2 through the translator. It translates only the live DOM shown 
 - The `Translate panel interface` checkbox below the language selector localizes the translator panel with a bundled preset for the selected language. It never sends panel text to Google or AI; unsupported presets fall back to English. English and Russian presets are currently bundled.
 - `Ctrl+Shift+T`, displayed inside the main button, performs the same translate/cancel action.
 - Provider, auto-translate, and cache controls are always visible while the panel is expanded.
-- `Capture all languages` translates the current game screen into every locale supported by the selected provider and saves one game-viewport PNG per locale. The panel is hidden in each image and a small locale-code badge remains visible for identification. Keep the game on the same screen until the batch finishes.
+- `Capture all languages` translates the current game screen into every locale supported by the selected provider and saves one game-viewport PNG per locale. Enter the number shared by all files in the field to the right of the button; it defaults to `1`. The panel is hidden in each image and a small locale-code badge remains visible for identification. Keep the game on the same screen until the batch finishes.
 - Hold the pointer over a complex setting to see its short explanation.
 - `− / +` collapses the panel to a single `+` button or expands it completely.
 - Drag the space around the language controls in the top row to move the panel.
@@ -30,7 +30,7 @@ Automatic translation processes visible, newly visible, or changed blocks, inclu
 
 The language selector uses the same 30 locales and order as VN Revival. English and `Auto translate: On` are selected on the first launch; later choices are preserved locally. There is no first-use confirmation dialog.
 
-Screenshot batches use the current provider, model, prompt, glossary, and cache. They can therefore make many translation requests when the required locales are not cached. The batch stops at the first locale that cannot be translated or captured. Files are named with the exact locale first, for example `ru-03.png` and `pt-BR-22.png`, and are stored under the translator data directory in `screenshots/<UTC timestamp>-<batch id>/`. The folder also contains `screenshots-evidence.json` with dimensions and SHA-256 hashes. A completed capture is still marked as awaiting visual review. The original language, display mode, and auto-translate setting are restored before the folder opens.
+Screenshot batches use the current provider, model, prompt, glossary, and cache. They can therefore make many translation requests when the required locales are not cached. The batch stops at the first locale that cannot be translated or captured. Files use `<locale>-<number>-Gameplay.png`, for example `ru-1-Gameplay.png` and `pt-BR-1-Gameplay.png`, and are stored under the translator data directory in `screenshots/<UTC timestamp>-<batch id>/`. The folder also contains `screenshots-evidence.json` with dimensions and SHA-256 hashes. A completed capture is still marked as awaiting visual review. The original language, display mode, and auto-translate setting are restored before the folder opens.
 
 When the selected target matches the game's source language, the translator keeps the original text and creates no translation jobs or provider requests. CoC2's source language is English.
 
@@ -126,7 +126,7 @@ embedded Windows launcher payload.
 - Галочка `Переводить интерфейс панели` под языком переводит панель встроенным пресетом выбранного языка. Текст панели никогда не отправляется Google или ИИ; при отсутствии пресета используется английский. Сейчас встроены английский и русский пресеты.
 - `Ctrl+Shift+T`, указанная внутри основной кнопки, выполняет то же действие перевода/отмены.
 - Провайдер, автоперевод и кэш всегда видны в развёрнутой панели.
-- `Снять все языки` последовательно переводит текущий игровой экран на все локали, поддерживаемые выбранным провайдером, и сохраняет по одному PNG игрового viewport для каждой локали. Панель переводчика скрывается на снимке, а в левом верхнем углу остаётся небольшая метка с кодом локали. Не меняйте игровой экран до завершения пакета.
+- `Снять все языки` последовательно переводит текущий игровой экран на все локали, поддерживаемые выбранным провайдером, и сохраняет по одному PNG игрового viewport для каждой локали. В поле справа от кнопки задаётся общий номер всех файлов; по умолчанию там `1`. Панель переводчика скрывается на снимке, а в левом верхнем углу остаётся небольшая метка с кодом локали. Не меняйте игровой экран до завершения пакета.
 - Задержите курсор над сложной настройкой, чтобы увидеть её краткое пояснение.
 - `− / +` сворачивает панель до одной кнопки `+` или полностью разворачивает её.
 - Свободное место в верхней строке с языком позволяет перемещать панель.
@@ -137,7 +137,7 @@ embedded Windows launcher payload.
 
 Список и порядок 30 языков совпадают с каталогом VN Revival. При первом запуске выбран английский и `Auto translate: On`; последующий выбор сохраняется локально. Отдельного подтверждения при первом использовании нет.
 
-Пакет скриншотов использует текущий провайдер, модель, prompt, глоссарий и кэш, поэтому при отсутствии готового кэша он может выполнить много запросов перевода. При первой локали, которую не удалось перевести или снять, обход останавливается. Имена файлов начинаются с точного кода локали, например `ru-03.png` и `pt-BR-22.png`. Файлы сохраняются в каталоге данных переводчика: `screenshots/<UTC timestamp>-<batch id>/`. Рядом создаётся `screenshots-evidence.json` с размерами и SHA-256 каждого изображения; даже успешно снятый пакет помечен как ожидающий визуальной проверки. До открытия папки переводчик восстанавливает исходный язык, режим показа и настройку автоперевода.
+Пакет скриншотов использует текущий провайдер, модель, prompt, глоссарий и кэш, поэтому при отсутствии готового кэша он может выполнить много запросов перевода. При первой локали, которую не удалось перевести или снять, обход останавливается. Файлы называются по шаблону `<код-локали>-<номер>-Gameplay.png`, например `ru-1-Gameplay.png` и `pt-BR-1-Gameplay.png`. Они сохраняются в каталоге данных переводчика: `screenshots/<UTC timestamp>-<batch id>/`. Рядом создаётся `screenshots-evidence.json` с размерами и SHA-256 каждого изображения; даже успешно снятый пакет помечен как ожидающий визуальной проверки. До открытия папки переводчик восстанавливает исходный язык, режим показа и настройку автоперевода.
 
 Если выбранный язык перевода совпадает с исходным языком игры, переводчик сохраняет оригинальный текст и не создаёт задания или запросы к провайдеру. Исходный язык CoC2 — английский.
 

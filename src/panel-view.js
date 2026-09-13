@@ -65,7 +65,9 @@
         .status{min-width:0;min-height:0;overflow:auto;color:var(--warning);font-size:12px;overflow-wrap:anywhere}
         .providerHint:empty{display:none}
         .retry{width:100%;height:32px;min-height:32px;max-height:32px;padding:0 8px;white-space:nowrap;overflow:hidden}
-        .screenshotBatch{width:100%;margin:0 0 10px}
+        .screenshotBatchRow{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:8px;margin:0 0 10px}
+        .screenshotBatch{width:100%}
+        .screenshotBatchRow .screenshotNumber{width:58px;min-width:0;padding-left:4px;padding-right:4px;text-align:center}
         .compat{padding:8px;margin:8px 0;border:1px solid var(--border);border-radius:6px;color:var(--warning);font-size:12px}
         .settings label.title{display:block;margin:8px 0 4px;color:var(--muted);font-size:12px}
         .providerHint,.cacheStats{color:var(--muted);font-size:11px}
@@ -121,7 +123,7 @@
           <div class="status" role="status" aria-live="polite" tabindex="0"></div>
           <button class="secondary retry" type="button" disabled>Retry translation</button>
         </div>
-        <button class="secondary screenshotBatch" type="button">Capture all languages</button>
+        <div class="screenshotBatchRow"><button class="secondary screenshotBatch" type="button">Capture all languages</button><input class="screenshotNumber" type="number" min="1" max="999" step="1" value="1" aria-label="Screenshot number" title="Number used in every screenshot filename."></div>
         <div class="compat" hidden></div>
         <div class="settings">
           <label class="title translationServiceLabel">Translation service</label><select class="provider"></select>

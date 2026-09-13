@@ -199,7 +199,7 @@
     ".openAICompatibleConcurrency", ".openAICompatibleAdvancedToggle",
     ".openAICompatiblePromptToggle", ".openAICompatiblePromptReset",
     ".openAICompatibleGlossaryToggle", ".openAICompatibleSiteGlossary",
-    ".openAICompatibleGlossary", ".autoToggle", ".screenshotBatch", ".cacheDelete"
+    ".openAICompatibleGlossary", ".autoToggle", ".screenshotBatch", ".screenshotNumber", ".cacheDelete"
   ].every((selector) => (shadow.querySelector(selector)?.title || "").length >= 20);
   const openAIAdvancedToggle = shadow.querySelector(".openAICompatibleAdvancedToggle");
   const openAIAdvanced = shadow.querySelector(".openAICompatibleAdvanced");
@@ -635,11 +635,13 @@
     const api = window.__vnRevivalTranslator;
     const provider = shadow.querySelector(".provider");
     const language = shadow.querySelector(".language");
+    const screenshotNumber = shadow.querySelector(".screenshotNumber");
     const change = (element, value) => { element.value = value; element.dispatchEvent(new Event("change")); };
     change(provider, "google");
     change(language, "en");
     autoCheckbox.checked = false;
     autoCheckbox.dispatchEvent(new Event("change"));
+    screenshotNumber.value = "7";
     const before = api.settings();
     window.smokeScreenshotRequests.length = 0;
     window.smokeScreenshotFinishRequests.length = 0;
@@ -654,6 +656,8 @@
       screenshotLocalesCanonical: JSON.stringify(capturedLocales) === JSON.stringify(expectedLocales),
       screenshotFramesLabelled: window.smokeScreenshotRequests.every((request, index) => request.sequence === index + 1
         && request.panelHidden && request.visibleLocale === request.locale),
+      screenshotNumberShared: result.screenshotNumber === 7
+        && window.smokeScreenshotRequests.every((request) => request.screenshotNumber === 7),
       screenshotBatchIdentityStable: batchIds.size === 1 && batchIds.has(result.batchId),
       screenshotEvidenceFinalized: window.smokeScreenshotFinishRequests.length === 1
         && window.smokeScreenshotFinishRequests[0].batchId === result.batchId

@@ -123,8 +123,8 @@ window.fetch = async function (input, options = {}) {
         visibleLocale: shadow?.querySelector(".screenshotLocaleBadge")?.textContent || ""
       });
       return { ok: true, json: async () => ({
-        ok: true, locale: request.locale, sequence: request.sequence,
-        file: `${request.locale}-${String(request.sequence).padStart(2, "0")}.png`,
+        ok: true, locale: request.locale, number: request.screenshotNumber, sequence: request.sequence,
+        file: `${request.locale}-${request.screenshotNumber}-Gameplay.png`,
         directory: "/tmp/smoke-screenshots", width: 1280, height: 720, bytes: 100
       }) };
     }

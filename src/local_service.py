@@ -608,6 +608,7 @@ class LocalServiceBridge:
         self.target_title_hint = target_title_hint
         self.target_url_hint = target_url_hint
         self._screenshot_batches: dict[str, Path] = {}
+        self._screenshot_batch_numbers: dict[str, int] = {}
 
     def log_event(self, event: str, **fields: Any) -> None:
         # Callers supply only fixed categories, numeric metrics and fingerprints.
@@ -1624,13 +1625,15 @@ class LocalServiceBridge:
             raise BridgeError("screenshot_write_failed", "Could not save screenshot evidence", 500) from error
 
     def capture_screenshot(
-        self, batch_id: Any, locale: Any, sequence: Any, total: Any,
+        self, batch_id: Any, locale: Any, screenshot_number: Any, sequence: Any, total: Any,
         translator_version: Any, game_version: Any,
     ) -> dict[str, Any]:
         if not isinstance(batch_id, str) or not re.fullmatch(r"[0-9a-f]{32}", batch_id):
             raise BridgeError("screenshot_request_invalid", "Invalid screenshot batch", 400)
         if not isinstance(locale, str) or not re.fullmatch(r"[a-z]{2,3}(?:-[A-Z]{2})?", locale):
             raise BridgeError("screenshot_request_invalid", "Invalid screenshot locale", 400)
+        if type(screenshot_number) is not int or not 1 <= screenshot_number <= 999:
+            raise BridgeError("screenshot_request_invalid", "Invalid screenshot number", 400)
         if type(sequence) is not int or not 1 <= sequence <= 99:
             raise BridgeError("screenshot_request_invalid", "Invalid screenshot sequence", 400)
         if type(total) is not int or not 1 <= total <= 99 or sequence > total:
@@ -1644,7 +1647,9 @@ class LocalServiceBridge:
         with _SCREENSHOT_LOCK:
             directory = self._screenshot_batches.get(batch_id)
             if directory is not None:
-                destination = directory / f"{locale}-{sequence:02d}.png"
+                if self._screenshot_batch_numbers.get(batch_id) != screenshot_number:
+                    raise BridgeError("screenshot_request_invalid", "Screenshot number changed during the batch", 409)
+                destination = directory / f"{locale}-{screenshot_number}-Gameplay.png"
                 if destination.exists():
                     raise BridgeError("screenshot_exists", "This locale screenshot already exists", 409)
             image = _capture_cdp_png(self._screenshot_target_url())
@@ -1658,6 +1663,7 @@ class LocalServiceBridge:
                 except OSError as error:
                     raise BridgeError("screenshot_write_failed", "Could not create the screenshot folder", 500) from error
                 self._screenshot_batches[batch_id] = directory
+                self._screenshot_batch_numbers[batch_id] = screenshot_number
                 self._write_screenshot_manifest(directory, {
                     "schemaVersion": 1,
                     "batchId": batch_id,
@@ -1665,13 +1671,15 @@ class LocalServiceBridge:
                     "captureMethod": "Chromium CDP Page.captureScreenshot",
                     "translatorVersion": translator_version,
                     "gameVersion": game_version or None,
+                    "screenshotNumber": screenshot_number,
+                    "content": "Gameplay",
                     "expectedScreenshots": total,
                     "automatedResult": "running",
                     "visualReview": {"status": "pending"},
                     "result": "capture-running-review-pending",
                     "screenshots": [],
                 })
-            destination = directory / f"{locale}-{sequence:02d}.png"
+            destination = directory / f"{locale}-{screenshot_number}-Gameplay.png"
             temporary = destination.with_suffix(".png.tmp")
             try:
                 temporary.write_bytes(image)
@@ -1693,6 +1701,8 @@ class LocalServiceBridge:
                     raise ValueError("batch screenshot list is invalid")
                 screenshots.append({
                     "locale": locale,
+                    "number": screenshot_number,
+                    "content": "Gameplay",
                     "sequence": sequence,
                     "file": destination.name,
                     "width": width,
@@ -1716,7 +1726,7 @@ class LocalServiceBridge:
                 raise BridgeError("screenshot_write_failed", "Could not update screenshot evidence", 500) from error
             self.log_event("screenshot.saved", locale=locale, sequence=sequence,
                            width=width, height=height, bytes=len(image))
-            return {"ok": True, "locale": locale, "sequence": sequence,
+            return {"ok": True, "locale": locale, "number": screenshot_number, "sequence": sequence,
                     "file": destination.name, "directory": str(directory),
                     "width": width, "height": height, "bytes": len(image)}
 
@@ -1886,8 +1896,9 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 result = self.bridge.open_vnrevival_game_page(payload.get("gameSlug"))
             elif self.path == "/v1/screenshots/capture":
                 result = self.bridge.capture_screenshot(
-                    payload.get("batchId"), payload.get("locale"), payload.get("sequence"),
-                    payload.get("total"), payload.get("translatorVersion"), payload.get("gameVersion")
+                    payload.get("batchId"), payload.get("locale"), payload.get("screenshotNumber"),
+                    payload.get("sequence"), payload.get("total"),
+                    payload.get("translatorVersion"), payload.get("gameVersion")
                 )
             elif self.path == "/v1/screenshots/finish":
                 result = self.bridge.finish_screenshot_batch(

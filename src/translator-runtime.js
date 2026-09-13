@@ -1489,7 +1489,7 @@
     return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   }
 
-  async function captureTranslatedScreen(batchId, locale, sequence, total, gameVersion) {
+  async function captureTranslatedScreen(batchId, locale, screenshotNumber, sequence, total, gameVersion) {
     const badge = document.createElement("div");
     badge.className = "screenshotLocaleBadge";
     badge.textContent = locale;
@@ -1505,7 +1505,7 @@
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       await waitForPaint();
       return await requestLocalHelper("/v1/screenshots/capture", {
-        body: { batchId, locale, sequence, total, translatorVersion: VERSION, gameVersion }
+        body: { batchId, locale, screenshotNumber, sequence, total, translatorVersion: VERSION, gameVersion }
       });
     } finally {
       badge.remove();
@@ -1520,6 +1520,13 @@
       setStatus(text.screenshotBusy);
       return { outcome: "busy", captured: 0 };
     }
+    const screenshotNumber = Number(screenshotNumberInput.value);
+    if (!Number.isInteger(screenshotNumber) || screenshotNumber < 1 || screenshotNumber > 999) {
+      setStatus(text.screenshotNumberInvalid);
+      screenshotNumberInput.focus();
+      return { outcome: "failed", captured: 0 };
+    }
+    screenshotNumberInput.value = String(screenshotNumber);
     const languages = languagesForProvider(settings.provider);
     if (!languages.length) {
       setStatus(text.screenshotFailed.replace("{locale}", settings.language));
@@ -1567,7 +1574,7 @@
           outcome = "failed";
           break;
         }
-        await captureTranslatedScreen(batchId, locale, index + 1, languages.length, gameVersion);
+        await captureTranslatedScreen(batchId, locale, screenshotNumber, index + 1, languages.length, gameVersion);
         captured += 1;
       }
     } catch (_) {
@@ -1605,7 +1612,7 @@
     } else {
       setTranslationStatus((preset) => formatMessage(preset.screenshotFailed, { locale: failedLocale }));
     }
-    return { outcome, captured, batchId, failedLocale };
+    return { outcome, captured, batchId, failedLocale, screenshotNumber };
   }
 
   function retryFailed() {
@@ -1786,6 +1793,7 @@
   const mainButtonAction = shadow.querySelector(".translateAction");
   const retryButton = shadow.querySelector(".retry");
   const screenshotBatchButton = shadow.querySelector(".screenshotBatch");
+  const screenshotNumberInput = shadow.querySelector(".screenshotNumber");
   const statusElement = shadow.querySelector(".status");
   const languageSelect = shadow.querySelector(".language");
   const interfaceTranslationCheckbox = shadow.querySelector(".interfaceTranslation");
@@ -1862,6 +1870,8 @@
     retryButton.title = text.retryTitle;
     screenshotBatchButton.textContent = text.screenshotAll;
     screenshotBatchButton.title = text.screenshotTitle;
+    screenshotNumberInput.title = text.screenshotNumberTitle;
+    screenshotNumberInput.setAttribute("aria-label", text.screenshotNumberTitle);
     if (translationStatus) statusElement.textContent = translationStatus(text);
     shadow.querySelector(".translationServiceLabel").textContent = text.translationService;
     shadow.querySelector(".modelHelpQuestion").textContent = text.modelHelpQuestion;

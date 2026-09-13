@@ -51,8 +51,8 @@ test("panel has no request capture controls", () => {
 
 test("panel exposes an explicit all-language screenshot action", () => {
   const html = render();
-  assert.match(html, /<button class="secondary screenshotBatch" type="button">Capture all languages<\/button>/);
-  assert.match(html, /\.screenshotBatch\{width:100%;margin:0 0 10px\}/);
+  assert.match(html, /<div class="screenshotBatchRow"><button class="secondary screenshotBatch" type="button">Capture all languages<\/button><input class="screenshotNumber" type="number" min="1" max="999" step="1" value="1"/);
+  assert.match(html, /\.screenshotBatchRow\{display:grid;grid-template-columns:minmax\(0,1fr\) 58px/);
 });
 
 test("panel labels are not selectable but editable fields remain selectable", () => {
