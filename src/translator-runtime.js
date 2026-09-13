@@ -953,18 +953,46 @@
 
   function restoreLanguageFormatting() {
     for (const element of formattedElements) {
-      const original = originalPresentation.get(element);
-      if (!original) continue;
-      for (const [name, attribute] of Object.entries(original.attributes)) {
-        if (attribute.present) element.setAttribute(name, attribute.value);
-        else element.removeAttribute(name);
-      }
-      for (const [property, style] of Object.entries(original.styles)) {
-        restoreStyleProperty(element, property, style.value, style.priority);
-      }
-      originalPresentation.delete(element);
+      restoreElementPresentation(element);
     }
     formattedElements.clear();
+  }
+
+  function restoreElementPresentation(element) {
+    const original = originalPresentation.get(element);
+    if (!original) return;
+    for (const [name, attribute] of Object.entries(original.attributes)) {
+      if (attribute.present) element.setAttribute(name, attribute.value);
+      else element.removeAttribute(name);
+    }
+    for (const [property, style] of Object.entries(original.styles)) {
+      restoreStyleProperty(element, property, style.value, style.priority);
+    }
+    originalPresentation.delete(element);
+  }
+
+  function releaseRemovedSubtree(root) {
+    if (root.isConnected) return; // A move within the live DOM retains its translation.
+    const release = node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        sourceForNode(node); // Preserve any newer text written by the game.
+        const record = applied.get(node);
+        if (record) node.nodeValue = preserveWhitespace(node.nodeValue, record.source);
+        applied.delete(node);
+        appliedNodes.delete(node);
+      } else if (node instanceof Element) {
+        if (translationVisibilityObserver) translationVisibilityObserver.unobserve(node);
+        observedTranslationContainers.delete(node);
+        visibleTranslationContainers.delete(node);
+        pendingTranslationRoots.delete(node);
+        restoreElementPresentation(node);
+        formattedElements.delete(node);
+      }
+    };
+    release(root);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) release(node);
   }
 
   function applyLanguageFormatting(node, language) {
@@ -1273,25 +1301,45 @@
       setTranslationStatus((text) => text.alreadyTranslated);
       return;
     }
+    // Own the queue throughout every asynchronous preflight and worker.
+    const runAbortController = new AbortController();
+    running = true;
+    abortController = runAbortController;
+    setMainButton("Cancel");
+    retryButton.disabled = true;
+    try {
+      await runReservedJobs(jobs, manual, runAbortController);
+    } catch (error) {
+      setTranslationStatus((text) => error?.name === "AbortError" ? text.translationCancelled : text.connectionFailed);
+    } finally {
+      running = false;
+      abortController = null;
+      setMainButton("Translate");
+      retryButton.disabled = !lastFailedJobs.length;
+      clearSourceLanguageTranslationState();
+      refreshCacheStats();
+      if (pendingAutoRun) {
+        pendingAutoRun = false;
+        if (autoBlockedVariant !== translationVariant()) scheduleAutoTranslation(250);
+      }
+    }
+  }
+
+  async function runReservedJobs(jobs, manual, runAbortController) {
     const needsSiteTranslationConfig = providerUsesOpenAICompatible(settings.provider)
       && settings.language !== SOURCE_LANGUAGE
       && !siteTranslationConfig(settings.language);
     if (needsSiteTranslationConfig) {
-      // Reserve the queue while the shared preflight is in flight. An automatic
-      // scan and a manual click can otherwise both pass the normal `running`
-      // guard and start duplicate translation queues after the fetch resolves.
-      running = true;
-      try {
-        await ensureSiteTranslationConfig(settings.language);
-      } finally {
-        running = false;
-      }
+      await ensureSiteTranslationConfig(settings.language);
     }
+    throwIfAborted(runAbortController.signal);
+    if (clearSourceLanguageTranslationState()) return;
     if (providerUsesOpenAICompatible(settings.provider)) {
       const connection = openAICompatibleConnection();
       const status = openAICompatibleStatus && openAICompatibleStatus.preset === connection.preset
         && openAICompatibleStatus.baseURL === connection.baseURL
         ? openAICompatibleStatus : await refreshOpenAICompatibleStatus();
+      throwIfAborted(runAbortController.signal);
       if (!status) {
         setStatus("Configure the OpenAI-compatible provider first");
         return;
@@ -1310,7 +1358,6 @@
     autoBlockedVariant = null;
     const runVariant = translationVariant();
     let queueStopped = false;
-    const runAbortController = new AbortController();
     const started = performance.now();
     const metrics = {
       screen_id: randomHexId(), mode: manual ? "manual" : "auto",
@@ -1356,6 +1403,7 @@
           if (lastErrorCode === "openai_rate_limited"
               || lastErrorCode === "openai_key_invalid"
               || lastErrorCode === "openai_model_unavailable"
+              || lastErrorCode === "unsafe_redirect" || lastErrorCode === "openai_incomplete_translation"
               || ["openai_billing_required", "openai_endpoint_mismatch", "openai_stream_required", "openai_message_format_rejected", "openai_reasoning_unsupported"].includes(lastErrorCode)
               || (lastErrorCode === "openai_request_failed" && Number.isInteger(error.providerStatus)
                 && error.providerStatus < 500)) {
@@ -1373,8 +1421,6 @@
       }
     }
 
-    abortController = runAbortController;
-    running = true;
     try {
       report("start");
       setMainButton("Cancel");
@@ -1404,16 +1450,6 @@
       if (runVariant !== translationVariant()) outcome = "superseded";
       report("result", { outcome, duration_ms: Math.round(performance.now() - started),
         failed_jobs: lastFailedJobs.reduce((count, job) => count + (job.batchParts?.length || 1), 0) });
-      running = false;
-      abortController = null;
-      setMainButton("Translate");
-      retryButton.disabled = !lastFailedJobs.length;
-      clearSourceLanguageTranslationState();
-      refreshCacheStats();
-      if (pendingAutoRun) {
-        pendingAutoRun = false;
-        if (autoBlockedVariant !== translationVariant()) scheduleAutoTranslation(250);
-      }
     }
   }
 
@@ -1749,6 +1785,7 @@
       openai_rate_limited: "rateLimited", openai_key_invalid: "keyRejected",
       openai_model_unavailable: "modelUnavailable", openai_billing_required: "billingRequired",
       openai_format_invalid: "formatInvalid", openai_invalid_response: "formatInvalid",
+      openai_incomplete_translation: "formatInvalid",
       openai_empty_translation: "formatInvalid", openai_unavailable: "connectionFailed"
     }[error && error.code];
     if (key) return text[key];
@@ -2267,6 +2304,9 @@
   }
 
   const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.removedNodes || []) releaseRemovedSubtree(node);
+    }
     if (selfMutation) return;
     let changed = false;
     for (const record of records) {

@@ -591,6 +591,7 @@
 
   const optimization = await window.runOptimizationSmoke(shadow);
   const screenBlocks = await window.runScreenBlockSmoke(shadow);
+  const lifecycle = await window.runLifecycleSmoke(shadow);
 
   const sourceLanguageSkipsTranslation = await (async () => {
     const api = window.__vnRevivalTranslator;
@@ -672,6 +673,7 @@
     ...retryLifecycle,
     ...optimization,
     ...screenBlocks,
+    ...lifecycle,
     reasoningModelCompatibility,
     gameThemeApplied,
     russianInterfacePresetApplied,

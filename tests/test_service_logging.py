@@ -51,7 +51,7 @@ class ServiceLoggingTests(unittest.TestCase):
                  "prompt_tokens_details": {"cached_tokens": 100},
                  "completion_tokens_details": {"reasoning_tokens": 10},
                  "cost": 0.000321, "other": "PRIVATE-USAGE"}
-        with mock.patch.object(local_service.urllib.request, "urlopen", return_value=self.response(usage=usage)):
+        with mock.patch.object(local_service, "open_url", return_value=self.response(usage=usage)):
             result = self.translate()
         self.assertEqual(result["translatedText"], "PRIVATE-TRANSLATION")
         events = self.events()
@@ -68,7 +68,7 @@ class ServiceLoggingTests(unittest.TestCase):
         self.assertTrue(events[-1]["ok"])
 
     def test_repeats_and_changed_configuration_can_be_distinguished(self):
-        with mock.patch.object(local_service.urllib.request, "urlopen", return_value=self.response()):
+        with mock.patch.object(local_service, "open_url", return_value=self.response()):
             self.translate()
             self.translate()
             self.translate(model_parameters={"verbosity": "low"})
@@ -83,7 +83,7 @@ class ServiceLoggingTests(unittest.TestCase):
     def test_fallbacks_preserve_attempts_statuses_and_safe_reasons(self):
         responses = [self.error("verbosity is unsupported PRIVATE-DETAIL"),
                      self.error("json_schema response_format is unsupported PRIVATE-DETAIL"), self.response()]
-        with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=responses):
+        with mock.patch.object(local_service, "open_url", side_effect=responses):
             self.translate(model_parameters={"verbosity": "low"})
         events = self.events()
         attempts = [event for event in events if event["event"] == "provider.attempt"]
@@ -95,7 +95,7 @@ class ServiceLoggingTests(unittest.TestCase):
         self.assertEqual(len([event for event in events if event["event"] == "provider.usage"]), 1)
 
     def test_provider_400_is_not_lost_behind_helper_502(self):
-        with mock.patch.object(local_service.urllib.request, "urlopen",
+        with mock.patch.object(local_service, "open_url",
                                side_effect=self.error("MissingSessionID: x-opencode-session PRIVATE-DETAIL")):
             with self.assertRaises(local_service.BridgeError) as caught:
                 self.translate()
@@ -108,7 +108,7 @@ class ServiceLoggingTests(unittest.TestCase):
         self.assertFalse(events[-1]["ok"])
 
     def test_rate_limit_records_retry_delay_and_no_invented_usage(self):
-        with mock.patch.object(local_service.urllib.request, "urlopen",
+        with mock.patch.object(local_service, "open_url",
                                side_effect=self.error("PRIVATE-DETAIL", 429, {"Retry-After": "2.5"})):
             with self.assertRaises(local_service.BridgeError):
                 self.translate()
@@ -117,7 +117,7 @@ class ServiceLoggingTests(unittest.TestCase):
         self.assertFalse(any(event["event"] == "provider.usage" for event in events))
 
     def test_paid_but_invalid_translation_keeps_usage(self):
-        with mock.patch.object(local_service.urllib.request, "urlopen",
+        with mock.patch.object(local_service, "open_url",
                                return_value=self.response(usage={"total_tokens": 75, "cost": 0.00015})):
             with self.assertRaises(local_service.BridgeError) as caught:
                 self.translate(text="PRIVATE-SOURCE VRCTXSEP1X PRIVATE-SOURCE")
@@ -147,7 +147,7 @@ class ServiceLoggingTests(unittest.TestCase):
             barrier.wait(timeout=5)
             return self.response()
 
-        with mock.patch.object(local_service.urllib.request, "urlopen", side_effect=fake_open):
+        with mock.patch.object(local_service, "open_url", side_effect=fake_open):
             with ThreadPoolExecutor(max_workers=4) as pool:
                 list(pool.map(lambda index: self.translate(text=f"PRIVATE-SOURCE-{index}"), range(4)))
         groups = {}
@@ -178,13 +178,13 @@ class ServiceLoggingTests(unittest.TestCase):
 
     def test_logging_io_failure_does_not_break_translation(self):
         with mock.patch.object(Path, "open", side_effect=OSError("PRIVATE-ERROR")), \
-                mock.patch.object(local_service.urllib.request, "urlopen", return_value=self.response()):
+                mock.patch.object(local_service, "open_url", return_value=self.response()):
             self.assertTrue(self.translate()["ok"])
 
     def test_screen_metrics_correlate_requests_and_reject_arbitrary_content(self):
         screen_id = "a" * 32
         diagnostics = {"screen_id": screen_id, "batch_size": 12, "kind": "control"}
-        with mock.patch.object(local_service.urllib.request, "urlopen", return_value=self.response()):
+        with mock.patch.object(local_service, "open_url", return_value=self.response()):
             self.translate(diagnostics=diagnostics)
         event = next(event for event in self.events() if event["event"] == "translation.start")
         self.assertEqual({key: event[key] for key in diagnostics}, diagnostics)

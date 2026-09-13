@@ -212,6 +212,31 @@ class BridgeError(Exception):
         self.usage = usage
 
 
+class SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Validate every redirect before urllib can forward request credentials."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        def origin(url):
+            parsed = urllib.parse.urlsplit(url)
+            if parsed.username is not None or parsed.password is not None:
+                raise ValueError("Credentials in redirect URL")
+            port = parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80)
+            return parsed.scheme, parsed.hostname, port
+
+        try:
+            allowed = origin(req.full_url) == origin(newurl)
+        except ValueError:
+            allowed = False
+        if not allowed:
+            fp.close()
+            raise BridgeError("unsafe_redirect", "The endpoint returned an unsafe redirect", 502)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def open_url(request, timeout):
+    return urllib.request.build_opener(SameOriginRedirectHandler()).open(request, timeout=timeout)
+
+
 class OpenAICompatibleCredentialStore:
     """Store one endpoint-scoped key in the operating system credential vault."""
 
@@ -680,7 +705,7 @@ class LocalServiceBridge:
         )
         started = time.monotonic()
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with open_url(request, timeout=10) as response:
                 final_url = urllib.parse.urlsplit(getattr(response, "geturl", lambda: url)())
                 if final_url.scheme != "https" or final_url.hostname != "vnrevival.fun":
                     raise BridgeError("site_config_invalid", "VN Revival returned an invalid redirect", 502)
@@ -938,7 +963,7 @@ class LocalServiceBridge:
         )
         started = time.monotonic()
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with open_url(request, timeout=timeout) as response:
                 raw_response = response.read(MAX_REQUEST_BYTES + 1)
                 provider_status = getattr(response, "status", 200)
             self.log_event("provider.http", operation="completion" if body is not None else "models",
@@ -1375,6 +1400,8 @@ class LocalServiceBridge:
             ) from error
 
         try:
+            if finish in ("length", "incomplete", "max_tokens", "content_filter", "tool_calls"):
+                raise BridgeError("openai_incomplete_translation", "The provider did not complete the translation", 422)
             content = self._response_content(payload) if uses_responses_api \
                 else self._message_content(payload) if uses_messages_api \
                 else self._completion_content(payload)
