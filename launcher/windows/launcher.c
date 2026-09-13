@@ -27,6 +27,8 @@
 #define GAME_ID_W L"__GAME_ID_C__"
 #define TARGET_TITLE_HINT "__DEBUG_TARGET_TITLE_C__"
 #define TARGET_URL_HINT "__DEBUG_TARGET_URL_C__"
+#define TARGET_TITLE_HINT_W L"__DEBUG_TARGET_TITLE_C__"
+#define TARGET_URL_HINT_W L"__DEBUG_TARGET_URL_C__"
 #define RESELECT_MARKER L".reselect-game-executable"
 #define APP_ID __STEAM_APP_ID__
 #define APP_VERSION L"__VERSION__"
@@ -430,6 +432,7 @@ static BOOL start_hidden_process(const WCHAR *command, const WCHAR *working_dir,
 static BOOL start_local_service(
     const WCHAR *resources,
     USHORT port,
+    USHORT debug_port,
     const WCHAR *token,
     WCHAR *base_url,
     size_t base_url_cap)
@@ -457,8 +460,10 @@ static BOOL start_local_service(
     _snwprintf(
         command,
         sizeof(command) / sizeof(command[0]),
-        L"\"%ls\" -s \"%ls\" --port %u --token %ls --data-dir \"%ls\" --credential-id %ls",
-        python, service, (unsigned int)port, token, data_dir, GAME_ID_W);
+        L"\"%ls\" -s \"%ls\" --port %u --token %ls --data-dir \"%ls\" --credential-id %ls "
+        L"--cdp-port %u --target-title-hint \"%ls\" --target-url-hint \"%ls\"",
+        python, service, (unsigned int)port, token, data_dir, GAME_ID_W,
+        (unsigned int)debug_port, TARGET_TITLE_HINT_W, TARGET_URL_HINT_W);
     if (!start_hidden_process(command, resources, log_file, &process)) {
         if (log_file != INVALID_HANDLE_VALUE) CloseHandle(log_file);
         return FALSE;
@@ -875,7 +880,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         show_error(L"Could not prepare the translator's local ports.");
         return 1;
     }
-    if (!start_local_service(resources, service_port, token_wide, service_url, sizeof(service_url) / sizeof(service_url[0]))) {
+    if (!start_local_service(resources, service_port, debug_port, token_wide, service_url, sizeof(service_url) / sizeof(service_url[0]))) {
         show_error(L"Could not start the local translation helper. Make sure the translator archive was fully extracted.");
         return 1;
     }

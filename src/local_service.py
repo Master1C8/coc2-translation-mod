@@ -4,15 +4,19 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import contextvars
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import hashlib
+import http.client
 import ipaddress
 import json
 import math
 import os
 import re
+import socket
+import struct
 import subprocess
 import sys
 import threading
@@ -68,14 +72,17 @@ MAX_REQUEST_BYTES = 1_048_576
 MAX_TEXT_CHARS = 12_000
 MAX_LOG_COPY_BYTES = 2 * 1024 * 1024
 MAX_CAPTURE_BYTES = 8 * 1024 * 1024
+MAX_SCREENSHOT_BYTES = 32 * 1024 * 1024
 _LOG_LOCK = threading.Lock()
 _CAPTURE_LOCK = threading.Lock()
+_SCREENSHOT_LOCK = threading.Lock()
 _TRACE_ID = contextvars.ContextVar("translation_request_id", default=None)
 _LOG_ROUTES = {
     "/v1/health", "/v1/openai-compatible/status", "/v1/openai-compatible/key",
     "/v1/openai-compatible/key/remove", "/v1/openai-compatible/translate",
     "/v1/vnrevival/translation-config",
     "/v1/vnrevival/open-game-page",
+    "/v1/screenshots/capture", "/v1/screenshots/finish", "/v1/screenshots/open",
     "/v1/launcher/reselect-executable", "/v1/capture/status", "/v1/capture/start",
     "/v1/capture/append", "/v1/capture/stop", "/v1/capture/read", "/v1/capture/clear",
 }
@@ -235,6 +242,129 @@ class SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 def open_url(request, timeout):
     return urllib.request.build_opener(SameOriginRedirectHandler()).open(request, timeout=timeout)
+
+
+def _recv_exact(connection: socket.socket, length: int) -> bytes:
+    chunks = bytearray()
+    while len(chunks) < length:
+        chunk = connection.recv(length - len(chunks))
+        if not chunk:
+            raise BridgeError("screenshot_connection_failed", "The game screenshot connection closed", 502)
+        chunks.extend(chunk)
+    return bytes(chunks)
+
+
+def _send_websocket_frame(connection: socket.socket, opcode: int, payload: bytes) -> None:
+    mask = os.urandom(4)
+    length = len(payload)
+    if length < 126:
+        header = bytes((0x80 | opcode, 0x80 | length))
+    elif length <= 0xFFFF:
+        header = bytes((0x80 | opcode, 0x80 | 126)) + struct.pack("!H", length)
+    else:
+        header = bytes((0x80 | opcode, 0x80 | 127)) + struct.pack("!Q", length)
+    masked = bytes(value ^ mask[index % 4] for index, value in enumerate(payload))
+    connection.sendall(header + mask + masked)
+
+
+def _receive_websocket_message(connection: socket.socket) -> bytes:
+    message = bytearray()
+    started = False
+    while True:
+        first, second = _recv_exact(connection, 2)
+        final = bool(first & 0x80)
+        opcode = first & 0x0F
+        masked = bool(second & 0x80)
+        length = second & 0x7F
+        if length == 126:
+            length = struct.unpack("!H", _recv_exact(connection, 2))[0]
+        elif length == 127:
+            length = struct.unpack("!Q", _recv_exact(connection, 8))[0]
+        if length > MAX_SCREENSHOT_BYTES * 2:
+            raise BridgeError("screenshot_too_large", "The game screenshot response is too large", 502)
+        mask = _recv_exact(connection, 4) if masked else b""
+        payload = _recv_exact(connection, length)
+        if masked:
+            payload = bytes(value ^ mask[index % 4] for index, value in enumerate(payload))
+        if opcode == 0x8:
+            raise BridgeError("screenshot_connection_failed", "The game screenshot connection closed", 502)
+        if opcode == 0x9:
+            _send_websocket_frame(connection, 0xA, payload)
+            continue
+        if opcode in (0x1, 0x2):
+            if started:
+                raise BridgeError("screenshot_protocol_failed", "The game returned an invalid screenshot response", 502)
+            started = True
+            message.extend(payload)
+        elif opcode == 0x0 and started:
+            message.extend(payload)
+        else:
+            continue
+        if len(message) > MAX_SCREENSHOT_BYTES * 2:
+            raise BridgeError("screenshot_too_large", "The game screenshot response is too large", 502)
+        if final:
+            return bytes(message)
+
+
+def _capture_cdp_png(websocket_url: str) -> bytes:
+    parsed = urllib.parse.urlsplit(websocket_url)
+    if parsed.scheme != "ws" or parsed.hostname != "127.0.0.1" or not parsed.port \
+            or parsed.username is not None or parsed.password is not None:
+        raise BridgeError("screenshot_target_invalid", "The game screenshot target is invalid", 502)
+    path = urllib.parse.urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
+    key = base64.b64encode(os.urandom(16)).decode("ascii")
+    expected_accept = base64.b64encode(hashlib.sha1(
+        (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode("ascii")
+    ).digest()).decode("ascii")
+    try:
+        with socket.create_connection(("127.0.0.1", parsed.port), timeout=5) as connection:
+            connection.settimeout(15)
+            request = (
+                f"GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{parsed.port}\r\n"
+                f"Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\n"
+                "Sec-WebSocket-Version: 13\r\n\r\n"
+            ).encode("ascii")
+            connection.sendall(request)
+            response = bytearray()
+            while b"\r\n\r\n" not in response and len(response) <= 16_384:
+                chunk = connection.recv(4096)
+                if not chunk:
+                    break
+                response.extend(chunk)
+            header, separator, remainder = bytes(response).partition(b"\r\n\r\n")
+            if not separator or not header.startswith(b"HTTP/1.1 101"):
+                raise BridgeError("screenshot_connection_failed", "Could not connect to the game screenshot target", 502)
+            headers = {}
+            for line in header.split(b"\r\n")[1:]:
+                name, delimiter, value = line.partition(b":")
+                if delimiter:
+                    headers[name.strip().lower()] = value.strip()
+            if headers.get(b"sec-websocket-accept", b"").decode("ascii", errors="ignore") != expected_accept:
+                raise BridgeError("screenshot_connection_failed", "The game screenshot handshake was rejected", 502)
+            if remainder:
+                raise BridgeError("screenshot_protocol_failed", "The game returned an invalid screenshot handshake", 502)
+            command = json.dumps({
+                "id": 1,
+                "method": "Page.captureScreenshot",
+                "params": {"format": "png", "fromSurface": True, "captureBeyondViewport": False},
+            }, separators=(",", ":")).encode("utf-8")
+            _send_websocket_frame(connection, 0x1, command)
+            response_payload = json.loads(_receive_websocket_message(connection).decode("utf-8"))
+    except BridgeError:
+        raise
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        raise BridgeError("screenshot_connection_failed", "Could not capture the game screenshot", 502) from error
+    if response_payload.get("id") != 1 or "error" in response_payload:
+        raise BridgeError("screenshot_capture_failed", "The game rejected the screenshot request", 502)
+    encoded = response_payload.get("result", {}).get("data")
+    try:
+        image = base64.b64decode(encoded, validate=True) if isinstance(encoded, str) else b""
+    except ValueError as error:
+        raise BridgeError("screenshot_capture_failed", "The game returned an invalid screenshot", 502) from error
+    if len(image) < 24 or not image.startswith(b"\x89PNG\r\n\x1a\n") \
+            or image[12:16] != b"IHDR" or len(image) > MAX_SCREENSHOT_BYTES:
+        raise BridgeError("screenshot_capture_failed", "The game returned an invalid screenshot", 502)
+    return image
 
 
 class OpenAICompatibleCredentialStore:
@@ -461,6 +591,9 @@ class LocalServiceBridge:
         data_dir: Path,
         credential_id: str = "default",
         credential_store: Any | None = None,
+        cdp_port: int | None = None,
+        target_title_hint: str = "",
+        target_url_hint: str = "",
     ):
         self.data_dir = data_dir.expanduser().resolve()
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -471,6 +604,10 @@ class LocalServiceBridge:
         self._opencode_session = uuid.uuid4().hex
         self._capture_active = False
         self._capture_id: str | None = None
+        self.cdp_port = cdp_port
+        self.target_title_hint = target_title_hint
+        self.target_url_hint = target_url_hint
+        self._screenshot_batches: dict[str, Path] = {}
 
     def log_event(self, event: str, **fields: Any) -> None:
         # Callers supply only fixed categories, numeric metrics and fingerprints.
@@ -1433,6 +1570,206 @@ class LocalServiceBridge:
         marker.write_text("requested\n", encoding="utf-8")
         return {"ok": True, "reselectOnNextLaunch": True}
 
+    def _screenshot_target_url(self) -> str:
+        if not self.cdp_port or not (self.target_title_hint or self.target_url_hint):
+            raise BridgeError("screenshots_unavailable", "Game screenshots are unavailable in this launch", 503)
+        connection = http.client.HTTPConnection("127.0.0.1", self.cdp_port, timeout=3)
+        try:
+            connection.request("GET", "/json/list", headers={"Connection": "close"})
+            response = connection.getresponse()
+            content = response.read(MAX_REQUEST_BYTES + 1)
+        except OSError as error:
+            raise BridgeError("screenshot_connection_failed", "Could not connect to the running game", 502) from error
+        finally:
+            connection.close()
+        if response.status != 200 or len(content) > MAX_REQUEST_BYTES:
+            raise BridgeError("screenshot_connection_failed", "Could not read the running game target", 502)
+        try:
+            targets = json.loads(content.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise BridgeError("screenshot_target_invalid", "The running game target is invalid", 502) from error
+        for target in targets if isinstance(targets, list) else []:
+            if not isinstance(target, dict) or target.get("type") != "page":
+                continue
+            title = str(target.get("title") or "")
+            url = str(target.get("url") or "")
+            title_matches = bool(self.target_title_hint) \
+                and self.target_title_hint.casefold() in title.casefold()
+            url_matches = bool(self.target_url_hint) \
+                and self.target_url_hint.casefold() in url.casefold()
+            websocket_url = target.get("webSocketDebuggerUrl")
+            if (title_matches or url_matches) and isinstance(websocket_url, str):
+                parsed = urllib.parse.urlsplit(websocket_url)
+                if parsed.scheme == "ws" and parsed.hostname == "127.0.0.1" \
+                        and parsed.port == self.cdp_port:
+                    return websocket_url
+        raise BridgeError("screenshot_target_missing", "The game page is not available", 502)
+
+    @property
+    def screenshots_path(self) -> Path:
+        return self.data_dir / "screenshots"
+
+    @staticmethod
+    def _write_screenshot_manifest(directory: Path, document: dict[str, Any]) -> None:
+        destination = directory / "screenshots-evidence.json"
+        temporary = destination.with_suffix(".json.tmp")
+        try:
+            temporary.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            os.replace(temporary, destination)
+        except OSError as error:
+            try:
+                temporary.unlink()
+            except OSError:
+                pass
+            raise BridgeError("screenshot_write_failed", "Could not save screenshot evidence", 500) from error
+
+    def capture_screenshot(
+        self, batch_id: Any, locale: Any, sequence: Any, total: Any,
+        translator_version: Any, game_version: Any,
+    ) -> dict[str, Any]:
+        if not isinstance(batch_id, str) or not re.fullmatch(r"[0-9a-f]{32}", batch_id):
+            raise BridgeError("screenshot_request_invalid", "Invalid screenshot batch", 400)
+        if not isinstance(locale, str) or not re.fullmatch(r"[a-z]{2,3}(?:-[A-Z]{2})?", locale):
+            raise BridgeError("screenshot_request_invalid", "Invalid screenshot locale", 400)
+        if type(sequence) is not int or not 1 <= sequence <= 99:
+            raise BridgeError("screenshot_request_invalid", "Invalid screenshot sequence", 400)
+        if type(total) is not int or not 1 <= total <= 99 or sequence > total:
+            raise BridgeError("screenshot_request_invalid", "Invalid screenshot total", 400)
+        if not isinstance(translator_version, str) or not 1 <= len(translator_version) <= 64 \
+                or any(ord(character) < 32 for character in translator_version):
+            raise BridgeError("screenshot_request_invalid", "Invalid translator version", 400)
+        if not isinstance(game_version, str) or len(game_version) > 64 \
+                or any(ord(character) < 32 for character in game_version):
+            raise BridgeError("screenshot_request_invalid", "Invalid game version", 400)
+        with _SCREENSHOT_LOCK:
+            directory = self._screenshot_batches.get(batch_id)
+            if directory is not None:
+                destination = directory / f"{locale}-{sequence:02d}.png"
+                if destination.exists():
+                    raise BridgeError("screenshot_exists", "This locale screenshot already exists", 409)
+            image = _capture_cdp_png(self._screenshot_target_url())
+            if directory is None:
+                stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                directory = self.screenshots_path / f"{stamp}-{batch_id[:8]}"
+                try:
+                    directory.mkdir(parents=True, exist_ok=False)
+                except FileExistsError as error:
+                    raise BridgeError("screenshot_batch_exists", "The screenshot batch already exists", 409) from error
+                except OSError as error:
+                    raise BridgeError("screenshot_write_failed", "Could not create the screenshot folder", 500) from error
+                self._screenshot_batches[batch_id] = directory
+                self._write_screenshot_manifest(directory, {
+                    "schemaVersion": 1,
+                    "batchId": batch_id,
+                    "createdAt": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                    "captureMethod": "Chromium CDP Page.captureScreenshot",
+                    "translatorVersion": translator_version,
+                    "gameVersion": game_version or None,
+                    "expectedScreenshots": total,
+                    "automatedResult": "running",
+                    "visualReview": {"status": "pending"},
+                    "result": "capture-running-review-pending",
+                    "screenshots": [],
+                })
+            destination = directory / f"{locale}-{sequence:02d}.png"
+            temporary = destination.with_suffix(".png.tmp")
+            try:
+                temporary.write_bytes(image)
+                os.replace(temporary, destination)
+            except OSError as error:
+                try:
+                    temporary.unlink()
+                except OSError:
+                    pass
+                raise BridgeError("screenshot_write_failed", "Could not save the game screenshot", 500) from error
+            width, height = struct.unpack("!II", image[16:24])
+            manifest_path = directory / "screenshots-evidence.json"
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if manifest.get("batchId") != batch_id or manifest.get("expectedScreenshots") != total:
+                    raise ValueError("batch metadata mismatch")
+                screenshots = manifest.get("screenshots")
+                if not isinstance(screenshots, list):
+                    raise ValueError("batch screenshot list is invalid")
+                screenshots.append({
+                    "locale": locale,
+                    "sequence": sequence,
+                    "file": destination.name,
+                    "width": width,
+                    "height": height,
+                    "bytes": len(image),
+                    "sha256": hashlib.sha256(image).hexdigest(),
+                    "capturedAt": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                })
+                self._write_screenshot_manifest(directory, manifest)
+            except BridgeError:
+                try:
+                    destination.unlink()
+                except OSError:
+                    pass
+                raise
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError) as error:
+                try:
+                    destination.unlink()
+                except OSError:
+                    pass
+                raise BridgeError("screenshot_write_failed", "Could not update screenshot evidence", 500) from error
+            self.log_event("screenshot.saved", locale=locale, sequence=sequence,
+                           width=width, height=height, bytes=len(image))
+            return {"ok": True, "locale": locale, "sequence": sequence,
+                    "file": destination.name, "directory": str(directory),
+                    "width": width, "height": height, "bytes": len(image)}
+
+    def finish_screenshot_batch(
+        self, batch_id: Any, outcome: Any, captured: Any, expected: Any, settings_restored: Any,
+    ) -> dict[str, Any]:
+        if not isinstance(batch_id, str) or not re.fullmatch(r"[0-9a-f]{32}", batch_id) \
+                or outcome not in ("complete", "failed", "cancelled") \
+                or type(captured) is not int or type(expected) is not int \
+                or not 0 <= captured <= expected <= 99 or settings_restored is not True:
+            raise BridgeError("screenshot_request_invalid", "Invalid screenshot completion", 400)
+        with _SCREENSHOT_LOCK:
+            directory = self._screenshot_batches.get(batch_id)
+            if directory is None:
+                raise BridgeError("screenshot_batch_missing", "The screenshot batch is unavailable", 404)
+            try:
+                manifest = json.loads((directory / "screenshots-evidence.json").read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+                raise BridgeError("screenshot_write_failed", "Could not read screenshot evidence", 500) from error
+            if len(manifest.get("screenshots", [])) != captured or manifest.get("expectedScreenshots") != expected:
+                raise BridgeError("screenshot_request_invalid", "Screenshot completion does not match the batch", 409)
+            automated_result = "pass" if outcome == "complete" and captured == expected else "fail"
+            manifest.update({
+                "completedAt": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                "outcome": outcome,
+                "capturedScreenshots": captured,
+                "settingsRestored": True,
+                "automatedResult": automated_result,
+                "result": "capture-pass-review-pending" if automated_result == "pass" else "automated-fail",
+            })
+            self._write_screenshot_manifest(directory, manifest)
+            self.log_event("screenshot.batch", outcome=outcome, captured=captured, expected=expected)
+            return {"ok": True, "directory": str(directory), "captured": captured,
+                    "expected": expected, "automatedResult": automated_result}
+
+    def open_screenshot_batch(self, batch_id: Any) -> dict[str, Any]:
+        if not isinstance(batch_id, str) or not re.fullmatch(r"[0-9a-f]{32}", batch_id):
+            raise BridgeError("screenshot_request_invalid", "Invalid screenshot batch", 400)
+        directory = self._screenshot_batches.get(batch_id)
+        if directory is None or not directory.is_dir():
+            raise BridgeError("screenshot_batch_missing", "The screenshot batch is unavailable", 404)
+        try:
+            if sys.platform == "darwin":
+                subprocess.Popen(["/usr/bin/open", str(directory)], stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
+            elif os.name == "nt":
+                os.startfile(str(directory))  # type: ignore[attr-defined]
+            else:
+                raise BridgeError("screenshot_folder_open_failed", "Could not open the screenshot folder", 501)
+        except OSError as error:
+            raise BridgeError("screenshot_folder_open_failed", "Could not open the screenshot folder", 500) from error
+        return {"ok": True, "opened": True, "directory": str(directory)}
+
     @staticmethod
     def _open_external_url(url: str) -> None:
         try:
@@ -1547,6 +1884,18 @@ class LocalServiceRequestHandler(BaseHTTPRequestHandler):
                 )
             elif self.path == "/v1/vnrevival/open-game-page":
                 result = self.bridge.open_vnrevival_game_page(payload.get("gameSlug"))
+            elif self.path == "/v1/screenshots/capture":
+                result = self.bridge.capture_screenshot(
+                    payload.get("batchId"), payload.get("locale"), payload.get("sequence"),
+                    payload.get("total"), payload.get("translatorVersion"), payload.get("gameVersion")
+                )
+            elif self.path == "/v1/screenshots/finish":
+                result = self.bridge.finish_screenshot_batch(
+                    payload.get("batchId"), payload.get("outcome"), payload.get("captured"),
+                    payload.get("expected"), payload.get("settingsRestored")
+                )
+            elif self.path == "/v1/screenshots/open":
+                result = self.bridge.open_screenshot_batch(payload.get("batchId"))
             elif self.path == "/v1/translation-metrics":
                 measured = screen_metrics(payload)
                 self.bridge.log_event("screen." + payload["phase"], **measured)
@@ -1627,6 +1976,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--token", required=True)
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument("--credential-id", required=True)
+    parser.add_argument("--cdp-port", type=int)
+    parser.add_argument("--target-title-hint", default="")
+    parser.add_argument("--target-url-hint", default="")
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error("port must be between 1 and 65535")
@@ -1634,12 +1986,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("token must contain at least 16 characters")
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", args.credential_id):
         parser.error("credential-id must use lowercase ASCII letters, digits, and hyphens")
+    if args.cdp_port is not None and not 1 <= args.cdp_port <= 65535:
+        parser.error("cdp-port must be between 1 and 65535")
+    if args.cdp_port is not None and not (args.target_title_hint or args.target_url_hint):
+        parser.error("a target title or URL hint is required with cdp-port")
     return args
 
 
 def main() -> None:
     args = parse_args()
-    bridge = LocalServiceBridge(args.data_dir, credential_id=args.credential_id)
+    bridge = LocalServiceBridge(
+        args.data_dir,
+        credential_id=args.credential_id,
+        cdp_port=args.cdp_port,
+        target_title_hint=args.target_title_hint,
+        target_url_hint=args.target_url_hint,
+    )
     server = LocalServiceHTTPServer(
         ("127.0.0.1", args.port), LocalServiceRequestHandler, bridge, args.token
     )

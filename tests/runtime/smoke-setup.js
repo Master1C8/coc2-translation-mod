@@ -85,6 +85,9 @@
 window.fetchCalls = [];
 window.localHelperCalls = [];
 window.openExternalRequests = [];
+window.smokeScreenshotRequests = [];
+window.smokeScreenshotFinishRequests = [];
+window.smokeScreenshotOpenRequests = [];
 window.smokeLogBytes = 2048;
 window.smokeClipboard = "";
 Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
@@ -110,6 +113,32 @@ window.fetch = async function (input, options = {}) {
     if (url.pathname === "/v1/vnrevival/open-game-page") {
       window.openExternalRequests.push(JSON.parse(options.body));
       return { ok: true, json: async () => ({ ok: true, opened: true }) };
+    }
+    if (url.pathname === "/v1/screenshots/capture") {
+      const request = JSON.parse(options.body);
+      const shadow = document.getElementById("vnrevival-translator-coc2")?.shadowRoot;
+      window.smokeScreenshotRequests.push({
+        ...request,
+        panelHidden: shadow?.querySelector(".panel")?.hidden === true,
+        visibleLocale: shadow?.querySelector(".screenshotLocaleBadge")?.textContent || ""
+      });
+      return { ok: true, json: async () => ({
+        ok: true, locale: request.locale, sequence: request.sequence,
+        file: `${request.locale}-${String(request.sequence).padStart(2, "0")}.png`,
+        directory: "/tmp/smoke-screenshots", width: 1280, height: 720, bytes: 100
+      }) };
+    }
+    if (url.pathname === "/v1/screenshots/open") {
+      window.smokeScreenshotOpenRequests.push(JSON.parse(options.body));
+      return { ok: true, json: async () => ({ ok: true, opened: true, directory: "/tmp/smoke-screenshots" }) };
+    }
+    if (url.pathname === "/v1/screenshots/finish") {
+      const request = JSON.parse(options.body);
+      window.smokeScreenshotFinishRequests.push(request);
+      return { ok: true, json: async () => ({
+        ok: true, directory: "/tmp/smoke-screenshots", captured: request.captured,
+        expected: request.expected, automatedResult: request.outcome === "complete" ? "pass" : "fail"
+      }) };
     }
     if (url.pathname === "/v1/openai-compatible/status") {
       const configured = window.localHelperCalls.includes("/v1/openai-compatible/key");

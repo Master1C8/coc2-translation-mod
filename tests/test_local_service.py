@@ -1,3 +1,4 @@
+import base64
 import ctypes
 from email.message import Message
 import io
@@ -93,6 +94,51 @@ class LocalServiceTests(unittest.TestCase):
                                 bridge._request_json(connection, path, None if path == "/models" else {"text": "test"})
                             self.assertEqual(caught.exception.code, "unsafe_redirect")
                             self.assertEqual(len(requests), 1)
+
+    def test_screenshot_batch_writes_locale_first_png_without_overwriting(self):
+        image = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZbXcAAAAASUVORK5CYII="
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = local_service.LocalServiceBridge(
+                Path(directory), credential_id="coc2", credential_store=FakeCredentialStore(),
+                cdp_port=9317, target_title_hint="CoC2"
+            )
+            with mock.patch.object(bridge, "_screenshot_target_url",
+                                   return_value="ws://127.0.0.1:9317/devtools/page/game"), \
+                    mock.patch.object(local_service, "_capture_cdp_png", return_value=image):
+                result = bridge.capture_screenshot("a" * 32, "pt-BR", 1, 1, "0.10.2", "0.9.6")
+                self.assertEqual(result["file"], "pt-BR-01.png")
+                self.assertEqual((result["width"], result["height"]), (1, 1))
+                destination = Path(result["directory"]) / result["file"]
+                self.assertEqual(destination.read_bytes(), image)
+                finished = bridge.finish_screenshot_batch("a" * 32, "complete", 1, 1, True)
+                self.assertEqual(finished["automatedResult"], "pass")
+                manifest = json.loads((Path(result["directory"]) / "screenshots-evidence.json").read_text())
+                self.assertEqual(manifest["result"], "capture-pass-review-pending")
+                self.assertEqual(manifest["outcome"], "complete")
+                self.assertEqual(manifest["screenshots"][0]["locale"], "pt-BR")
+                self.assertEqual(manifest["screenshots"][0]["sha256"], local_service.hashlib.sha256(image).hexdigest())
+                with self.assertRaises(local_service.BridgeError) as caught:
+                    bridge.capture_screenshot("a" * 32, "pt-BR", 1, 1, "0.10.2", "0.9.6")
+                self.assertEqual(caught.exception.code, "screenshot_exists")
+
+    def test_screenshot_batch_rejects_untrusted_names_and_missing_cdp(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bridge = self.bridge(directory)
+            for batch_id, locale, sequence, total in (
+                ("../escape", "ru", 1, 1), ("a" * 32, "../../escape", 1, 1),
+                ("a" * 32, "ru", 0, 1), ("a" * 32, "ru", True, 1),
+                ("a" * 32, "ru", 2, 1),
+            ):
+                with self.subTest(batch_id=batch_id, locale=locale, sequence=sequence, total=total), \
+                        self.assertRaises(local_service.BridgeError) as caught:
+                    bridge.capture_screenshot(batch_id, locale, sequence, total, "0.10.2", "0.9.6")
+                self.assertEqual(caught.exception.code, "screenshot_request_invalid")
+            with self.assertRaises(local_service.BridgeError) as caught:
+                bridge.capture_screenshot("a" * 32, "ru", 1, 1, "0.10.2", "0.9.6")
+            self.assertEqual(caught.exception.code, "screenshots_unavailable")
+            self.assertFalse(bridge.screenshots_path.exists())
 
     def test_incomplete_translation_is_rejected_with_usage_for_every_protocol(self):
         cases = [

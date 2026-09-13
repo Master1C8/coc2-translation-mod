@@ -199,7 +199,7 @@
     ".openAICompatibleConcurrency", ".openAICompatibleAdvancedToggle",
     ".openAICompatiblePromptToggle", ".openAICompatiblePromptReset",
     ".openAICompatibleGlossaryToggle", ".openAICompatibleSiteGlossary",
-    ".openAICompatibleGlossary", ".autoToggle", ".cacheDelete"
+    ".openAICompatibleGlossary", ".autoToggle", ".screenshotBatch", ".cacheDelete"
   ].every((selector) => (shadow.querySelector(selector)?.title || "").length >= 20);
   const openAIAdvancedToggle = shadow.querySelector(".openAICompatibleAdvancedToggle");
   const openAIAdvanced = shadow.querySelector(".openAICompatibleAdvanced");
@@ -631,6 +631,47 @@
     }
   })();
 
+  const screenshotBatchFlow = await (async () => {
+    const api = window.__vnRevivalTranslator;
+    const provider = shadow.querySelector(".provider");
+    const language = shadow.querySelector(".language");
+    const change = (element, value) => { element.value = value; element.dispatchEvent(new Event("change")); };
+    change(provider, "google");
+    change(language, "en");
+    autoCheckbox.checked = false;
+    autoCheckbox.dispatchEvent(new Event("change"));
+    const before = api.settings();
+    window.smokeScreenshotRequests.length = 0;
+    window.smokeScreenshotFinishRequests.length = 0;
+    window.smokeScreenshotOpenRequests.length = 0;
+    const result = await api.captureAllLanguages();
+    const expectedLocales = languageOptions.map(([code]) => code);
+    const capturedLocales = window.smokeScreenshotRequests.map((request) => request.locale);
+    const batchIds = new Set(window.smokeScreenshotRequests.map((request) => request.batchId));
+    const after = api.settings();
+    return {
+      screenshotBatchCompletes: result.outcome === "complete" && result.captured === 30,
+      screenshotLocalesCanonical: JSON.stringify(capturedLocales) === JSON.stringify(expectedLocales),
+      screenshotFramesLabelled: window.smokeScreenshotRequests.every((request, index) => request.sequence === index + 1
+        && request.panelHidden && request.visibleLocale === request.locale),
+      screenshotBatchIdentityStable: batchIds.size === 1 && batchIds.has(result.batchId),
+      screenshotEvidenceFinalized: window.smokeScreenshotFinishRequests.length === 1
+        && window.smokeScreenshotFinishRequests[0].batchId === result.batchId
+        && window.smokeScreenshotFinishRequests[0].outcome === "complete"
+        && window.smokeScreenshotFinishRequests[0].captured === 30
+        && window.smokeScreenshotFinishRequests[0].expected === 30
+        && window.smokeScreenshotFinishRequests[0].settingsRestored === true,
+      screenshotFolderOpened: window.smokeScreenshotOpenRequests.length === 1
+        && window.smokeScreenshotOpenRequests[0].batchId === result.batchId,
+      screenshotStateRestored: before.language === after.language && before.autoTranslate === after.autoTranslate
+        && language.value === "en" && !autoCheckbox.checked,
+      screenshotOverlayCleaned: !shadow.querySelector(".screenshotLocaleBadge")
+        && !shadow.querySelector(".panel").hidden,
+      screenshotButtonLocalized: shadow.querySelector(".screenshotBatch").textContent === "Capture all languages",
+      screenshotCompletionShown: shadow.querySelector(".status").textContent === "Saved 30 screenshots. The folder is open."
+    };
+  })();
+
   const bootstrapBeforeBodyCreatesOnePanel = await (async () => {
     const frame = document.createElement("iframe");
     frame.hidden = true;
@@ -680,6 +721,7 @@
     defaultLanguage: defaultLanguage === "en",
     startsExpanded,
     sourceLanguageSkipsTranslation,
+    ...screenshotBatchFlow,
     bootstrapBeforeBodyCreatesOnePanel,
     defaultAutoTranslate,
     autoModeHidesTranslate,

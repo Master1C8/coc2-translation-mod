@@ -112,6 +112,7 @@
 
   let settings = loadSettings();
   let running = false;
+  let screenshotBatchRunning = false;
   let abortController = null;
   let selfMutation = false;
   let scanTimer = 0;
@@ -1296,16 +1297,16 @@
 
   async function runJobs(jobs, options) {
     const manual = !!(options && options.manual);
-    if (clearSourceLanguageTranslationState()) return;
-    if (!manual && autoBlockedVariant === translationVariant()) return;
+    if (clearSourceLanguageTranslationState()) return { outcome: "source", failedJobs: 0 };
+    if (!manual && autoBlockedVariant === translationVariant()) return { outcome: "blocked", failedJobs: 0 };
     if (running) {
       if (manual && abortController) abortController.abort();
       else pendingAutoRun = true;
-      return;
+      return { outcome: "busy", failedJobs: 0 };
     }
     if (!jobs.length) {
       setTranslationStatus((text) => text.alreadyTranslated);
-      return;
+      return { outcome: "complete", failedJobs: 0 };
     }
     // Own the queue throughout every asynchronous preflight and worker.
     const runAbortController = new AbortController();
@@ -1313,10 +1314,12 @@
     abortController = runAbortController;
     setMainButton("Cancel");
     retryButton.disabled = true;
+    let result = { outcome: "failed", failedJobs: jobs.length };
     try {
-      await runReservedJobs(jobs, manual, runAbortController);
+      result = await runReservedJobs(jobs, manual, runAbortController);
     } catch (error) {
       setTranslationStatus((text) => error?.name === "AbortError" ? text.translationCancelled : text.connectionFailed);
+      result = { outcome: error?.name === "AbortError" ? "cancelled" : "failed", failedJobs: jobs.length };
     } finally {
       running = false;
       abortController = null;
@@ -1329,6 +1332,7 @@
         if (autoBlockedVariant !== translationVariant()) scheduleAutoTranslation(250);
       }
     }
+    return result;
   }
 
   async function runReservedJobs(jobs, manual, runAbortController) {
@@ -1348,15 +1352,15 @@
       throwIfAborted(runAbortController.signal);
       if (!status) {
         setStatus("Configure the OpenAI-compatible provider first");
-        return;
+        return { outcome: "failed", failedJobs: jobs.length };
       }
       if (status.requiresKey && !status.configured) {
         setStatus(interfacePreset().keyMissing);
-        return;
+        return { outcome: "failed", failedJobs: jobs.length };
       }
       if (!connection.model) {
         setStatus(interfacePreset().modelRequired);
-        return;
+        return { outcome: "failed", failedJobs: jobs.length };
       }
     }
     const originalJobCount = jobs.length;
@@ -1457,24 +1461,151 @@
       report("result", { outcome, duration_ms: Math.round(performance.now() - started),
         failed_jobs: lastFailedJobs.reduce((count, job) => count + (job.batchParts?.length || 1), 0) });
     }
+    return {
+      outcome,
+      failedJobs: lastFailedJobs.reduce((count, job) => count + (job.batchParts?.length || 1), 0)
+    };
   }
 
   function translateScreen(manual) {
     const isManual = manual !== false;
-    if (clearSourceLanguageTranslationState()) return Promise.resolve();
-    if (!isManual && autoBlockedVariant === translationVariant()) return Promise.resolve();
+    if (clearSourceLanguageTranslationState()) return Promise.resolve({ outcome: "source", failedJobs: 0 });
+    if (!isManual && autoBlockedVariant === translationVariant()) return Promise.resolve({ outcome: "blocked", failedJobs: 0 });
     if (running) {
       if (isManual && abortController) abortController.abort();
       else pendingAutoRun = true;
-      return;
+      return Promise.resolve({ outcome: "busy", failedJobs: 0 });
     }
     const roots = isManual ? null : takeAutoTranslationRoots();
-    if (!isManual && !roots.length) return Promise.resolve();
+    if (!isManual && !roots.length) return Promise.resolve({ outcome: "complete", failedJobs: 0 });
     const jobs = buildJobs(collectVisibleTextNodes({
       roots, includeHiddenTooltips: true
     }));
-    if (!isManual && !jobs.length) return Promise.resolve();
+    if (!isManual && !jobs.length) return Promise.resolve({ outcome: "complete", failedJobs: 0 });
     return runJobs(jobs, { manual: isManual });
+  }
+
+  function waitForPaint() {
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }
+
+  async function captureTranslatedScreen(batchId, locale, sequence, total, gameVersion) {
+    const badge = document.createElement("div");
+    badge.className = "screenshotLocaleBadge";
+    badge.textContent = locale;
+    badge.style.cssText = [
+      "position:fixed", "left:10px", "top:10px", "z-index:2147483647",
+      "padding:5px 10px", "border:1px solid #d7ad54", "border-radius:7px",
+      "background:#20131ce6", "color:#fff", "font:600 16px/1.2 Arial,sans-serif",
+      "direction:ltr", "pointer-events:none"
+    ].join(";");
+    panel.hidden = true;
+    shadow.appendChild(badge);
+    try {
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      await waitForPaint();
+      return await requestLocalHelper("/v1/screenshots/capture", {
+        body: { batchId, locale, sequence, total, translatorVersion: VERSION, gameVersion }
+      });
+    } finally {
+      badge.remove();
+      panel.hidden = false;
+      await waitForPaint();
+    }
+  }
+
+  async function captureAllLanguages() {
+    const text = interfacePreset();
+    if (!LOCAL_BRIDGE || screenshotBatchRunning || running) {
+      setStatus(text.screenshotBusy);
+      return { outcome: "busy", captured: 0 };
+    }
+    const languages = languagesForProvider(settings.provider);
+    if (!languages.length) {
+      setStatus(text.screenshotFailed.replace("{locale}", settings.language));
+      return { outcome: "failed", captured: 0 };
+    }
+    const batchId = randomHexId();
+    const gameVersion = typeof adapter.getGameVersion === "function"
+      ? String(adapter.getGameVersion(window) || "") : "";
+    const original = {
+      language: settings.language,
+      mode: settings.mode,
+      autoTranslate: settings.autoTranslate,
+      languageValue: languageSelect.value,
+      autoChecked: autoCheckbox.checked
+    };
+    const controls = Array.from(shadow.querySelectorAll("button,select,input,textarea"));
+    const disabled = new Map(controls.map((control) => [control, control.disabled]));
+    let captured = 0;
+    let failedLocale = "";
+    let outcome = "complete";
+    screenshotBatchRunning = true;
+    for (const control of controls) control.disabled = true;
+    settings.autoTranslate = false;
+    autoCheckbox.checked = false;
+    pendingAutoRun = false;
+    if (scanTimer) {
+      clearTimeout(scanTimer);
+      scanTimer = 0;
+    }
+    try {
+      for (let index = 0; index < languages.length; index += 1) {
+        const locale = languages[index][0];
+        failedLocale = locale;
+        setTranslationStatus((preset) => formatMessage(preset.screenshotProgress, {
+          done: captured, total: languages.length, locale
+        }));
+        settings.language = locale;
+        settings.mode = "translated";
+        languageSelect.value = locale;
+        invalidateAppliedTranslations();
+        clearSourceLanguageTranslationState();
+        applyInterfacePreset();
+        const result = await translateScreen(true);
+        if (!result || !["complete", "source"].includes(result.outcome) || result.failedJobs) {
+          outcome = "failed";
+          break;
+        }
+        await captureTranslatedScreen(batchId, locale, index + 1, languages.length, gameVersion);
+        captured += 1;
+      }
+    } catch (_) {
+      outcome = "failed";
+    } finally {
+      settings.language = original.language;
+      settings.mode = original.mode;
+      settings.autoTranslate = original.autoTranslate;
+      languageSelect.value = original.languageValue;
+      autoCheckbox.checked = original.autoChecked;
+      invalidateAppliedTranslations();
+      applyInterfacePreset();
+      if (settings.mode === "translated") await translateScreen(true);
+      saveSettings();
+      screenshotBatchRunning = false;
+      for (const [control, wasDisabled] of disabled) control.disabled = wasDisabled;
+      screenshotBatchButton.disabled = !LOCAL_BRIDGE;
+      syncTranslateTrigger();
+      if (settings.autoTranslate) scheduleAutoTranslation(50);
+    }
+    if (captured > 0) {
+      try {
+        await requestLocalHelper("/v1/screenshots/finish", {
+          body: {
+            batchId, outcome, captured, expected: languages.length, settingsRestored: true
+          }
+        });
+        await requestLocalHelper("/v1/screenshots/open", { body: { batchId } });
+      } catch (_) {
+        outcome = "failed";
+      }
+    }
+    if (outcome === "complete") {
+      setTranslationStatus((preset) => formatMessage(preset.screenshotComplete, { count: captured }));
+    } else {
+      setTranslationStatus((preset) => formatMessage(preset.screenshotFailed, { locale: failedLocale }));
+    }
+    return { outcome, captured, batchId, failedLocale };
   }
 
   function retryFailed() {
@@ -1654,6 +1785,7 @@
   const mainButton = shadow.querySelector(".translate");
   const mainButtonAction = shadow.querySelector(".translateAction");
   const retryButton = shadow.querySelector(".retry");
+  const screenshotBatchButton = shadow.querySelector(".screenshotBatch");
   const statusElement = shadow.querySelector(".status");
   const languageSelect = shadow.querySelector(".language");
   const interfaceTranslationCheckbox = shadow.querySelector(".interfaceTranslation");
@@ -1728,6 +1860,8 @@
     syncKeyState();
     retryButton.textContent = text.retryFailed;
     retryButton.title = text.retryTitle;
+    screenshotBatchButton.textContent = text.screenshotAll;
+    screenshotBatchButton.title = text.screenshotTitle;
     if (translationStatus) statusElement.textContent = translationStatus(text);
     shadow.querySelector(".translationServiceLabel").textContent = text.translationService;
     shadow.querySelector(".modelHelpQuestion").textContent = text.modelHelpQuestion;
@@ -1805,6 +1939,7 @@
     const localized = text === "Cancel" ? preset.cancel : preset.translate;
     mainButtonAction.textContent = localized;
     mainButton.setAttribute("aria-label", `${localized} (Ctrl+Shift+T)`);
+    screenshotBatchButton.disabled = screenshotBatchRunning || running || !LOCAL_BRIDGE;
   }
   function syncTranslateTrigger() {
     mainButton.hidden = autoCheckbox.checked;
@@ -2088,6 +2223,7 @@
 
   mainButton.addEventListener("click", () => translateScreen(true));
   retryButton.addEventListener("click", retryFailed);
+  screenshotBatchButton.addEventListener("click", () => { void captureAllLanguages(); });
   collapseButton.addEventListener("click", () => {
     settings.collapsed = !settings.collapsed;
     updateCollapsedState();
@@ -2396,6 +2532,7 @@
     version: VERSION,
     gameId: game.id,
     translateScreen: () => translateScreen(true),
+    captureAllLanguages,
     collectVisibleTextNodes,
     showOriginal,
     showTranslations,

@@ -49,6 +49,12 @@ test("panel has no request capture controls", () => {
   assert.doesNotMatch(html, /captureBox|captureStats|captureToggle|captureCopy|captureClear|Capture requests/);
 });
 
+test("panel exposes an explicit all-language screenshot action", () => {
+  const html = render();
+  assert.match(html, /<button class="secondary screenshotBatch" type="button">Capture all languages<\/button>/);
+  assert.match(html, /\.screenshotBatch\{width:100%;margin:0 0 10px\}/);
+});
+
 test("panel labels are not selectable but editable fields remain selectable", () => {
   const html = render();
   assert.match(html, /\.panel\{[^}]*user-select:none;[^}]*-webkit-user-select:none/);

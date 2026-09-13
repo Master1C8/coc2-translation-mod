@@ -138,7 +138,9 @@ if [[ -n "$SERVICE_PORT" && -x "$PYTHON" ]]; then
   mkdir -p "$SERVICE_DATA_DIR"
   SERVICE_TOKEN=$(/usr/bin/uuidgen | tr -d '-')
   "$PYTHON" -s "$LOCAL_SERVICE" --port "$SERVICE_PORT" --token "$SERVICE_TOKEN" \
-    --data-dir "$SERVICE_DATA_DIR" --credential-id "$GAME_ID" >>"$SERVICE_LOG" 2>&1 &
+    --data-dir "$SERVICE_DATA_DIR" --credential-id "$GAME_ID" --cdp-port "$PORT" \
+    --target-title-hint "$DEBUG_TARGET_TITLE" --target-url-hint "$DEBUG_TARGET_URL" \
+    >>"$SERVICE_LOG" 2>&1 &
   SERVICE_PID=$!
   for _ in {1..40}; do
     /usr/bin/nc -z 127.0.0.1 "$SERVICE_PORT" >/dev/null 2>&1 && break
