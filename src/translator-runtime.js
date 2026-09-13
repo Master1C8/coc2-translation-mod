@@ -1,5 +1,11 @@
 (function () {
   "use strict";
+  if ((window.__vnRevivalTranslator && window.__vnRevivalTranslator.version)
+      || window.__vnRevivalTranslatorPending) return;
+  window.__vnRevivalTranslatorPending = true;
+
+  function initializeTranslator() {
+  delete window.__vnRevivalTranslatorPending;
   if (window.__vnRevivalTranslator && window.__vnRevivalTranslator.version) return;
 
   const core = window.VNRevivalTranslationCore;
@@ -2402,4 +2408,8 @@
     window[legacyCompatibility.translatorGlobal] = window.__vnRevivalTranslator;
   }
   console.info(`[${PRODUCT_NAME} ${VERSION}] loaded for ${GAME_TITLE}`);
+  }
+
+  if (document.documentElement && document.body) initializeTranslator();
+  else document.addEventListener("DOMContentLoaded", initializeTranslator, { once: true });
 })();

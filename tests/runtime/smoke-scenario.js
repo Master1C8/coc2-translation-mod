@@ -631,6 +631,23 @@
     }
   })();
 
+  const bootstrapBeforeBodyCreatesOnePanel = await (async () => {
+    const frame = document.createElement("iframe");
+    frame.hidden = true;
+    const loaded = new Promise((resolve) => frame.addEventListener("load", resolve, { once: true }));
+    frame.src = "runtime-bootstrap-frame.html";
+    document.body.append(frame);
+    try {
+      await loaded;
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      return frame.contentDocument.querySelectorAll("#vnrevival-translator-coc2").length === 1
+        && !!frame.contentWindow.__vnRevivalTranslator?.version
+        && !frame.contentWindow.__vnRevivalTranslatorPending;
+    } finally {
+      frame.remove();
+    }
+  })();
+
   // Keep each expectation once; the reporter lists failed names only.
   window.smokeReport({
     randomUUIDFallback: window.smokeRandomUUIDUnavailable === true,
@@ -663,6 +680,7 @@
     defaultLanguage: defaultLanguage === "en",
     startsExpanded,
     sourceLanguageSkipsTranslation,
+    bootstrapBeforeBodyCreatesOnePanel,
     defaultAutoTranslate,
     autoModeHidesTranslate,
     privacyChoiceRemoved,
