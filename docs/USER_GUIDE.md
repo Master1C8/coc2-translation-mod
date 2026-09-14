@@ -27,7 +27,7 @@ The panel has only two states: expanded or collapsed, and always starts expanded
 
 Automatic translation processes visible, newly visible, or changed blocks, including native selection options, and pre-translates recognized tooltip blocks already present in the DOM before hover. Other hidden interface text remains excluded. It pauses and cancels an active request when the game window is hidden.
 
-The language selector uses the same 30 locales and order as VN Revival. English and `Auto translate: On` are selected on the first launch; later choices are preserved locally. There is no first-use confirmation dialog.
+The language selector uses the same 31 locales and order as VN Revival, with English first and Latin American Spanish available separately from Spanish. English and `Auto translate: On` are selected on the first launch; later choices are preserved locally. There is no first-use confirmation dialog.
 
 When the selected target matches the game's source language, the translator keeps the original text and creates no translation jobs or provider requests. CoC2's source language is English.
 
@@ -131,7 +131,7 @@ embedded Windows launcher payload.
 
 Автоперевод обрабатывает видимые, впервые появившиеся или изменённые блоки, включая пункты нативных списков, и заранее переводит уже присутствующие в DOM распознанные tooltip-блоки до наведения. Остальной скрытый интерфейс не обрабатывается. При скрытом окне таймер останавливается, активный запрос отменяется.
 
-Список и порядок 30 языков совпадают с каталогом VN Revival. При первом запуске выбран английский и `Auto translate: On`; последующий выбор сохраняется локально. Отдельного подтверждения при первом использовании нет.
+Список и порядок 31 языка совпадают с каталогом VN Revival: английский стоит первым, а латиноамериканский испанский доступен отдельно от испанского. При первом запуске выбран английский и `Auto translate: On`; последующий выбор сохраняется локально. Отдельного подтверждения при первом использовании нет.
 
 Если выбранный язык перевода совпадает с исходным языком игры, переводчик сохраняет оригинальный текст и не создаёт задания или запросы к провайдеру. Исходный язык CoC2 — английский.
 

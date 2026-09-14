@@ -652,7 +652,7 @@
     const batchIds = new Set(window.smokeScreenshotRequests.map((request) => request.batchId));
     const after = api.settings();
     return {
-      screenshotBatchCompletes: result.outcome === "complete" && result.captured === 30,
+      screenshotBatchCompletes: result.outcome === "complete" && result.captured === 31,
       screenshotLocalesCanonical: JSON.stringify(capturedLocales) === JSON.stringify(expectedLocales),
       screenshotFramesLabelled: window.smokeScreenshotRequests.every((request, index) => request.sequence === index + 1
         && request.panelHidden && request.visibleLocale === request.locale),
@@ -662,8 +662,8 @@
       screenshotEvidenceFinalized: window.smokeScreenshotFinishRequests.length === 1
         && window.smokeScreenshotFinishRequests[0].batchId === result.batchId
         && window.smokeScreenshotFinishRequests[0].outcome === "complete"
-        && window.smokeScreenshotFinishRequests[0].captured === 30
-        && window.smokeScreenshotFinishRequests[0].expected === 30
+        && window.smokeScreenshotFinishRequests[0].captured === 31
+        && window.smokeScreenshotFinishRequests[0].expected === 31
         && window.smokeScreenshotFinishRequests[0].settingsRestored === true,
       screenshotFolderOpened: window.smokeScreenshotOpenRequests.length === 1
         && window.smokeScreenshotOpenRequests[0].batchId === result.batchId,
@@ -672,7 +672,7 @@
       screenshotOverlayCleaned: !shadow.querySelector(".screenshotLocaleBadge")
         && !shadow.querySelector(".panel").hidden,
       screenshotButtonLocalized: shadow.querySelector(".screenshotBatch").textContent === "Capture all languages",
-      screenshotCompletionShown: shadow.querySelector(".status").textContent === "Saved 30 screenshots. The folder is open."
+      screenshotCompletionShown: shadow.querySelector(".status").textContent === "Saved 31 screenshots. The folder is open."
     };
   })();
 
@@ -743,10 +743,10 @@
     russianInterfacePresetApplied,
     englishInterfaceRestored,
     modelHelpUsesSystemBrowser,
-    languageOptionsLength: languageOptions.length === 30,
+    languageOptionsLength: languageOptions.length === 31,
     languageOrderStart: JSON.stringify(languageOptions.slice(0, 2)) === JSON.stringify([
-      ["zh", "Chinese (Simplified) (中文（简体）)"],
-      ["en", "English"]
+      ["en", "English"],
+      ["zh", "Chinese (Simplified) (中文（简体）)"]
     ]),
     languageOrderEnd: JSON.stringify(languageOptions.at(-1)) === JSON.stringify(["he", "Hebrew (עברית)"]),
     providerOrder: JSON.stringify(providerOptions) === JSON.stringify([["google", "Google Translate"], ["openai-compatible", "OpenAI-compatible"]]),

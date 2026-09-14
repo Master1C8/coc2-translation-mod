@@ -15,8 +15,8 @@ def main() -> int:
     source = Path(sys.argv[1])
     output = Path(sys.argv[2])
     languages = json.loads(source.read_text(encoding="utf-8"))
-    if not isinstance(languages, list) or len(languages) != 30:
-        raise ValueError("the language catalog must contain exactly 30 entries")
+    if not isinstance(languages, list) or len(languages) != 31:
+        raise ValueError("the language catalog must contain exactly 31 entries")
     seen: set[str] = set()
     for entry in languages:
         if not isinstance(entry, list) or len(entry) != 3 or not all(

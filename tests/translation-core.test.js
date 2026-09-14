@@ -25,10 +25,12 @@ test("recognizes right-to-left target languages and normalizes Hebrew for HTML",
 test("supports the two runtime providers across the language catalog", () => {
   assert.equal(core.providerLanguageCode("google", "iw"), "iw");
   assert.equal(core.providerLanguageCode("google", "zh"), "zh-CN");
+  assert.equal(core.providerLanguageCode("google", "es-419"), "es");
   assert.equal(core.providerLanguageCode("google", "pt-BR"), "pt");
   assert.equal(core.providerLanguageCode("google", "fil"), "tl");
   assert.equal(core.providerLanguageCode("google", "he"), "iw");
   assert.equal(core.providerLanguageCode("openai-compatible", "fil"), "fil");
+  assert.equal(core.providerLanguageCode("openai-compatible", "es-419"), "es-419");
   assert.equal(core.providerSupportsLanguage("google", "ab"), true);
   assert.equal(core.providerSupportsLanguage("openai-compatible", "zh-TW"), true);
   assert.equal(core.providerSupportsLanguage("google", "fil"), true);

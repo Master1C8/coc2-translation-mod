@@ -100,7 +100,7 @@
     const code = String(language || "");
     if (!code) return "";
     if (selected === "google") {
-      const aliases = { zh: "zh-CN", "pt-BR": "pt", fil: "tl", he: "iw" };
+      const aliases = { zh: "zh-CN", "es-419": "es", "pt-BR": "pt", fil: "tl", he: "iw" };
       return aliases[code] || code;
     }
     return code;

@@ -219,7 +219,7 @@ if grep -Eq 'class="(cacheActions|launcherActions|settingsActions|clearLanguage|
 fi
 
 COUNT=$(python3 -c 'import json; print(len(json.load(open("src/languages.json", encoding="utf-8"))))')
-if [[ "$COUNT" != "30" ]]; then
+if [[ "$COUNT" != "31" ]]; then
   echo "Language catalog has an unexpected entry count: $COUNT" >&2
   exit 1
 fi

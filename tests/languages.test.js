@@ -10,8 +10,8 @@ require("../.build/languages.js");
 test("language catalog matches the canonical VN Revival site locales", () => {
   assert.deepEqual(globalThis.VNRevivalTranslatorLanguages, expected);
   assert.deepEqual(expected.map(([code]) => code), [
-    "zh", "en", "ru", "es", "pt-BR", "ja", "de", "ko", "fr", "tr",
-    "pl", "zh-TW", "it", "th", "vi", "id", "uk", "ar", "cs", "hu",
-    "nl", "fa", "ro", "hi", "fil", "el", "bg", "sr", "sw", "he"
+    "en", "zh", "ru", "es", "es-419", "pt-BR", "ja", "de", "ko", "fr",
+    "tr", "pl", "zh-TW", "it", "th", "vi", "id", "uk", "ar", "cs",
+    "hu", "nl", "fa", "ro", "hi", "fil", "el", "bg", "sr", "sw", "he"
   ]);
 });

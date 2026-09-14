@@ -1,8 +1,9 @@
 [
-  ["zh", "Chinese (Simplified)", "中文（简体）"],
   ["en", "English", "English"],
+  ["zh", "Chinese (Simplified)", "中文（简体）"],
   ["ru", "Russian", "русский"],
   ["es", "Spanish", "español"],
+  ["es-419", "Latin American Spanish", "español latinoamericano"],
   ["pt-BR", "Portuguese (Brazilian)", "português (Brasil)"],
   ["ja", "Japanese", "日本語"],
   ["de", "German", "Deutsch"],

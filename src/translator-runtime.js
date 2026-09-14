@@ -105,7 +105,7 @@
       ? selected : fallback;
   }
 
-  if (!Array.isArray(LANGUAGES) || LANGUAGES.length !== 30) throw new Error("VN Revival language catalog is missing");
+  if (!Array.isArray(LANGUAGES) || LANGUAGES.length !== 31) throw new Error("VN Revival language catalog is missing");
   if (!PROVIDERS.google || !PROVIDER_LIST.every((provider) => provider && provider.id && provider.label
     && typeof provider.supportsLanguage === "function" && typeof provider.splitText === "function"
     && typeof provider.translateChunk === "function")) throw new Error("VN Revival provider contract is invalid");
