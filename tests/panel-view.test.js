@@ -49,9 +49,9 @@ test("panel has no request capture controls", () => {
   assert.doesNotMatch(html, /captureBox|captureStats|captureToggle|captureCopy|captureClear|Capture requests/);
 });
 
-test("panel exposes an explicit all-language screenshot action", () => {
+test("panel retains the all-language screenshot action outside the visible interface", () => {
   const html = render();
-  assert.match(html, /<div class="screenshotBatchRow"><button class="secondary screenshotBatch" type="button">Capture all languages<\/button><input class="screenshotNumber" type="number" min="1" max="999" step="1" value="1"/);
+  assert.match(html, /<div class="screenshotBatchRow" hidden><button class="secondary screenshotBatch" type="button">Capture all languages<\/button><input class="screenshotNumber" type="number" min="1" max="999" step="1" value="1"/);
   assert.match(html, /\.screenshotBatchRow\{display:grid;grid-template-columns:minmax\(0,1fr\) 58px/);
 });
 

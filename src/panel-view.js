@@ -123,7 +123,7 @@
           <div class="status" role="status" aria-live="polite" tabindex="0"></div>
           <button class="secondary retry" type="button" disabled>Retry translation</button>
         </div>
-        <div class="screenshotBatchRow"><button class="secondary screenshotBatch" type="button">Capture all languages</button><input class="screenshotNumber" type="number" min="1" max="999" step="1" value="1" aria-label="Screenshot number" title="Number used in every screenshot filename."></div>
+        <div class="screenshotBatchRow" hidden><button class="secondary screenshotBatch" type="button">Capture all languages</button><input class="screenshotNumber" type="number" min="1" max="999" step="1" value="1" aria-label="Screenshot number" title="Number used in every screenshot filename."></div>
         <div class="compat" hidden></div>
         <div class="settings">
           <label class="title translationServiceLabel">Translation service</label><select class="provider"></select>
