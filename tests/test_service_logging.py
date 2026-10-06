@@ -46,6 +46,16 @@ class ServiceLoggingTests(unittest.TestCase):
             headers or {}, io.BytesIO(json.dumps({"error": {"message": message}}).encode()),
         )
 
+    def test_original_v2_capture_remains_readable(self):
+        fixture = Path(__file__).parent / "fixtures" / "coc2-request-capture-v2.json"
+        self.bridge.capture_path.write_bytes(fixture.read_bytes())
+        readback = self.bridge.read_capture()
+        self.assertTrue(readback["ok"])
+        document = json.loads(readback["content"])
+        self.assertEqual(document, json.loads(fixture.read_text(encoding="utf-8")))
+        self.assertEqual(len(document["request_sets"]), 19)
+        self.assertEqual([entry["number"] for entry in document["request_sets"]], list(range(1, 20)))
+
     def test_success_correlates_usage_without_recording_private_content(self):
         usage = {"prompt_tokens": 120, "completion_tokens": 40, "total_tokens": 160,
                  "prompt_tokens_details": {"cached_tokens": 100},
