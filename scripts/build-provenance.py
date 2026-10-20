@@ -86,8 +86,8 @@ def main():
         path = path or shutil.which(name)
         if not path:
             raise ValueError("Missing build tool: " + name)
-        tools[name] = {"path": str(Path(path).resolve()), "sha256": sha(path)}
-    tools["swiftVersion"] = subprocess.check_output([tools["swiftc"]["path"], "--version"], text=True).strip()
+        tools[name] = {"path": str(Path(path).resolve()), "invocationPath": str(Path(path).absolute()), "sha256": sha(path)}
+    tools["swiftVersion"] = subprocess.check_output([tools["swiftc"]["invocationPath"], "--version"], text=True).strip()
     sdk = Path(os.environ.get("SDKROOT") or subprocess.check_output(["xcrun", "--show-sdk-path"], text=True).strip()).resolve()
     tools["sdk"] = {"path": str(sdk), "settingsSha256": sha(sdk / "SDKSettings.json")}
     compiler_root = Path(tools["swiftc"]["path"]).parent.parent
