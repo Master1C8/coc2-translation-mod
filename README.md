@@ -1,5 +1,8 @@
 # CoC2 Translator
 
+[Published Windows and macOS packages with build evidence](https://github.com/Master1C8/coc2-translation-mod/releases/tag/release-0.11.3-4d91998d8172).
+See [release verification](docs/release-verification.md) for hashes and the exact build commit.
+
 Независимый runtime-переводчик для Steam-версии **Corruption of Champions
 II** на Windows и macOS. Он переводит видимый и динамически появляющийся текст
 запущенной Electron-игры и не извлекает, не изменяет и не распространяет её
