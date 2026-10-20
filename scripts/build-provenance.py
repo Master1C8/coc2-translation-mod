@@ -82,12 +82,21 @@ def main():
     for name in ["python3", "node", "zsh", "xcrun", "swiftc", "clang", "lipo",
                  "codesign", "ditto", "zip", "x86_64-w64-mingw32-gcc",
                  "x86_64-w64-mingw32-windres"]:
-        path = shutil.which(name)
+        path = os.environ.get("VNREVIVAL_SWIFTC") if name == "swiftc" else shutil.which(name)
+        path = path or shutil.which(name)
         if not path:
             raise ValueError("Missing build tool: " + name)
         tools[name] = {"path": str(Path(path).resolve()), "sha256": sha(path)}
-    tools["swiftVersion"] = subprocess.check_output(["swiftc", "--version"], text=True).strip()
-    tools["sdkVersion"] = subprocess.check_output(["xcrun", "--show-sdk-version"], text=True).strip()
+    tools["swiftVersion"] = subprocess.check_output([tools["swiftc"]["path"], "--version"], text=True).strip()
+    sdk = Path(os.environ.get("SDKROOT") or subprocess.check_output(["xcrun", "--show-sdk-path"], text=True).strip()).resolve()
+    tools["sdk"] = {"path": str(sdk), "settingsSha256": sha(sdk / "SDKSettings.json")}
+    compiler_root = Path(tools["swiftc"]["path"]).parent.parent
+    tools["swiftFrontendSha256"] = sha(compiler_root / "bin/swift-frontend")
+    tools["swiftCompatibilityLibraries"] = {p.name: sha(p) for p in sorted((compiler_root / "lib/swift/macosx").glob("libswiftCompatibility*.a"))}
+    receipt = os.environ.get("VNREVIVAL_TOOLCHAIN_RECEIPT")
+    if receipt:
+        tools["toolchainDistribution"] = json.loads(Path(receipt).read_text())
+    tools["sdkVersion"] = json.loads((sdk / "SDKSettings.json").read_text())["Version"]
     tools["pillowVersion"] = subprocess.check_output(
         [str(root / ".venv/bin/python"), "-c", "import PIL; print(PIL.__version__)"], text=True).strip()
     started = datetime.now(timezone.utc).isoformat()

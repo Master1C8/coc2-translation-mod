@@ -90,3 +90,5 @@ The new path uses ad hoc signing without notarization or paid provider requests.
 older build-stage checksum files do not describe those augmented archives.
 The unsigned record proves the declared local build boundary, not independent
 attestation or a new real-game acceptance run.
+
+Local cross-compilation may select an explicit official Swift toolchain using `VNREVIVAL_SWIFTC` and a matching `SDKROOT`; `VNREVIVAL_TOOLCHAIN_RECEIPT` includes its verified distribution receipt. The provenance recipe records the actual compiler, frontend, compatibility libraries and SDK settings. Regression: an Apple Silicon-only CLT compatibility archive must not be accepted as evidence that an Intel macOS 12 binary linked; verify both architectures with the selected toolchain. Do not raise the minimum OS or disable compatibility autolinking to hide this failure.
