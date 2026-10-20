@@ -27,12 +27,12 @@ DEBUG_TARGET_TITLE=$(manifest_value debugTargetTitleContains)
 DEBUG_TARGET_URL=$(manifest_value debugTargetUrlContains)
 [[ "$LAUNCH_STRATEGY" == "electron-cdp" ]] || { echo "Unsupported launch strategy: $LAUNCH_STRATEGY" >&2; exit 1; }
 BUILD_DIR="$ROOT/.build"
-READY_DIR="$ROOT/launcher/READY_TO_SHARE"
+READY_DIR="${VNREVIVAL_RELEASE_DIR:-$ROOT/launcher/READY_TO_SHARE}"
 APP="$BUILD_DIR/macos/$PRODUCT_NAME.app"
 MAC_ZIP="$READY_DIR/$ARCHIVE_PREFIX-macOS-$VERSION.zip"
 MAC_CHECKSUM="$BUILD_DIR/checksums/${MAC_ZIP:t}.sha256"
-SWIFTC="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
-SDK="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+SWIFTC="$(xcrun --find swiftc)"
+SDK="$(xcrun --show-sdk-path)"
 MAC_SIGN_IDENTITY="${VNREVIVAL_MAC_SIGN_IDENTITY:--}"
 MAC_NOTARY_PROFILE="${VNREVIVAL_MAC_NOTARY_PROFILE:-}"
 APP_ONLY="${VNREVIVAL_APP_ONLY:-0}"
@@ -116,7 +116,7 @@ if [[ "$APP_ONLY" == "1" ]]; then
 fi
 
 rm -f "$MAC_ZIP" "$MAC_CHECKSUM"
-/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP" "$MAC_ZIP"
+/usr/bin/ditto -c -k --norsrc --noextattr --noqtn --keepParent "$APP" "$MAC_ZIP"
 (cd "$READY_DIR" && shasum -a 256 "${MAC_ZIP:t}") > "$MAC_CHECKSUM"
 
 VNREVIVAL_GAME="$GAME_ID" "$ROOT/scripts/verify.sh"
