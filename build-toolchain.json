@@ -1,0 +1,40 @@
+{
+  "url": "https://download.swift.org/swift-6.3.2-release/xcode/swift-6.3.2-RELEASE/swift-6.3.2-RELEASE-osx.pkg",
+  "archiveSha256": "3dd8da736318b6f0a5d7c01b039dd8511f7994cababf9b10534dce1b19ccdca7",
+  "archiveBytes": 1503447422,
+  "publisher": "Developer ID Installer: Swift Open Source (V9AUD2URP3)",
+  "notarization": "trusted by Apple notary service",
+  "compilerRelativeToExpanded": "swift-6.3.2-RELEASE-osx-package.pkg/Payload/usr/bin/swiftc",
+  "compilerVersion": "Apple Swift version 6.3.2 (swift-6.3.2-RELEASE)\nTarget: arm64-apple-macosx28.0",
+  "compilerSha256": "d8e40107da0e2c1c59640a983faea326d5d2bddfe81f7609db14bade43c4a5b9",
+  "swiftFrontendSha256": "1f0539c14f92dacacde4ca5039e2fdaa232b212a1accf1124fce19f107b5ee70",
+  "sdkVersion": "26.5",
+  "sdkSettingsSha256": "f8d005f09381389167f9e0aeaa169bc9e7dff162ef22ca2fd8e98df7ff1acafe",
+  "compatibilityLibraries": {
+    "libswiftCompatibility56.a": {
+      "sha256": "760c018463fe986123ea51cca2a7bff4b08508f3bddc851b9f6cc3787732f18c",
+      "architectures": "x86_64 arm64"
+    },
+    "libswiftCompatibility51.a": {
+      "sha256": "6236adf81718b03dab1b9220dc820ec47d6e122301b0bff5670dd6a44e6d8d00",
+      "architectures": "x86_64 arm64"
+    },
+    "libswiftCompatibilityConcurrency.a": {
+      "sha256": "2ee1c97b39e507d34ea8b7ed8ff27d94a5bc9c9c199ed795a3e345a82ace0365",
+      "architectures": "x86_64 arm64"
+    },
+    "libswiftCompatibilityDynamicReplacements.a": {
+      "sha256": "091e68e76d28d2cf17265849ec5531f99f92881e78208b867cc6ab39ed3f4998",
+      "architectures": "x86_64 arm64"
+    },
+    "libswiftCompatibility50.a": {
+      "sha256": "6b4f8dec02e863a419289653e123e418dc0811678b6bbb0a8b9ed17e5c795173",
+      "architectures": "x86_64 arm64"
+    },
+    "libswiftCompatibilityPacks.a": {
+      "sha256": "b88eff22a5a60c9a82e173316d0606d0433202d87904357d39438b4266472a20",
+      "architectures": "x86_64 arm64"
+    }
+  },
+  "sdkLookup": "SDKROOT if explicitly set; otherwise an installed macOS26.5 SDK from active Xcode/CLT. Do not substitute SDK27."
+}

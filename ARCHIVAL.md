@@ -1,16 +1,28 @@
-# Source-only archival — pending toolchain verification
+# Source-only archival
 
-The published project is complete, but the 2026-11-03 archive gate is blocked. Fresh locked dependency installation, source/unit fixtures, isolated headless browser smoke and Windows packaging passed. The normal universal macOS build failed when linking the Intel controller: the installed Command Line Tools `libswiftCompatibility56.a` and `libswiftCompatibilityPacks.a` contain arm64/arm64e only; `__swift_FORCE_LOAD_$_swiftCompatibility56` is undefined for x86_64.
+Canonical source, game-specific manifest/adapter, editable app icons/assets,
+licenses, source tests and locked development dependency metadata are retained.
+No game copy, static translation pack, provider key or player save is required to
+edit and rebuild this realtime translator. Runtime/user data are outside cleanup.
 
-No original working/build data was deleted. The original `.build/` and environment were preserved and returned to their original paths; only this audit's fresh failed-check outputs were removed. No macOS deployment target, platform support, runtime code or accepted public release was changed.
+## Restore and normal build
 
-To resume, use a verified compatible Swift toolchain with those Intel compatibility libraries (the builder accepts `VNREVIVAL_SWIFTC` and `SDKROOT`), then run the existing game-specific normal build from a fresh scratch tree. Keep existing unique inputs until both platforms pass. The repository's `uv.lock`, source, current published installers and publication evidence remain the recovery set. No game/provider invocation or publication was performed by this audit.
+Follow [the verified toolchain recipe](docs/BUILD_TOOLCHAIN.md) and
+`build-toolchain.json`: official Swift6.3.2 + macOS26.5 SDK, Python3.14.6/uv.lock,
+Node22.x and MinGW-w64. Both platform builds passed from fresh generated/dependency
+directories on2026-11-03; the former Intel link blocker was resolved without changing
+app code, minimum OS support or runtime compatibility flags. Both universal slices
+declare macOS12.0; strict ad hoc signing, Windows PE, ZIP/hash/content checks and
+existing full source/browser test suites passed. No new game/provider/runtime or
+visual acceptance is claimed.
 
-A task-local official notarized Swift 6.2.3 distribution was also checked without
-installing globally. Its Intel compatibility libraries were present, but its
-frontend did not finish importing the newer macOS 27 SDK (the required controller
-probe spent over 17 minutes in module/overlay import; the diagnostic probe over
-44 minutes). Task-owned probes were stopped after stack sampling. This is not a
-successful rebuild. A matching compiler/SDK pair is still required; no runtime
-compatibility flag or minimum OS version was changed. The downloaded temporary
-compiler is excluded from the recovery set and GitHub.
+Current accepted installers and compact publication evidence remain in
+`release-0.11.3-4d91998d8172` in `Master1C8/coc2-translation-mod`. Authenticated cold download and complete
+archive checks passed against existing published hashes. No new verification
+build was uploaded or published. Git clone restores all editable icons and code;
+only standard development tools/runtime distributions are downloaded separately.
+
+After verified restoration/build, installed environments, old and fresh .build
+caches, previous/current local distribution copies and temporary review intermediates
+are retired. Keep the canonical source checkout and normal Git history. Repository
+visibility/history remain unchanged and it stays writable for future fixes.
